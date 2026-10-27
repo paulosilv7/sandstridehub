@@ -405,3 +405,9 @@ body{margin:0}
 .sn span{font-size:11px;font-weight:500}
 .sn.ok b{color:var(--good)}.sn.at b{color:var(--warn)}.sn.ru b{color:var(--bad)}
 @media (max-width:700px){.sn:first-child{padding-left:0}.sn{flex:0 1 auto}}
+
+/* o campo de resposta nunca é cortado: quem encolhe é a área de mensagens */
+@media (min-width:861px){
+  .thread .col-msg .msgs{min-height:0}
+  .thread .col-msg > :not(.msgs){flex:none}
+}
