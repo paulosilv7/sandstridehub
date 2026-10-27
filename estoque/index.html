@@ -332,6 +332,19 @@
   .barra-edicao[hidden] { display: none; }
   .barra-edicao button { height: 54px; border: none; border-radius: 999px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
   .barra-edicao .cancelar { flex: none; padding: 0 20px; background: var(--escuro2); color: #fff; }
+  .barra-edicao .etiquetas { flex: none; min-width: 54px; padding: 0 16px; background: var(--escuro2); color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .barra-edicao .etiquetas svg { width: 20px; height: 20px; flex: none; }
+  .barra-edicao .etiquetas b { font-size: 14px; }
+  .barra-edicao .etiquetas:disabled { opacity: .5; cursor: default; }
+  .barra-edicao .etiquetas.gerando { opacity: .7; cursor: progress; }
+  .est-sel-barra { display: flex; align-items: center; gap: 8px; margin: -4px 0 14px; flex-wrap: wrap; }
+  .est-sel-barra[hidden] { display: none; }
+  .est-sel-barra button { height: 34px; padding: 0 14px; border-radius: 999px; border: none; background: var(--fundo); color: var(--texto); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .est-sel-barra span { font-size: 13px; font-weight: 600; color: var(--apagado); }
+  .sel-bolinha { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #c4c7cc; background: #fff; flex: none; padding: 0; display: flex; align-items: center; justify-content: center; color: transparent; cursor: pointer; }
+  .sel-bolinha svg { width: 14px; height: 14px; }
+  .sel-bolinha.marcada { background: var(--escuro); border-color: var(--escuro); color: #fff; }
+  .sel-todas { margin-top: 6px; height: 28px; padding: 0 12px; border-radius: 999px; border: none; background: var(--fundo); color: var(--texto); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
   .barra-edicao .salvar { flex: 1; background: var(--azul); color: var(--escuro); }
   .barra-edicao .salvar:disabled { opacity: .5; cursor: default; }
   .lista-mud .aviso-mud { color: #a35d0c; font-weight: 700; }
@@ -772,7 +785,12 @@
           </button>
         </div>
       </div>
-      <div class="est-dica" id="estDica" hidden>Em azul fica o <b>tamanho</b>, ao lado a <b>quantidade</b>. Toque no número para digitar ou use <b>−</b> e <b>+</b>. Nada vai para a planilha até você tocar em <b>Salvar</b>.</div>
+      <div class="est-dica" id="estDica" hidden>Em azul fica o <b>tamanho</b>, ao lado a <b>quantidade</b>. Toque no número para digitar ou use <b>−</b> e <b>+</b>. Nada vai para a planilha até você tocar em <b>Salvar</b>. Para baixar etiquetas, marque as cores no círculo e toque no botão de QR Code.</div>
+      <div class="est-sel-barra" id="estSelBarra" hidden>
+        <button type="button" onclick="marcarVisiveisEst(true)">Marcar todos</button>
+        <button type="button" onclick="marcarVisiveisEst(false)">Limpar</button>
+        <span id="estSelTexto"></span>
+      </div>
       <div class="est-numeros" id="estNumeros"></div>
       <div class="busca">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>
@@ -864,6 +882,7 @@
   <div class="toast" id="toast" role="status"></div>
   <div class="barra-edicao" id="barraEdicao" hidden>
     <button type="button" class="cancelar" onclick="cancelarEdicaoEstoque()">Cancelar</button>
+    <button type="button" class="etiquetas" id="btnEtiquetasEst" onclick="baixarEtiquetasLote()" disabled aria-label="Baixar etiquetas das cores marcadas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h3M20 17v4"/></svg><b id="qtdEtiquetas"></b></button>
     <button type="button" class="salvar" id="btnSalvarEst" onclick="revisarEdicaoEstoque()" disabled>Salvar</button>
   </div>
   <nav class="menu-abas" id="menuAbas" hidden>
@@ -1831,6 +1850,7 @@ window.FOTO_PREVIA = null;
       if (filtroEstoque === 'sem') return somar(p.qtds) === 0;
       return true;
     });
+    visiveisEst = visiveis;
     if (!visiveis.length) {
       var vazio = document.createElement('div'); vazio.className = 'cartao';
       vazio.innerHTML = '<p class="dica" style="margin:0;text-align:center">Nenhum produto encontrado</p>';
@@ -1855,10 +1875,22 @@ window.FOTO_PREVIA = null;
       cab.querySelector('.est-nome').textContent = cores[0].produto;
       cab.querySelector('.est-total b').textContent = total.toLocaleString('pt-BR');
       cab.querySelector('.est-total span').textContent = total === 1 ? 'par' : 'pares';
+      if (editEst) {
+        var todas = document.createElement('button'); todas.type = 'button'; todas.className = 'sel-todas';
+        todas.setAttribute('data-cs', cores.map(function (p) { return p.codigo; }).join('|'));
+        todas.onclick = function () {
+          var cods = todas.getAttribute('data-cs').split('|');
+          var tudo = cods.every(function (c) { return editEst.sel[c]; });
+          cods.forEach(function (c) { alternarSelEst(c, !tudo); });
+          atualizarSelecaoEst(); sincronizarMarcasEst();
+        };
+        cab.firstChild.appendChild(todas);
+      }
       cartao.appendChild(cab);
       cores.forEach(function (p) { cartao.appendChild(linhaEstoque(p)); });
       lista.appendChild(cartao);
     });
+    if (editEst) sincronizarMarcasEst();
   }
 
   function linhaEstoque(p) {
@@ -1897,11 +1929,14 @@ window.FOTO_PREVIA = null;
   /* editEst.mudancas[codigo][tamanho] = nova quantidade (só o que for diferente da planilha) */
   var editEst = null;
   var salvandoEst = false;
+  var visiveisEst = [];
+  var gerandoEtiquetas = false;
+  var ICONE_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   var ICONE_MENOS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 12h12"/></svg>';
   var ICONE_MAIS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 12h12M12 6v12"/></svg>';
 
   function entrarEdicaoEstoque() {
-    editEst = { mudancas: {} };
+    editEst = { mudancas: {}, sel: {} };
     ajustarCabecalhoEstoque();
     montarEstoque();
     mostrar('telaEstoque');
@@ -1913,7 +1948,9 @@ window.FOTO_PREVIA = null;
     el('btnAtualizarEst').hidden = editando;
     el('estDica').hidden = !editando;
     el('estTitulo').textContent = editando ? 'Editando estoque' : 'Estoque';
+    el('estSelBarra').hidden = !editando;
     atualizarBotaoSalvarEst();
+    atualizarSelecaoEst();
   }
 
   function sairEdicaoEstoque() {
@@ -1939,6 +1976,41 @@ window.FOTO_PREVIA = null;
     var n = contarMudancasEst(), b = el('btnSalvarEst');
     b.disabled = !n;
     b.textContent = n ? 'Salvar ' + n + (n === 1 ? ' alteração' : ' alterações') : 'Salvar';
+  }
+
+  function contarSelEst() { return editEst ? Object.keys(editEst.sel).length : 0; }
+
+  function atualizarSelecaoEst() {
+    var n = contarSelEst(), b = el('btnEtiquetasEst');
+    if (!b) return;
+    b.disabled = !n || gerandoEtiquetas;
+    el('qtdEtiquetas').textContent = n ? String(n) : '';
+    el('estSelTexto').textContent = n ? n + (n === 1 ? ' cor marcada' : ' cores marcadas') : '';
+  }
+
+  function alternarSelEst(codigo, marcar) {
+    if (!editEst) return;
+    if (marcar === undefined) marcar = !editEst.sel[codigo];
+    if (marcar) editEst.sel[codigo] = true; else delete editEst.sel[codigo];
+  }
+
+  function marcarVisiveisEst(marcar) {
+    if (!editEst) return;
+    if (marcar) visiveisEst.forEach(function (p) { editEst.sel[p.codigo] = true; });
+    else editEst.sel = {};
+    atualizarSelecaoEst();
+    sincronizarMarcasEst();
+  }
+
+  function sincronizarMarcasEst() {
+    var marcas = document.querySelectorAll('#listaEstoque .sel-bolinha');
+    for (var i = 0; i < marcas.length; i++) marcas[i].classList.toggle('marcada', !!(editEst && editEst.sel[marcas[i].getAttribute('data-c')]));
+    var todas = document.querySelectorAll('#listaEstoque .sel-todas');
+    for (var j = 0; j < todas.length; j++) {
+      var cods = todas[j].getAttribute('data-cs').split('|');
+      var tudo = cods.every(function (c) { return editEst && editEst.sel[c]; });
+      todas[j].textContent = tudo ? 'Desmarcar todas as cores' : 'Marcar todas as cores';
+    }
   }
 
   function valorEst(p, i) {
@@ -1975,7 +2047,12 @@ window.FOTO_PREVIA = null;
     var tot = document.createElement('span');
     var totalAgora = function () { var s = 0; (p.grade || []).forEach(function (t, i) { s += valorEst(p, i); }); return s; };
     tot.textContent = textoPares(totalAgora());
-    topo.appendChild(mini); topo.appendChild(nome); topo.appendChild(tot);
+    var bolinha = document.createElement('button'); bolinha.type = 'button'; bolinha.className = 'sel-bolinha';
+    bolinha.setAttribute('data-c', p.codigo); bolinha.innerHTML = ICONE_OK;
+    bolinha.setAttribute('aria-label', 'Marcar ' + p.produto + ' ' + p.cor + ' para baixar a etiqueta');
+    bolinha.classList.toggle('marcada', !!(editEst && editEst.sel[p.codigo]));
+    bolinha.onclick = function () { alternarSelEst(p.codigo); atualizarSelecaoEst(); sincronizarMarcasEst(); };
+    topo.appendChild(bolinha); topo.appendChild(mini); topo.appendChild(nome); topo.appendChild(tot);
     linha.appendChild(topo);
 
     var grade = document.createElement('div'); grade.className = 'est-grade ed';
@@ -2448,30 +2525,118 @@ window.FOTO_PREVIA = null;
     return canvas;
   }
 
+  /* Fontes e imagens que a etiqueta precisa; carrega uma vez e reaproveita. */
+  function recursosEtiqueta() {
+    var fontes = (document.fonts && document.fonts.load)
+      ? Promise.all([document.fonts.load('700 60px "Plus Jakarta Sans"'), document.fonts.load('500 60px "Plus Jakarta Sans"')]).catch(function () {})
+      : Promise.resolve();
+    return Promise.all([fontes, carregarImagem(IMG_LOGO_ETIQUETA), carregarImagem(IMG_NFC_ETIQUETA)]).then(function (r) { return { logo: r[1], nfc: r[2] }; });
+  }
+
+  function baixarArquivo(blob, nome) {
+    var link = document.createElement('a');
+    var href = URL.createObjectURL(blob);
+    link.href = href; link.download = nome;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(function () { URL.revokeObjectURL(href); }, 4000);
+  }
+
   function baixarEtiqueta() {
     if (!atual) return;
     if (typeof qrcode !== 'function') { mostrarToast('O gerador de QR não carregou. Verifique a internet.'); return; }
     var prod = { codigo: atual.codigo, produto: atual.produto, cor: atual.cor };
-    var fontes = (document.fonts && document.fonts.load)
-      ? Promise.all([document.fonts.load('700 60px "Plus Jakarta Sans"'), document.fonts.load('500 60px "Plus Jakarta Sans"')]).catch(function () {})
-      : Promise.resolve();
     mostrarToast('Gerando etiqueta...');
-    Promise.all([fontes, carregarImagem(IMG_LOGO_ETIQUETA), carregarImagem(IMG_NFC_ETIQUETA)]).then(function (r) {
-      var canvas = desenharEtiqueta(prod, r[1], r[2]);
+    recursosEtiqueta().then(function (rec) {
+      var canvas = desenharEtiqueta(prod, rec.logo, rec.nfc);
       canvas.toBlob(function (blob) {
         if (!blob) { mostrarToast('Não consegui gerar a etiqueta.'); return; }
         blob.arrayBuffer().then(function (buf) {
-          var arquivo = new Blob([pngCom300dpi(buf)], { type: 'image/png' });
-          var link = document.createElement('a');
-          var href = URL.createObjectURL(arquivo);
-          link.href = href;
-          link.download = 'ETIQUETA-' + prod.codigo + '.png';
-          document.body.appendChild(link); link.click(); link.remove();
-          setTimeout(function () { URL.revokeObjectURL(href); }, 4000);
+          baixarArquivo(new Blob([pngCom300dpi(buf)], { type: 'image/png' }), 'ETIQUETA-' + prod.codigo + '.png');
           mostrarToast('Etiqueta baixada');
         });
       }, 'image/png');
     }).catch(function () { mostrarToast('Não consegui gerar a etiqueta.'); });
+  }
+
+  /* ---------- Etiquetas em lote: um PDF com uma etiqueta (100 x 150 mm) por página ---------- */
+
+  function comprimirFlate(bytes) {
+    var cs = new CompressionStream('deflate');
+    var w = cs.writable.getWriter(); w.write(bytes); w.close();
+    return new Response(cs.readable).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+
+  /* Página do PDF a partir do desenho: sem perdas (cinza + Flate); se o navegador não comprime, usa JPEG de alta qualidade. */
+  function paginaPdf(canvas) {
+    var w = canvas.width, h = canvas.height;
+    if (typeof CompressionStream === 'function') {
+      var rgba = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+      var cinza = new Uint8Array(w * h);
+      for (var i = 0, j = 0; j < cinza.length; i += 4, j++) cinza[j] = rgba[i];
+      return comprimirFlate(cinza).then(function (dados) { return { w: w, h: h, filtro: 'FlateDecode', cs: 'DeviceGray', bytes: dados }; });
+    }
+    var b64 = canvas.toDataURL('image/jpeg', 0.97).split(',')[1];
+    var bin = atob(b64), bytes = new Uint8Array(bin.length);
+    for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    return Promise.resolve({ w: w, h: h, filtro: 'DCTDecode', cs: 'DeviceRGB', bytes: bytes });
+  }
+
+  function montarPdf(paginas) {
+    var enc = new TextEncoder(), partes = [], pos = 0, offs = [];
+    function add(x) { var b = typeof x === 'string' ? enc.encode(x) : x; partes.push(b); pos += b.length; }
+    var PW = 283.465, PH = 425.197; /* 100 x 150 mm em pontos */
+    var n = paginas.length;
+    add('%PDF-1.4\n');
+    offs[1] = pos; add('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+    var filhos = paginas.map(function (_, i) { return (3 + 3 * i) + ' 0 R'; }).join(' ');
+    offs[2] = pos; add('2 0 obj\n<< /Type /Pages /Kids [' + filhos + '] /Count ' + n + ' >>\nendobj\n');
+    paginas.forEach(function (pg, i) {
+      var pid = 3 + 3 * i, cid = pid + 1, iid = pid + 2;
+      offs[pid] = pos;
+      add(pid + ' 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PW + ' ' + PH + '] /Resources << /XObject << /Im0 ' + iid + ' 0 R >> >> /Contents ' + cid + ' 0 R >>\nendobj\n');
+      var cont = 'q ' + PW + ' 0 0 ' + PH + ' 0 0 cm /Im0 Do Q';
+      offs[cid] = pos;
+      add(cid + ' 0 obj\n<< /Length ' + cont.length + ' >>\nstream\n' + cont + '\nendstream\nendobj\n');
+      offs[iid] = pos;
+      add(iid + ' 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + pg.w + ' /Height ' + pg.h + ' /ColorSpace /' + pg.cs + ' /BitsPerComponent 8 /Filter /' + pg.filtro + ' /Length ' + pg.bytes.length + ' >>\nstream\n');
+      add(pg.bytes); add('\nendstream\nendobj\n');
+    });
+    var total = 3 + 3 * n, xref = pos;
+    add('xref\n0 ' + total + '\n0000000000 65535 f \n');
+    for (var id = 1; id < total; id++) add(String(offs[id]).padStart(10, '0') + ' 00000 n \n');
+    add('trailer\n<< /Size ' + total + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF');
+    return new Blob(partes, { type: 'application/pdf' });
+  }
+
+  function baixarEtiquetasLote() {
+    if (gerandoEtiquetas || !editEst) return;
+    var lista = produtos.filter(function (p) { return editEst.sel[p.codigo]; }).sort(function (a, b) {
+      return (a.marca || '').localeCompare(b.marca || '', 'pt-BR') || a.produto.localeCompare(b.produto, 'pt-BR') || a.cor.localeCompare(b.cor, 'pt-BR');
+    });
+    if (!lista.length) return;
+    if (typeof qrcode !== 'function') { mostrarToast('O gerador de QR não carregou. Verifique a internet.'); return; }
+    gerandoEtiquetas = true;
+    el('btnEtiquetasEst').classList.add('gerando');
+    atualizarSelecaoEst();
+    var fim = function () { gerandoEtiquetas = false; el('btnEtiquetasEst').classList.remove('gerando'); atualizarSelecaoEst(); };
+    mostrarToast('Gerando 1 de ' + lista.length + '...');
+    recursosEtiqueta().then(function (rec) {
+      var paginas = [];
+      var proxima = function (i) {
+        if (i >= lista.length) return Promise.resolve();
+        mostrarToast('Gerando ' + (i + 1) + ' de ' + lista.length + '...');
+        var canvas = desenharEtiqueta({ codigo: lista[i].codigo, produto: lista[i].produto, cor: lista[i].cor }, rec.logo, rec.nfc);
+        return paginaPdf(canvas).then(function (pg) {
+          paginas.push(pg);
+          return new Promise(function (ok) { setTimeout(ok, 0); }); /* deixa a tela respirar entre uma etiqueta e outra */
+        }).then(function () { return proxima(i + 1); });
+      };
+      return proxima(0).then(function () { return paginas; });
+    }).then(function (paginas) {
+      baixarArquivo(montarPdf(paginas), lista.length === 1 ? 'ETIQUETA-' + lista[0].codigo + '.pdf' : 'ETIQUETAS-' + lista.length + '-CORES.pdf');
+      mostrarToast(lista.length === 1 ? 'Etiqueta baixada' : lista.length + ' etiquetas baixadas');
+      fim();
+    }).catch(function () { mostrarToast('Não consegui gerar as etiquetas.'); fim(); });
   }
 
   /* ---------- Leitor de QR Code ---------- */
