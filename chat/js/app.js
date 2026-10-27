@@ -294,11 +294,12 @@ function renderSandy() {
   }[hu];
   const score = m.pend + m.paradas + m.rec;
   const nivel = ['Tranquilo', 'Movimentado', 'Corrido', 'Sobrecarregado'][score <= 2 ? 0 : score <= 5 ? 1 : score <= 9 ? 2 : 3];
+  const nc = { Tranquilo: 'ok', Movimentado: 'at', Corrido: 'at', Sobrecarregado: 'ru' }[nivel];
   el.innerHTML =
     `<button type="button" class="sandy-fig${S.pula ? ' pula' : ''}" data-act="sandy-clica" aria-label="Conversar com a Sandy">${sandySvg(hu, 'a')}</button>` +
-    `<div class="sandy-txt"><span class="eyebrow">Sandy · atendente virtual</span><h2>${cumprimento()}, ${esc(eu())}.</h2><p>${esc(txt)}</p>` +
-    (S.fala ? `<span class="fala" role="status">${esc(S.fala)}</span>` : '') +
-    `<span class="termo-l">Termômetro do dia: <b>${nivel}</b></span></div>`;
+    `<div class="sandy-txt"><h2>${cumprimento()}, ${esc(eu())}.</h2><p>${esc(txt)}</p>` +
+    (S.fala ? `<span class="fala" role="status">${esc(S.fala)}</span>` : '') + '</div>' +
+    `<div class="sandy-nums" aria-label="Resumo do dia"><div class="sn"><b>${m.pend}</b><span>Aguardando</span></div><div class="sn"><b>${m.total}</b><span>Respondidas hoje</span></div><div class="sn ${nc}"><b>${nivel}</b><span>Ritmo do dia</span></div></div>`;
   S.pula = false;
 }
 

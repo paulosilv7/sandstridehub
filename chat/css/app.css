@@ -388,3 +388,11 @@ body{margin:0}
 @media (min-width:861px) and (max-width:1250px){
   .lista{flex:0 0 330px;max-width:330px}
 }
+
+/* Sandy: saudação à esquerda, números do dia à direita */
+.sandy-nums{display:flex;gap:8px;flex:0 1 auto;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+.sn{display:flex;flex-direction:column;gap:1px;min-width:92px;padding:6px 14px;border-radius:14px;background:var(--hover);border:1.5px solid var(--line)}
+.sn b{font-size:17px;font-weight:800;letter-spacing:-.3px;line-height:1.2;font-variant-numeric:tabular-nums}
+.sn span{font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap}
+.sn.ok b{color:var(--good)}.sn.at b{color:var(--warn)}.sn.ru b{color:var(--bad)}
+@media (max-width:700px){.sandy-nums{margin-left:0;justify-content:flex-start;width:100%}.sn{flex:1 1 90px}}
