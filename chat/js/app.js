@@ -134,7 +134,7 @@ async function carregarBase() {
     sb.from('etiquetas').select('id, nome, ordem').order('ordem').order('nome'),
     sb.from('respostas_rapidas').select('id, titulo, texto, escopo').order('titulo'),
     sb.from('configuracoes').select('chave, valor'),
-    sb.from('equipe').select('usuario_id, nome, papel').order('nome'),
+    sb.from('equipe').select('usuario_id, nome, papel, foto_path').order('nome'),
   ]);
   S.lojas = l.data || []; S.etiquetas = e.data || []; S.rapidas = r.data || []; S.equipe = q.data || [];
   lerConfig(c.data);
@@ -309,7 +309,8 @@ function renderChrome() {
   const aguard = S.convs.filter((c) => c.aguardando).length;
   $('navCount').textContent = aguard;
   document.title = `${aguard ? `(${aguard}) ` : ''}Caixa de entrada Sandstride`;
-  $('eu').textContent = `${eu()} · ${souAdmin() ? 'Administrador' : 'Atendente'}`;
+  const fp = S.eu?.foto_path;
+  $('eu').innerHTML = `<span style="display:flex;align-items:center;gap:10px">${fp ? `<img src="${esc(`${SUPABASE_URL}/storage/v1/object/public/avatares/${fp}`)}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex:none">` : ''}<span>${esc(eu())} · ${souAdmin() ? 'Administrador' : 'Atendente'}</span></span>`;
 }
 function renderFilters() {
   const total = S.convs.length, aguard = S.convs.filter((c) => c.aguardando).length;
@@ -840,7 +841,7 @@ async function iniciar() {
     const user = data?.session?.user;
     if (!user) { location.replace('../?next=/chat/'); return; }
     S.user = user;
-    const { data: eq } = await sb.from('equipe').select('usuario_id, nome, papel').eq('usuario_id', user.id).maybeSingle();
+    const { data: eq } = await sb.from('equipe').select('usuario_id, nome, papel, foto_path').eq('usuario_id', user.id).maybeSingle();
     if (!eq) { iniciando = false; return telaSemAcesso(); }
     S.eu = eq;
     if (eq.papel !== 'admin') {

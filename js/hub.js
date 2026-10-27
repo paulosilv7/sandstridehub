@@ -53,8 +53,50 @@ function telaNovaSenha(msg = '') {
     iniciar();
   };
 }
+const fotoUrl = (p) => p ? `${SUPABASE_URL}/storage/v1/object/public/avatares/${p}` : '';
+function avatar(p, nome, cls = '') {
+  const u = fotoUrl(p);
+  return u ? `<img class="av ${cls}" src="${esc(u)}" alt="">` : `<span class="av ${cls}" aria-hidden="true">${esc(String(nome || '?').charAt(0).toUpperCase())}</span>`;
+}
 function topo() {
-  return `<header class="top"><img src="img/sandstride.png" alt="Sandstride"><span class="sp"></span><span class="eu">${esc(eu.nome)} · ${eu.papel === 'admin' ? 'Administrador' : 'Atendente'}</span><button class="btn ghost" id="sair" type="button">Sair</button></header>`;
+  return `<header class="top"><img src="img/sandstride.png" alt="Sandstride"><span class="sp"></span>` +
+    `<label class="meu-av" title="Trocar minha foto" for="foto">${avatar(eu.foto_path, eu.nome, 'g')}<span class="cam" aria-hidden="true">+</span></label><input id="foto" class="sr" type="file" accept="image/*">` +
+    `<span class="eu">${esc(eu.nome)} · ${eu.papel === 'admin' ? 'Administrador' : 'Atendente'}</span><button class="btn ghost" id="sair" type="button">Sair</button></header>`;
+}
+function reduzir(file) {
+  return new Promise((ok, falha) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(img.width, img.height), c = document.createElement('canvas');
+      c.width = c.height = 256;
+      c.getContext('2d').drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 256, 256);
+      URL.revokeObjectURL(url);
+      c.toBlob((b) => (b ? ok(b) : falha(new Error('imagem'))), 'image/jpeg', 0.86);
+    };
+    img.onerror = () => falha(new Error('imagem'));
+    img.src = url;
+  });
+}
+async function trocarFoto(file) {
+  const label = document.querySelector('.meu-av');
+  try {
+    if (!file.type.startsWith('image/')) throw new Error('tipo');
+    label.classList.add('envia');
+    const blob = await reduzir(file);
+    const path = `${user.id}/${Date.now()}.jpg`;
+    const { error } = await sb.storage.from('avatares').upload(path, blob, { contentType: 'image/jpeg' });
+    if (error) throw error;
+    const { error: e2 } = await sb.rpc('definir_minha_foto', { p_path: path });
+    if (e2) throw e2;
+    if (eu.foto_path) await sb.storage.from('avatares').remove([eu.foto_path]);
+    eu.foto_path = path;
+    await tela();
+  } catch (e) {
+    console.error(e);
+    label.classList.remove('envia');
+    label.title = 'Não consegui enviar a foto. Use uma imagem JPG, PNG ou WEBP.';
+    label.classList.add('erro-foto');
+  }
 }
 const podeAbrir = (id) => eu.papel === 'admin' || acessos.has(id);
 
@@ -69,14 +111,15 @@ async function tela() {
   if (eu.papel === 'admin') h += '<section class="card" id="acessos" aria-label="Acessos da equipe"><h2>Quem acessa o quê</h2><p class="sub" style="margin:0">Marque as ferramentas que cada pessoa pode abrir. Administradores acessam tudo.</p><div id="tab" class="tbl"><p class="muted">Carregando…</p></div></section>';
   $('raiz').innerHTML = h + '</div>';
   $('sair').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  $('foto').onchange = (ev) => { const f = ev.target.files[0]; if (f) trocarFoto(f); };
   if (eu.papel === 'admin') tabelaAcessos();
 }
 async function tabelaAcessos() {
   const [{ data: eq }, { data: ac }] = await Promise.all([
-    sb.from('equipe').select('usuario_id, nome, papel').order('nome'), sb.from('acessos_apps').select('usuario_id, app')]);
+    sb.from('equipe').select('usuario_id, nome, papel, foto_path').order('nome'), sb.from('acessos_apps').select('usuario_id, app')]);
   const tem = new Set((ac || []).map((x) => `${x.usuario_id}|${x.app}`));
   $('tab').innerHTML = `<table><thead><tr><th>Pessoa</th>${APPS.map((a) => `<th class="c">${a.nome}</th>`).join('')}</tr></thead><tbody>` +
-    (eq || []).map((p) => `<tr><td><b>${esc(p.nome)}</b><br><span class="sub">${p.papel === 'admin' ? 'Administrador' : 'Atendente'}</span></td>` +
+    (eq || []).map((p) => `<tr><td><div style="display:flex;align-items:center;gap:10px">${avatar(p.foto_path, p.nome)}<div><b>${esc(p.nome)}</b><br><span class="sub">${p.papel === 'admin' ? 'Administrador' : 'Atendente'}</span></div></div></td>` +
       APPS.map((a) => p.papel === 'admin' ? '<td class="c sub">Tudo</td>' :
         `<td class="c"><input type="checkbox" data-u="${p.usuario_id}" data-a="${a.id}" aria-label="${esc(p.nome)}: ${a.nome}"${tem.has(`${p.usuario_id}|${a.id}`) ? ' checked' : ''}></td>`).join('') + '</tr>').join('') + '</tbody></table>';
   $('tab').onchange = async (ev) => {
@@ -94,7 +137,7 @@ async function iniciar() {
     const { data } = await sb.auth.getSession();
     user = data?.session?.user;
     if (!user) { iniciando = false; return telaLogin(); }
-    const { data: e } = await sb.from('equipe').select('usuario_id, nome, papel').eq('usuario_id', user.id).maybeSingle();
+    const { data: e } = await sb.from('equipe').select('usuario_id, nome, papel, foto_path').eq('usuario_id', user.id).maybeSingle();
     if (!e) { await sb.auth.signOut(); iniciando = false; return telaLogin('Seu acesso ainda não foi liberado. Peça a um administrador.'); }
     eu = e;
     const { data: ac } = await sb.from('acessos_apps').select('app').eq('usuario_id', user.id);

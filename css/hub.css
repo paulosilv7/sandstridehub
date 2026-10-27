@@ -31,3 +31,13 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink)}
 .erro{background:var(--bad-bg);color:var(--bad);border-radius:14px;padding:10px 14px;margin:0;font-weight:600}
 .ok{background:var(--good-bg);color:var(--good);border-radius:14px;padding:10px 14px;margin:0;font-weight:600}
 .link{background:none;border:0;color:var(--sel);font-weight:600;padding:4px}
+
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.av{width:38px;height:38px;border-radius:50%;object-fit:cover;background:var(--accent);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.av.g{width:46px;height:46px;font-size:18px}
+.meu-av{position:relative;cursor:pointer;display:inline-flex;border-radius:50%}
+.meu-av:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.meu-av .cam{position:absolute;right:-2px;bottom:-2px;width:18px;height:18px;border-radius:50%;background:#fff;color:#1A1A1A;font-size:14px;font-weight:800;line-height:18px;text-align:center}
+.meu-av.envia{opacity:.5}
+.meu-av.erro-foto .cam{background:var(--bad-bg);color:var(--bad)}
+@media (max-width:520px){.top .eu{display:none}}
