@@ -411,3 +411,11 @@ body{margin:0}
   .thread .col-msg .msgs{min-height:0}
   .thread .col-msg > :not(.msgs){flex:none}
 }
+
+/* campo de resposta com várias linhas (Shift+Enter) e anel de foco sem corte */
+.envio{align-items:flex-end}
+.envio textarea{flex:1;min-width:0;height:42px;max-height:110px;border-radius:21px;border:0;background:var(--chip);padding:11px 16px;font:inherit;font-size:13.5px;font-weight:500;line-height:20px;outline:none;resize:none;overflow-y:auto}
+.envio textarea::placeholder{color:var(--muted)}
+.envio textarea:focus{box-shadow:0 0 0 2px var(--sel)}
+.thread .corpo{padding:3px}
+.bub{white-space:pre-wrap}

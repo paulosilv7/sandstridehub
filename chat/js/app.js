@@ -389,6 +389,7 @@ function anexosHtml(arr) {
     return `<span class="arq">${esc(a.nome || a.filename || a.original_filename || 'Anexo')}</span>`;
   }).join('') + '</div>';
 }
+function ajustaDraft(d) { d.style.height = 'auto'; d.style.height = Math.min(d.scrollHeight, 110) + 'px'; }
 function renderThread() {
   const box = $('thread'); if (!box) return;
   const c = atual();
@@ -419,7 +420,7 @@ function renderThread() {
       (S.anexos.length ? `<div class="prevs">${S.anexos.map((a, i) => `<div class="pv">${a.tipo === 'img' ? `<img src="${esc(a.prev)}" alt="${esc(a.nome)}">` : `<span class="arq">${esc(a.nome)}</span>`}<button type="button" data-act="rm-anexo" data-i="${i}" aria-label="Remover ${esc(a.nome)}">×</button></div>`).join('')}</div>` : '') +
       '<div class="envio">' +
       (pode ? '<label class="bt2 anex" for="arq" title="Anexar fotos ou arquivos"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L14.5 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr">Anexar</span></label><input id="arq" class="sr" type="file" accept="image/*,.pdf" multiple>' : '') +
-      `<input id="draft" type="text" placeholder="Escreva a resposta" aria-label="Escreva a resposta" autocomplete="off"><button type="button" class="btn" data-act="enviar"${S.enviando ? ' disabled' : ''}>${S.enviando ? 'Enviando…' : 'Enviar'}</button></div></div>`;
+      `<textarea id="draft" rows="1" placeholder="Escreva a resposta (Shift+Enter quebra a linha)" aria-label="Escreva a resposta" autocomplete="off"></textarea><button type="button" class="btn" data-act="enviar"${S.enviando ? ' disabled' : ''}>${S.enviando ? 'Enviando…' : 'Enviar'}</button></div></div>`;
   }
   const livres = S.etiquetas.filter((x) => !c.tags.includes(x.nome));
   const etqs = '<div class="etqs">' + c.tags.map((n) => `<span class="etq ${etqCls(n)}">${esc(n)}<button type="button" data-act="rm-etq" data-n="${esc(n)}" aria-label="Remover etiqueta ${esc(n)}">×</button></span>`).join('') +
@@ -434,7 +435,7 @@ function renderThread() {
     `<div class="corpo"><div class="col-msg"><div class="msgs" id="msgs">${msgs}</div>${rodape}</div>${S.painel ? painelHtml(c) : ''}</div>`;
   S.sigThread = sig;
   const d = $('draft');
-  if (d) { d.value = S.draft; if (foco) { d.focus(); try { d.setSelectionRange(selIni, selIni); } catch (_) { /* ok */ } } }
+  if (d) { d.value = S.draft; ajustaDraft(d); if (foco) { d.focus(); try { d.setSelectionRange(selIni, selIni); } catch (_) { /* ok */ } } }
   const mb = $('msgs'); if (mb) mb.scrollTop = mb.scrollHeight;
   resolverImagens();
 }
@@ -807,7 +808,7 @@ document.addEventListener('click', async (ev) => {
 });
 document.addEventListener('input', (ev) => {
   if (ev.target.id === 'busca') { S.busca = ev.target.value; renderList(); }
-  else if (ev.target.id === 'draft') S.draft = ev.target.value;
+  else if (ev.target.id === 'draft') { S.draft = ev.target.value; ajustaDraft(ev.target); }
 });
 document.addEventListener('change', async (ev) => {
   const t = ev.target, act = t.getAttribute?.('data-act');
@@ -831,7 +832,7 @@ document.addEventListener('change', async (ev) => {
   }
 });
 document.addEventListener('keydown', (ev) => {
-  if (ev.target.id === 'draft' && ev.key === 'Enter') { ev.preventDefault(); enviar(); }
+  if (ev.target.id === 'draft' && ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); enviar(); }
   if (ev.key === 'Escape' && !$('lb').hidden) $('lb').hidden = true;
 });
 $('lb').addEventListener('click', (ev) => { if (ev.target === $('lb')) $('lb').hidden = true; });
