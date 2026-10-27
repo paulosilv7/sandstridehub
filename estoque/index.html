@@ -2720,7 +2720,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 window.SB = sb; window.SB_KEY = SUPABASE_KEY;
 window.FN_URL = SUPABASE_URL + '/functions/v1/estoque';
-window.BASE_ESTOQUE = /[?&]base=oficial\b/.test(location.search) ? 'oficial' : 'teste';
+window.BASE_ESTOQUE = /[?&]base=teste\b/.test(location.search) ? 'teste' : 'oficial';
 window.urlDaFoto = function (f, tam) {
   if (!f) return '';
   if (/^https?:|^data:/.test(f)) return f;
