@@ -396,3 +396,12 @@ body{margin:0}
 .sn span{font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap}
 .sn.ok b{color:var(--good)}.sn.at b{color:var(--warn)}.sn.ru b{color:var(--bad)}
 @media (max-width:700px){.sandy-nums{margin-left:0;justify-content:flex-start;width:100%}.sn{flex:1 1 90px}}
+
+/* números do dia discretos */
+.sn{background:transparent;border:0;border-left:1.5px solid var(--line);border-radius:0;padding:2px 0 2px 18px;min-width:0}
+.sn:first-child{border-left:0;padding-left:0}
+.sandy-nums{gap:18px}
+.sn b{font-size:15px;font-weight:700;color:var(--ink)}
+.sn span{font-size:11px;font-weight:500}
+.sn.ok b{color:var(--good)}.sn.at b{color:var(--warn)}.sn.ru b{color:var(--bad)}
+@media (max-width:700px){.sn:first-child{padding-left:0}.sn{flex:0 1 auto}}

@@ -284,14 +284,19 @@ function humorAtual(m) {
 function renderSandy() {
   const el = $('sandy'); if (!el) return;
   const m = metricas(), hu = humorAtual(m);
+  const cli = (n) => pl(n, 'cliente', 'clientes');
+  const aguarda = m.pend === 0 ? 'ninguém aguarda resposta' : `${m.pend === 1 ? '1 ainda aguarda' : `${m.pend} ainda aguardam`} resposta`;
+  const feitos = m.total === 0 ? 'ainda não respondemos ninguém hoje' : `já respondemos ${cli(m.total)} hoje`;
   const txt = {
-    feliz: `Dia produtivo! Já respondemos ${pl(m.total, 'cliente respondido', 'clientes respondidos')} hoje e ${m.pend === 0 ? 'não tem ninguém esperando.' : `só ${pl(m.pend, 'cliente aguarda', 'clientes aguardam')} resposta.`}`,
+    feliz: m.pend === 0
+      ? `Dia produtivo! Já respondemos ${cli(m.total)} hoje e ninguém está esperando.`
+      : `Dia produtivo! Já respondemos ${cli(m.total)} hoje e só ${m.pend === 1 ? '1 cliente aguarda' : `${m.pend} clientes aguardam`} resposta.`,
     tranquila: m.total === 0 && m.pend === 0
       ? 'Hoje o dia foi bem tranquilo, não tivemos nenhum movimento por cá.'
-      : `Hoje o dia está tranquilo: ${pl(m.total, 'cliente respondido', 'clientes respondidos')} e ${pl(m.pend, 'cliente ainda aguarda', 'clientes ainda aguardam')} resposta.`,
-    preocupada: `Estou de olho: ${pl(m.paradas, 'conversa está', 'conversas estão')} sem resposta há mais de ${curto(S.cfg.aviso)}. Vale começar por elas. No total, já respondemos ${pl(m.total, 'cliente', 'clientes')} hoje.`,
-    brava: `Hoje está pesado: ${pl(m.rec, 'conversa tem', 'conversas têm')} reclamação ou problema sério. Vale priorizar essas.`,
-    cansada: `Uau, já são ${m.total} clientes respondidos hoje. Que ritmo! Se der, distribuam as conversas mais delicadas.`,
+      : `Hoje está tranquilo: ${feitos} e ${aguarda}.`,
+    preocupada: `Estou de olho: ${pl(m.paradas, 'conversa está', 'conversas estão')} sem resposta há mais de ${curto(S.cfg.aviso)}. Vale começar ${m.paradas === 1 ? 'por ela' : 'por elas'}.${m.total ? ` Já respondemos ${cli(m.total)} hoje.` : ''}`,
+    brava: `Hoje está pesado: ${pl(m.rec, 'conversa tem', 'conversas têm')} reclamação ou problema sério. Vale priorizá-${m.rec === 1 ? 'la' : 'las'}.`,
+    cansada: `Uau, já respondemos ${cli(m.total)} hoje. Que ritmo! Se der, distribuam as conversas mais delicadas.`,
   }[hu];
   const score = m.pend + m.paradas + m.rec;
   const nivel = ['Tranquilo', 'Movimentado', 'Corrido', 'Sobrecarregado'][score <= 2 ? 0 : score <= 5 ? 1 : score <= 9 ? 2 : 3];
