@@ -50,13 +50,17 @@
     main { max-width: 1120px; padding-top: 24px; padding-bottom: 48px; }
     .tela:not(#telaInicio):not(#telaEstoque):not(#telaHistorico) { max-width: 640px; margin-left: auto; margin-right: auto; }
     #telaEstoque, #telaHistorico { max-width: 860px; margin-left: auto; margin-right: auto; }
-    #telaInicio.ativa { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 0 16px; align-items: start; }
+    #telaInicio.ativa { display: grid; grid-template-columns: 370px minmax(0, 1fr); gap: 0 16px; align-items: start; }
     #telaInicio > .painel { grid-column: 1; grid-row: 1; }
     #telaInicio > .ler-qr { grid-column: 1; grid-row: 2; }
     #telaInicio > .aviso-qr { grid-column: 1; grid-row: 3; }
     #telaInicio > .cartao:last-child { grid-column: 2; grid-row: 1 / span 4; margin-bottom: 0; }
     #lista { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
     #lista > .marca { grid-column: 1 / -1; }
+    .painel { padding: 18px 22px 22px; }
+    .painel-grade { grid-template-columns: minmax(0, .8fr) 1px minmax(0, 1.2fr); }
+    .painel-num { font-size: 23px; }
+    .painel-grade .bloco + .div + .bloco { padding-left: 14px; } .painel-grade .bloco:first-child { padding-right: 10px; }
     body.com-barra main { padding-bottom: 48px; }
     .barra-edicao { left: calc(50% + 138px); }
     .toast { left: calc(50% + 138px); }
@@ -1230,6 +1234,9 @@ window.FOTO_PREVIA = null;
   /* Visão 1: um item por dia, com data, horários e quem lançou. */
   function montarHistorico(lista) {
     if (lista) historico = lista;
+    // só os últimos 5 dias (hoje + 4 anteriores)
+    var corte = new Date(); corte.setHours(0, 0, 0, 0); corte = corte.getTime() - 4 * 86400000;
+    historico = (historico || []).filter(function (g) { return g.quando >= corte; });
     diaAberto = null;
     el('histRotulo').textContent = 'Lançamentos por dia';
     el('histTitulo').textContent = 'Histórico';
@@ -1237,7 +1244,7 @@ window.FOTO_PREVIA = null;
     var caixa = el('listaHistorico');
     caixa.innerHTML = '';
     if (!historico.length) {
-      caixa.innerHTML = '<div class="vazio">Nenhum lançamento ainda.<br>Assim que alguém lançar um produto, ele aparece aqui.</div>';
+      caixa.innerHTML = '<div class="vazio">Nenhum lançamento nos últimos 5 dias.<br>Assim que alguém lançar um produto, ele aparece aqui.</div>';
       mostrar('telaHistorico');
       return;
     }
