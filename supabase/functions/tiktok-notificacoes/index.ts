@@ -3,8 +3,10 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const APP_KEY = Deno.env.get("TIKTOK_APP_KEY") ?? "6lo1ttda2b1bf";
-const APP_SECRET = Deno.env.get("TIKTOK_APP_SECRET") ?? "";
+// Cada loja pode ter o próprio app do TikTok. O segredo de cada app fica em TIKTOK_SECRET_<chave do app>.
+const PADRAO = "6lo1ttda2b1bf";
+type App = { k: string; s: string };
+const appDe = (k: string): App => ({ k, s: Deno.env.get(`TIKTOK_SECRET_${k}`) ?? (k === PADRAO ? (Deno.env.get("TIKTOK_APP_SECRET") ?? "") : "") });
 const API = "https://open-api.tiktokglobalshop.com";
 const AUTH = "https://auth.tiktok-shops.com";
 
@@ -21,21 +23,22 @@ async function diag(origem: string, mensagem: string) {
   try { await supabase.from("diagnosticos").insert({ origem, mensagem: mensagem.slice(0, 1500) }); } catch (_) { /* ignora */ }
 }
 
-async function credenciais(lojaId: string): Promise<{ token: string; cipher: string } | null> {
+async function credenciais(lojaId: string): Promise<{ token: string; cipher: string; app: App } | null> {
   const ler = () => supabase.from("credenciais_lojas").select("token_acesso, token_renovacao, expira_em, dados_extras").eq("loja_id", lojaId).maybeSingle();
   const { data: cred } = await ler();
   if (!cred) return null;
   const cipher = (cred.dados_extras as any)?.shop_cipher;
+  const app = appDe((cred.dados_extras as any)?.app_key ?? PADRAO);
   const valido = (c: any) => c?.expira_em && new Date(c.expira_em).getTime() - Date.now() > 60_000;
-  if (valido(cred)) return { token: cred.token_acesso, cipher };
+  if (valido(cred)) return { token: cred.token_acesso, cipher, app };
   if (!cred.token_renovacao) return null;
   const r = await fetch(`${AUTH}/api/v2/token/refresh?` + new URLSearchParams({
-    app_key: APP_KEY, app_secret: APP_SECRET, refresh_token: cred.token_renovacao, grant_type: "refresh_token",
+    app_key: app.k, app_secret: app.s, refresh_token: cred.token_renovacao, grant_type: "refresh_token",
   }));
   const t: any = await r.json().catch(() => ({}));
   if (!r.ok || (t.code ?? 0) !== 0 || !t.data?.access_token) {
     const { data: outra } = await ler();
-    if (valido(outra)) return { token: outra!.token_acesso, cipher };
+    if (valido(outra)) return { token: outra!.token_acesso, cipher, app };
     await diag("tiktok-notificacoes", `falha ao renovar o token: ${r.status}/${t.code} ${t.message ?? ""}`);
     return null;
   }
@@ -46,13 +49,13 @@ async function credenciais(lojaId: string): Promise<{ token: string; cipher: str
     expira_em: new Date(Number(d.access_token_expire_in) * 1000).toISOString(),
     atualizado_em: new Date().toISOString(),
   }).eq("loja_id", lojaId);
-  return { token: d.access_token, cipher };
+  return { token: d.access_token, cipher, app };
 }
 
-async function ttsGet(caminho: string, token: string, cipher: string, extra: Record<string, string> = {}) {
-  const q: Record<string, string> = { ...extra, app_key: APP_KEY, timestamp: String(Math.floor(Date.now() / 1000)), shop_cipher: cipher };
+async function ttsGet(caminho: string, token: string, cipher: string, app: App, extra: Record<string, string> = {}) {
+  const q: Record<string, string> = { ...extra, app_key: app.k, timestamp: String(Math.floor(Date.now() / 1000)), shop_cipher: cipher };
   const base = caminho + Object.keys(q).sort().map((k) => k + q[k]).join("");
-  q.sign = await hmac(APP_SECRET, APP_SECRET + base + APP_SECRET);
+  q.sign = await hmac(app.s, app.s + base + app.s);
   const r = await fetch(`${API}${caminho}?${new URLSearchParams(q)}`, {
     headers: { "x-tts-access-token": token, "Content-Type": "application/json" },
   });
@@ -81,7 +84,7 @@ async function sincronizar(shopId: string, conversaId: string) {
   if (!cred?.cipher) { await diag("tiktok-notificacoes", `sem credenciais para a loja ${shopId}`); return; }
 
   // Mensagens mais recentes primeiro.
-  const dados = await ttsGet(`/customer_service/202309/conversations/${conversaId}/messages`, cred.token, cred.cipher, {
+  const dados = await ttsGet(`/customer_service/202309/conversations/${conversaId}/messages`, cred.token, cred.cipher, cred.app, {
     page_size: "20", sort_order: "DESC", sort_field: "create_time",
   });
   const msgs: any[] = (dados?.messages ?? []).slice().reverse();
@@ -94,7 +97,7 @@ async function sincronizar(shopId: string, conversaId: string) {
   const { data: existente } = await supabase.from("conversas").select("id, cliente_nome").eq("loja_id", loja.id).eq("tipo", "chat").eq("id_externo", conversaId).maybeSingle();
   if (!nome && !existente) {
     try {
-      const det = await ttsGet(`/customer_service/202601/conversations/${conversaId}`, cred.token, cred.cipher);
+      const det = await ttsGet(`/customer_service/202601/conversations/${conversaId}`, cred.token, cred.cipher, cred.app);
       const p = (det?.participants ?? det?.conversation?.participants ?? []).find((x: any) => String(x.role).toUpperCase() === "BUYER");
       nome = p?.nickname ?? null; clienteId = p?.im_user_id ?? clienteId;
     } catch (e) { await diag("tiktok-notificacoes", `detalhes da conversa: ${e instanceof Error ? e.message : e}`); }
@@ -161,9 +164,14 @@ async function processar(ev: any) {
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response(null, { status: 200 });
   const bruto = await req.text();
-  const assinatura = req.headers.get("Authorization") ?? "";
-  const esperado = APP_SECRET ? await hmac(APP_SECRET, APP_KEY + bruto) : "";
-  if (!esperado || assinatura.toLowerCase() !== esperado) {
+  const assinatura = (req.headers.get("Authorization") ?? "").toLowerCase();
+  const { data: apps } = await supabase.from("tiktok_apps").select("app_key");
+  let valido = false;
+  for (const a of apps ?? []) {
+    const app = appDe(a.app_key);
+    if (app.s && assinatura === await hmac(app.s, app.k + bruto)) { valido = true; break; }
+  }
+  if (!valido) {
     // O teste de URL do TikTok pode vir sem assinatura válida; respondemos 200 sem processar.
     await diag("tiktok-notificacoes", `assinatura inválida/ausente (${bruto.length} bytes)`);
     return new Response(null, { status: 200 });

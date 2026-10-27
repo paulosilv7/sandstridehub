@@ -3,8 +3,10 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const APP_KEY = Deno.env.get("TIKTOK_APP_KEY") ?? "6lo1ttda2b1bf";
-const APP_SECRET = Deno.env.get("TIKTOK_APP_SECRET") ?? "";
+// Cada loja pode ter o próprio app do TikTok. O segredo de cada app fica em TIKTOK_SECRET_<chave do app>.
+const PADRAO = "6lo1ttda2b1bf";
+type App = { k: string; s: string };
+const appDe = (k: string): App => ({ k, s: Deno.env.get(`TIKTOK_SECRET_${k}`) ?? (k === PADRAO ? (Deno.env.get("TIKTOK_APP_SECRET") ?? "") : "") });
 const API = "https://open-api.tiktokglobalshop.com";
 const AUTH = "https://auth.tiktok-shops.com";
 
@@ -20,10 +22,10 @@ async function hmac(chave: string, msg: string) {
 }
 
 // Chamada assinada à API do TikTok Shop.
-async function tts(caminho: string, token: string, extra: Record<string, string> = {}) {
-  const q: Record<string, string> = { ...extra, app_key: APP_KEY, timestamp: String(Math.floor(Date.now() / 1000)) };
+async function tts(caminho: string, token: string, app: App, extra: Record<string, string> = {}) {
+  const q: Record<string, string> = { ...extra, app_key: app.k, timestamp: String(Math.floor(Date.now() / 1000)) };
   const base = caminho + Object.keys(q).sort().map((k) => k + q[k]).join("");
-  q.sign = await hmac(APP_SECRET, APP_SECRET + base + APP_SECRET);
+  q.sign = await hmac(app.s, app.s + base + app.s);
   const r = await fetch(`${API}${caminho}?${new URLSearchParams(q)}`, {
     headers: { "x-tts-access-token": token, "Content-Type": "application/json" },
   });
@@ -44,7 +46,8 @@ Deno.serve(async (req) => {
   const erro = url.searchParams.get("error");
   if (erro) return texto(`O TikTok Shop recusou a conexão: ${erro}`, 400);
   if (!code || !state) return texto("Faltam informações na conexão. Gere um novo link de conexão e tente de novo.", 400);
-  if (!APP_SECRET) return texto("A chave secreta do app ainda não foi configurada no Supabase.", 500);
+  const app = appDe(state.includes(".") ? state.split(".")[0] : PADRAO);
+  if (!app.s) return texto("A chave secreta deste app ainda não foi configurada no Supabase.", 500);
 
   // O código de segurança vale uma vez só e expira em 30 minutos.
   const limite = new Date(Date.now() - 30 * 60 * 1000).toISOString();
@@ -55,7 +58,7 @@ Deno.serve(async (req) => {
   try {
     // Troca o código por tokens.
     const r = await fetch(`${AUTH}/api/v2/token/get?` + new URLSearchParams({
-      app_key: APP_KEY, app_secret: APP_SECRET, auth_code: code, grant_type: "authorized_code",
+      app_key: app.k, app_secret: app.s, auth_code: code, grant_type: "authorized_code",
     }));
     const t: any = await r.json().catch(() => ({}));
     if (!r.ok || (t.code ?? 0) !== 0 || !t.data?.access_token) {
@@ -65,7 +68,7 @@ Deno.serve(async (req) => {
     const d = t.data;
 
     // Descobre as lojas autorizadas.
-    const lojas = (await tts("/authorization/202309/shops", d.access_token)).shops ?? [];
+    const lojas = (await tts("/authorization/202309/shops", d.access_token, app)).shops ?? [];
     if (!lojas.length) return texto("Conectou, mas nenhuma loja veio na autorização. Tente de novo.", 502);
 
     const nomes: string[] = [];
@@ -80,7 +83,7 @@ Deno.serve(async (req) => {
         token_acesso: d.access_token,
         token_renovacao: d.refresh_token ?? null,
         expira_em: new Date(Number(d.access_token_expire_in) * 1000).toISOString(),
-        dados_extras: { shop_cipher: s.cipher, open_id: d.open_id ?? null, vendedor: d.seller_name ?? null, refresh_expira_em: d.refresh_token_expire_in ?? null },
+        dados_extras: { app_key: app.k, shop_cipher: s.cipher, open_id: d.open_id ?? null, vendedor: d.seller_name ?? null, refresh_expira_em: d.refresh_token_expire_in ?? null },
         atualizado_em: new Date().toISOString(),
       }, { onConflict: "loja_id" });
       if (eC) { await diag("tiktok-callback", `erro ao salvar credenciais: ${eC.message}`); return texto("Não foi possível salvar o acesso da loja. Tente de novo.", 500); }
