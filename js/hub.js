@@ -11,7 +11,7 @@ const APPS = [
     icone: '<path d="M5.5 5h13L21 13v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5l2.5-8Z M3 13h5.5l1 2.5h5l1-2.5H21"/>' },
   { id: 'precificacao', nome: 'Precificação', desc: 'Preços, margens e reajustes por marketplace.', href: 'precificacao/',
     icone: '<path d="M12 3v18M16 7.5c-.7-1.3-2.2-2-4-2-2.4 0-4 1.2-4 3 0 4.2 8.400 2.200 8.400 6.400 0 1.800-1.800 3.100-4.400 3.100-1.900 0-3.400-.8-4.200-2.200"/>' },
-  { id: 'estoque', nome: 'Estoque do galpão', desc: 'Estoque com grade de cor e tamanho.', href: '', breve: true,
+  { id: 'estoque', nome: 'Estoque do galpão', desc: 'Estoque com grade de cor e tamanho.', href: 'estoque/',
     icone: '<path d="M3 8 12 3l9 5v8l-9 5-9-5V8Zm0 0 9 5 9-5M12 13v8"/>' },
 ];
 let user = null, eu = null, acessos = new Set();
