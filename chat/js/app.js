@@ -407,7 +407,7 @@ function renderThread() {
   }).join('') || '<p class="mut">Carregando mensagens…</p>';
   let rodape;
   if (c.bloqueada) rodape = `<p class="aviso">${esc(c.motivo || 'O marketplace bloqueou as respostas desta conversa.')}</p>`;
-  else if (c.mkKey !== 'mercado_livre') rodape = '<p class="aviso">O envio de respostas por esta loja ainda não está disponível aqui. Responda pelo aplicativo do marketplace.</p>';
+  else if (c.mkKey !== 'mercado_livre' && c.mkKey !== 'tiktok_shop') rodape = '<p class="aviso">O envio de respostas por esta loja ainda não está disponível aqui. Responda pelo aplicativo do marketplace.</p>';
   else if (outro) {
     rodape = `<p class="aviso">${c.ia ? 'A Sandy está atendendo esta conversa. Se você assumir, ela para de responder aqui.' : `${esc(c.atendenteNome || 'Outra pessoa')} está atendendo esta conversa. Para responder, assuma a conversa.`}</p><div class="acoes"><button type="button" class="btn" data-act="assumir">${c.ia ? 'Assumir e pausar a Sandy' : 'Assumir conversa'}</button></div>`;
   } else {
@@ -669,6 +669,7 @@ async function enviar() {
     S.aviso = 'Ainda há variáveis sem preenchimento entre chaves (por exemplo {pedido}). Complete ou apague antes de enviar.';
     renderThread(); $('draft')?.focus(); return;
   }
+  if (c.mkKey === 'tiktok_shop' && S.anexos.length) { S.aviso = 'No TikTok Shop o envio de anexos ainda não está disponível. Envie só texto.'; renderThread(); return; }
   S.enviando = true; S.aviso = ''; renderThread();
   try {
     const anexos = [];
@@ -679,7 +680,7 @@ async function enviar() {
       if (error) throw new Error(`Não consegui enviar o anexo ${a.nome}.`);
       anexos.push({ tipo: a.tipo, nome: a.nome, path });
     }
-    const { data, error } = await sb.functions.invoke('ml-responder', { body: { conversa_id: c.id, texto, anexos } });
+    const { data, error } = await sb.functions.invoke(c.mkKey === 'tiktok_shop' ? 'tiktok-responder' : 'ml-responder', { body: { conversa_id: c.id, texto, anexos } });
     if (error || !data?.ok) throw new Error(await mensagemDeErro(error, data?.erro || 'Não consegui enviar. Tente de novo.'));
     S.draft = ''; limparAnexos();
     await carregarMensagens(c.id); await carregarConversas(); await carregarHoje();
