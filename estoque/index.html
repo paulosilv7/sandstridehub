@@ -47,7 +47,16 @@
     .lateral .teste { align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; padding: 6px 10px; border-radius: 12px; background: #FFF1CC; color: #6B4600; }
     .topo, .pilula, .menu-abas { display: none !important; }
     #avisoTeste { display: none !important; }
-    main { max-width: 640px; padding-top: 24px; padding-bottom: 48px; }
+    main { max-width: 1120px; padding-top: 24px; padding-bottom: 48px; }
+    .tela:not(#telaInicio):not(#telaEstoque):not(#telaHistorico) { max-width: 640px; margin-left: auto; margin-right: auto; }
+    #telaEstoque, #telaHistorico { max-width: 860px; margin-left: auto; margin-right: auto; }
+    #telaInicio.ativa { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 0 16px; align-items: start; }
+    #telaInicio > .painel { grid-column: 1; grid-row: 1; }
+    #telaInicio > .ler-qr { grid-column: 1; grid-row: 2; }
+    #telaInicio > .aviso-qr { grid-column: 1; grid-row: 3; }
+    #telaInicio > .cartao:last-child { grid-column: 2; grid-row: 1 / span 4; margin-bottom: 0; }
+    #lista { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+    #lista > .marca { grid-column: 1 / -1; }
     body.com-barra main { padding-bottom: 48px; }
     .barra-edicao { left: calc(50% + 138px); }
     .toast { left: calc(50% + 138px); }
@@ -2744,12 +2753,12 @@ function aviso(titulo, texto) {
       var o = document.getElementById(b.getAttribute('data-p'));
       var p = b.getAttribute('data-p');
       if (p === 'btnNovo') { b.hidden = !novo || novo.style.visibility === 'hidden'; b.classList.toggle('ativo', !!novo && novo.classList.contains('ativo')); }
-      else { b.hidden = !!(barra && barra.hidden); b.classList.toggle('ativo', !!o && o.classList.contains('ativo')); }
+      else { b.hidden = !!(document.getElementById('telaCarregando').classList.contains('ativa') || document.getElementById('telaErro').classList.contains('ativa')); b.classList.toggle('ativo', !!o && o.classList.contains('ativo')); }
     });
     var t = document.getElementById('avisoTeste'); document.getElementById('lateralTeste').hidden = !t || t.hidden;
   }
   var mo = new MutationObserver(sincroniza);
-  ids.concat(['menuAbas', 'avisoTeste']).forEach(function (i) { var e = document.getElementById(i); if (e) mo.observe(e, { attributes: true, attributeFilter: ['class', 'hidden', 'style'] }); });
+  ids.concat(['menuAbas', 'avisoTeste', 'telaCarregando', 'telaErro']).forEach(function (i) { var e = document.getElementById(i); if (e) mo.observe(e, { attributes: true, attributeFilter: ['class', 'hidden', 'style'] }); });
   sincroniza();
 })();
 </script>
