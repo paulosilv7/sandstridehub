@@ -363,3 +363,28 @@ body{margin:0}
   .thread .corpo{flex-direction:column;flex-wrap:nowrap;align-items:stretch}
   .thread .painel{order:-1;flex:0 0 auto;max-height:38vh;overflow-y:auto}
 }
+
+/* primeira página: tudo cabe na tela, sem barra de rolagem e com margens iguais */
+@media (min-width:861px){
+  .main{padding:0;gap:12px;overflow-y:auto;scrollbar-width:none}
+  .main::-webkit-scrollbar{display:none}
+  .head{min-height:36px}
+  .sandy{gap:16px;padding:10px 22px;border-radius:24px}
+  .sandy-fig{flex:0 0 76px;width:76px}
+  .sandy-txt{flex:1 1 300px;gap:4px}
+  .sandy h2{font-size:17px}
+  .sandy p{font-size:13px}
+  .termo{max-width:none}
+  .cols{min-height:0;gap:12px}
+}
+@media (min-width:861px) and (max-height:700px){
+  .sandy-fig{display:none}
+  .sandy{padding:8px 18px}
+}
+@media (min-width:861px){
+  .col-msg .msgs{min-height:80px}
+  .thread{padding:16px 18px;gap:10px}
+}
+@media (min-width:861px) and (max-width:1250px){
+  .lista{flex:0 0 330px;max-width:330px}
+}
