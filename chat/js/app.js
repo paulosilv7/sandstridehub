@@ -415,16 +415,16 @@ function renderThread() {
       `<input id="draft" type="text" placeholder="Escreva a resposta" aria-label="Escreva a resposta" autocomplete="off"><button type="button" class="btn" data-act="enviar"${S.enviando ? ' disabled' : ''}>${S.enviando ? 'Enviando…' : 'Enviar'}</button></div></div>`;
   }
   const livres = S.etiquetas.filter((x) => !c.tags.includes(x.nome));
-  const etqs = '<div class="etqs"><span class="eyebrow">Etiquetas</span>' + c.tags.map((n) => `<span class="etq ${etqCls(n)}">${esc(n)}<button type="button" data-act="rm-etq" data-n="${esc(n)}" aria-label="Remover etiqueta ${esc(n)}">×</button></span>`).join('') +
-    (livres.length ? `<select class="bt2" data-act="add-etq" aria-label="Adicionar etiqueta"><option value="">+ Etiqueta</option>${livres.map((x) => `<option value="${x.id}">${esc(x.nome)}</option>`).join('')}</select>` : '') + '</div>';
+  const etqs = '<div class="etqs">' + c.tags.map((n) => `<span class="etq ${etqCls(n)}">${esc(n)}<button type="button" data-act="rm-etq" data-n="${esc(n)}" aria-label="Remover etiqueta ${esc(n)}">×</button></span>`).join('') +
+    (livres.length ? `<select class="bt2" data-act="add-etq" aria-label="Adicionar etiqueta"><option value="">+ Tag</option>${livres.map((x) => `<option value="${x.id}">${esc(x.nome)}</option>`).join('')}</select>` : '') + '</div>';
   const nomeDados = c.tipo === 'pos_venda' ? 'dados do pedido' : 'dados do anúncio';
   box.innerHTML =
-    `<div class="lin"><button type="button" class="voltar" data-act="voltar"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M12 4 6 10l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Conversas</button><span class="sp"></span>` +
+    `<div class="th-h"><button type="button" class="voltar" data-act="voltar"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M12 4 6 10l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Conversas</button>` +
+    `<span class="av big">${inicial(c.nome)}</span><div class="th-n">${esc(c.nome)}</div><span class="tg2">${logo(c.mk, c.mkNome)}${esc(c.lojaNome)}</span>` +
+    etqs + '<span class="sp"></span>' +
     (meu && !c.bloqueada ? '<button type="button" class="bt2" data-act="liberar">Liberar conversa</button>' : '') +
     `<button type="button" class="bt2" data-act="toggle-painel" aria-pressed="${S.painel}">${S.painel ? 'Ocultar' : 'Ver'} ${nomeDados}</button></div>` +
-    `<div class="th-h"><span class="av big">${inicial(c.nome)}</span><div class="th-t"><div class="th-n">${esc(c.nome)}</div><div class="tags"><span class="tg2">${logo(c.mk, c.mkNome)}${esc(c.lojaNome)}</span><span class="tg2 info">${TIPO[c.tipo] ?? ''}</span><span class="tg2 dono">${esc(respTxt(c))}</span></div></div><span class="tg ${e.cls}">${esc(e.t)}</span></div>` +
-    etqs +
-    `<div class="corpo"><div class="col-msg"><div class="ref"><span class="eyebrow">${c.refRotulo}</span><span class="refv">${esc(c.ref)}</span></div><div class="msgs" id="msgs">${msgs}</div>${rodape}</div>${S.painel ? painelHtml(c) : ''}</div>`;
+    `<div class="corpo"><div class="col-msg"><div class="msgs" id="msgs">${msgs}</div>${rodape}</div>${S.painel ? painelHtml(c) : ''}</div>`;
   S.sigThread = sig;
   const d = $('draft');
   if (d) { d.value = S.draft; if (foco) { d.focus(); try { d.setSelectionRange(selIni, selIni); } catch (_) { /* ok */ } } }

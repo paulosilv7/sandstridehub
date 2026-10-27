@@ -342,3 +342,24 @@ body{margin:0}
 .brand{text-align:center;padding:6px 0 2px}
 .wm-logo{margin:0 auto;height:22px}
 @media (max-width:860px){.brand{padding:2px 6px}}
+
+/* conversa: cabeçalho numa linha, chat destacado, dados ao lado com rolagem própria */
+.th-h{gap:10px;padding-bottom:12px;border-bottom:1.5px solid var(--line);flex-wrap:wrap}
+.th-h .sp{flex:1 1 0;min-width:0}
+.th-h .av.big{width:40px;height:40px;border-radius:20px;font-size:16px}
+.th-n{font-size:18px;font-weight:800;letter-spacing:-.3px;min-width:0;overflow-wrap:anywhere}
+.th-h .etqs{flex:0 1 auto}
+.col-msg .msgs{background:var(--hover);border-radius:20px;padding:16px;min-height:200px}
+.cli .bub{background:var(--card);box-shadow:0 0 0 1px var(--line)}
+.comp{border-top:1.5px solid var(--line);padding-top:12px}
+.painel{background:var(--card);border:1.5px solid var(--line)}
+.painel h3{font-size:14px}
+@media (min-width:941px){
+  .thread .corpo{flex-wrap:nowrap;align-items:stretch;overflow:hidden}
+  .thread .col-msg{flex:1 1 0;min-width:0;height:100%}
+  .thread .painel{flex:0 0 280px;min-width:0;height:100%;max-height:100%;overflow-y:auto}
+}
+@media (max-width:940px){
+  .thread .corpo{flex-direction:column;flex-wrap:nowrap;align-items:stretch}
+  .thread .painel{order:-1;flex:0 0 auto;max-height:38vh;overflow-y:auto}
+}
