@@ -25,7 +25,7 @@ const FALAS = {
   tranquila: ['Por aqui está tudo em ordem.', 'Estou de olho em tudo, pode ficar tranquilo.', 'Dia calmo, bom para organizar a casa.'],
   preocupada: ['Vamos começar pelas mais antigas?', 'Essas conversas não podem esperar muito.', 'Quem puder, assume uma delas?'],
   brava: ['Esses clientes estão bem bravos.', 'Respira fundo, a gente resolve uma por vez.', 'Vamos tratar cada caso com calma.'],
-  cansada: ['Foram muitas mensagens hoje, hein?', 'Que equipe incrível!', 'Hora de um cafezinho?'],
+  cansada: ['Foram muitos clientes hoje, hein?', 'Que equipe incrível!', 'Hora de um cafezinho?'],
 };
 const TZ = 'America/Sao_Paulo';
 const fDia = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -169,9 +169,10 @@ async function carregarMensagens(id) {
   if (S.msgsDe === id) S.msgs = data || [];
 }
 async function carregarHoje() {
-  const { count } = await sb.from('mensagens').select('id', { count: 'exact', head: true })
-    .eq('de', 'loja').gte('enviada_em', inicioDoDia().toISOString());
-  S.hoje = count || 0;
+  // Clientes diferentes que receberam resposta hoje (não o total de mensagens).
+  const { data } = await sb.from('mensagens').select('conversa_id')
+    .eq('de', 'loja').gte('enviada_em', inicioDoDia().toISOString()).limit(5000);
+  S.hoje = new Set((data || []).map((r) => r.conversa_id)).size;
 }
 const atual = () => S.convs.find((c) => c.id === S.sel) || null;
 const eu = () => S.eu?.nome || '';
@@ -274,23 +275,23 @@ function metricas() {
 }
 function humorAtual(m) {
   if (m.rec >= 3) return 'brava';
-  if (m.total >= 40) return 'cansada';
+  if (m.total >= 25) return 'cansada';
   if (m.paradas >= 1 && S.cfg.ativo) return 'preocupada';
   if (m.pend === 0 && m.total === 0) return 'tranquila';
-  if (m.pend === 0 || m.total >= 20) return 'feliz';
+  if (m.pend === 0 || m.total >= 10) return 'feliz';
   return 'tranquila';
 }
 function renderSandy() {
   const el = $('sandy'); if (!el) return;
   const m = metricas(), hu = humorAtual(m);
   const txt = {
-    feliz: `Dia produtivo! Já respondemos ${pl(m.total, 'mensagem', 'mensagens')} hoje e ${m.pend === 0 ? 'não tem ninguém esperando.' : `só ${pl(m.pend, 'cliente aguarda', 'clientes aguardam')} resposta.`}`,
+    feliz: `Dia produtivo! Já respondemos ${pl(m.total, 'cliente respondido', 'clientes respondidos')} hoje e ${m.pend === 0 ? 'não tem ninguém esperando.' : `só ${pl(m.pend, 'cliente aguarda', 'clientes aguardam')} resposta.`}`,
     tranquila: m.total === 0 && m.pend === 0
       ? 'Hoje o dia foi bem tranquilo, não tivemos nenhum movimento por cá.'
-      : `Hoje o dia está tranquilo: ${pl(m.total, 'mensagem respondida', 'mensagens respondidas')} e ${pl(m.pend, 'cliente ainda aguarda', 'clientes ainda aguardam')} resposta.`,
-    preocupada: `Estou de olho: ${pl(m.paradas, 'conversa está', 'conversas estão')} sem resposta há mais de ${curto(S.cfg.aviso)}. Vale começar por elas. No total, já respondemos ${pl(m.total, 'mensagem', 'mensagens')} hoje.`,
+      : `Hoje o dia está tranquilo: ${pl(m.total, 'cliente respondido', 'clientes respondidos')} e ${pl(m.pend, 'cliente ainda aguarda', 'clientes ainda aguardam')} resposta.`,
+    preocupada: `Estou de olho: ${pl(m.paradas, 'conversa está', 'conversas estão')} sem resposta há mais de ${curto(S.cfg.aviso)}. Vale começar por elas. No total, já respondemos ${pl(m.total, 'cliente', 'clientes')} hoje.`,
     brava: `Hoje está pesado: ${pl(m.rec, 'conversa tem', 'conversas têm')} reclamação ou problema sério. Vale priorizar essas.`,
-    cansada: `Uau, já são ${m.total} mensagens respondidas hoje. Que ritmo! Se der, distribuam as conversas mais delicadas.`,
+    cansada: `Uau, já são ${m.total} clientes respondidos hoje. Que ritmo! Se der, distribuam as conversas mais delicadas.`,
   }[hu];
   const score = m.pend + m.paradas + m.rec;
   const nivel = ['Tranquilo', 'Movimentado', 'Corrido', 'Sobrecarregado'][score <= 2 ? 0 : score <= 5 ? 1 : score <= 9 ? 2 : 3];
@@ -299,7 +300,7 @@ function renderSandy() {
     `<button type="button" class="sandy-fig${S.pula ? ' pula' : ''}" data-act="sandy-clica" aria-label="Conversar com a Sandy">${sandySvg(hu, 'a')}</button>` +
     `<div class="sandy-txt"><h2>${cumprimento()}, ${esc(eu())}.</h2><p>${esc(txt)}</p>` +
     (S.fala ? `<span class="fala" role="status">${esc(S.fala)}</span>` : '') + '</div>' +
-    `<div class="sandy-nums" aria-label="Resumo do dia"><div class="sn"><b>${m.pend}</b><span>Aguardando</span></div><div class="sn"><b>${m.total}</b><span>Respondidas hoje</span></div><div class="sn ${nc}"><b>${nivel}</b><span>Ritmo do dia</span></div></div>`;
+    `<div class="sandy-nums" aria-label="Resumo do dia"><div class="sn"><b>${m.pend}</b><span>Aguardando</span></div><div class="sn"><b>${m.total}</b><span>Clientes respondidos</span></div><div class="sn ${nc}"><b>${nivel}</b><span>Ritmo do dia</span></div></div>`;
   S.pula = false;
 }
 
