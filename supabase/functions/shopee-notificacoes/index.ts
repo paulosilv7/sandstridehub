@@ -154,9 +154,10 @@ async function processar(ev: any, bruto: string) {
   }
 }
 
-Deno.serve(async (req) => {
-  if (req.method !== "POST") return new Response(null, { status: 200 });
-  const bruto = await req.text();
+// A Shopee exige resposta 2xx em até 3 segundos; respondemos na hora e conferimos a assinatura em segundo plano.
+const OK = () => new Response(JSON.stringify({ code: 0, message: "success" }), { status: 200, headers: { "Content-Type": "application/json" } });
+
+async function tratar(req: Request, bruto: string) {
   const assinatura = (req.headers.get("Authorization") ?? "").toLowerCase();
   let valido = false;
   for (const chave of [PUSH_KEY, KEY]) {
@@ -164,11 +165,17 @@ Deno.serve(async (req) => {
   }
   if (!valido) {
     await diag("shopee-notificacoes", `assinatura inválida/ausente (${bruto.length} bytes): ${bruto.slice(0, 200)}`);
-    return new Response(null, { status: 200 });
+    return;
   }
   let ev: any = {};
-  try { ev = JSON.parse(bruto); } catch (_) { return new Response(null, { status: 200 }); }
+  try { ev = JSON.parse(bruto); } catch (_) { return; }
+  await processar(ev, bruto);
+}
+
+Deno.serve(async (req) => {
+  if (req.method !== "POST") return OK();
+  const bruto = await req.text();
   // @ts-ignore EdgeRuntime existe no Supabase
-  EdgeRuntime.waitUntil(processar(ev, bruto));
-  return new Response(null, { status: 200 });
+  EdgeRuntime.waitUntil(tratar(req, bruto));
+  return OK();
 });
