@@ -73,9 +73,14 @@ async function credenciais(lojaId: string, origem: string): Promise<{ token: str
 
 const PUSH_URL = Deno.env.get("SHOPEE_PUSH_URL") ?? "https://imlgfmaqmzfonvbmlwpd.supabase.co/functions/v1/shopee-notificacoes";
 
-function converter(m: any): { texto: string | null; anexos: any[] } {
+const CONHECIDOS = new Set(["text", "image", "video", "sticker", "item", "item_list", "order"]);
+// Tipos automáticos da Shopee que não são conversa de verdade (por enquanto só registramos o conteúdo para estudo).
+const IGNORAR = new Set(["faq_liveagent", "bundle_message"]);
+
+function converter(m: any): { texto: string | null; anexos: any[] } | null {
   const tipo = String(m.message_type ?? "").toLowerCase();
   const c = m.content ?? {};
+  if (IGNORAR.has(tipo)) return null;
   if (tipo === "text") return { texto: c.text ?? null, anexos: [] };
   if (tipo === "image") return { texto: null, anexos: [{ tipo: "img", nome: "imagem", url: c.url ?? c.thumb_url ?? null }] };
   if (tipo === "video") return { texto: null, anexos: [{ tipo: "arq", nome: "vídeo" }] };
@@ -122,7 +127,10 @@ async function sincronizar(shopId: string, conversaId: string) {
   for (const m of msgs) {
     const deLoja = String(m.from_shop_id ?? "") === cred.shopId || String(m.from_id) === cred.shopId;
     const de = deLoja ? "loja" : "cliente";
+    const tipoMsg = String(m.message_type ?? "").toLowerCase();
+    if (!CONHECIDOS.has(tipoMsg)) await diag("shopee-tipo", `tipo ${tipoMsg}: ${JSON.stringify(m).slice(0, 1200)}`);
     const conv = converter(m);
+    if (!conv) continue;
     const ts = Number(m.created_timestamp);
     const quando = new Date(ts > 1e12 ? ts : ts * 1000).toISOString();
     const id = String(m.message_id);
