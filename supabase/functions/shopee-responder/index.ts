@@ -2,7 +2,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID") ?? "__PARTNER_ID__";
+const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID") ?? "2050970";
 const KEY = Deno.env.get("SHOPEE_PARTNER_KEY") ?? "";
 const HOST = Deno.env.get("SHOPEE_HOST") ?? "https://partner.shopeemobile.com";
 

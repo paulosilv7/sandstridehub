@@ -2,7 +2,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID") ?? "__PARTNER_ID__";
+const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID") ?? "2050970";
 const KEY = Deno.env.get("SHOPEE_PARTNER_KEY") ?? "";
 const HOST = Deno.env.get("SHOPEE_HOST") ?? "https://partner.shopeemobile.com";
 
@@ -75,7 +75,7 @@ const texto = (msg: string, status = 200) => new Response(msg, { status, headers
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const state = url.searchParams.get("state") ?? url.searchParams.get("iniciar");
-  if (!KEY || PARTNER_ID.startsWith("__")) return texto("A Shopee ainda não foi configurada no Supabase (ID do parceiro ou chave).", 500);
+  if (!KEY || !PARTNER_ID) return texto("A Shopee ainda não foi configurada no Supabase (ID do parceiro ou chave).", 500);
   if (!state) return texto("Faltam informações. Gere um novo link de conexão.", 400);
   const limite = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 
