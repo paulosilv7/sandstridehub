@@ -15,6 +15,8 @@ const APPS = [
     icone: '<path d="M3 8 12 3l9 5v8l-9 5-9-5V8Zm0 0 9 5 9-5M12 13v8"/>' },
   { id: 'lucro', nome: 'Lucro ao vivo', desc: 'Lucro das vendas em tempo real, por loja e marketplace.', breve: true,
     icone: '<path d="M3 17l5-5 4 4 8-9M15 7h5v5"/>' },
+  { id: 'anuncios', nome: 'Criador de anúncios', desc: 'Títulos, descrições e fotos dos anúncios para cada marketplace.', breve: true,
+    icone: '<path d="M4 5h16v11H9l-5 4V5Zm4 4h8M8 12h5"/>' },
 ];
 let user = null, eu = null, acessos = new Set();
 const proximo = new URLSearchParams(location.search).get('next');
