@@ -5,6 +5,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID") ?? "2050970";
 const KEY = Deno.env.get("SHOPEE_PARTNER_KEY") ?? "";
 const HOST = Deno.env.get("SHOPEE_HOST") ?? "https://partner.shopeemobile.com";
+// Os avisos (push) são assinados com a "Live Push Partner Key", que é outra chave.
+const PUSH_KEY = Deno.env.get("SHOPEE_PUSH_KEY") ?? "";
 
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -156,8 +158,11 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response(null, { status: 200 });
   const bruto = await req.text();
   const assinatura = (req.headers.get("Authorization") ?? "").toLowerCase();
-  const esperado = KEY ? await hmac(KEY, `${PUSH_URL}|${bruto}`) : "";
-  if (!esperado || assinatura !== esperado) {
+  let valido = false;
+  for (const chave of [PUSH_KEY, KEY]) {
+    if (chave && assinatura === await hmac(chave, `${PUSH_URL}|${bruto}`)) { valido = true; break; }
+  }
+  if (!valido) {
     await diag("shopee-notificacoes", `assinatura inválida/ausente (${bruto.length} bytes): ${bruto.slice(0, 200)}`);
     return new Response(null, { status: 200 });
   }
