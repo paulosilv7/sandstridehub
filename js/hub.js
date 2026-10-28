@@ -13,6 +13,8 @@ const APPS = [
     icone: '<path d="M12 3v18M16 7.5c-.7-1.3-2.2-2-4-2-2.4 0-4 1.2-4 3 0 4.2 8.400 2.200 8.400 6.400 0 1.800-1.800 3.100-4.400 3.100-1.900 0-3.400-.8-4.200-2.200"/>' },
   { id: 'estoque', nome: 'Estoque do galpão', desc: 'Estoque com grade de cor e tamanho.', href: 'estoque/',
     icone: '<path d="M3 8 12 3l9 5v8l-9 5-9-5V8Zm0 0 9 5 9-5M12 13v8"/>' },
+  { id: 'lucro', nome: 'Lucro ao vivo', desc: 'Lucro das vendas em tempo real, por loja e marketplace.', breve: true,
+    icone: '<path d="M3 17l5-5 4 4 8-9M15 7h5v5"/>' },
 ];
 let user = null, eu = null, acessos = new Set();
 const proximo = new URLSearchParams(location.search).get('next');
@@ -101,7 +103,7 @@ async function trocarFoto(file) {
 const podeAbrir = (id) => eu.papel === 'admin' || acessos.has(id);
 
 async function tela() {
-  const tiles = APPS.filter((a) => podeAbrir(a.id)).map((a) => {
+  const tiles = APPS.filter((a) => a.breve || podeAbrir(a.id)).map((a) => {
     const ic = `<span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${a.icone}</svg></span>`;
     if (a.breve) return `<div class="tile off">${ic}<h2>${a.nome}</h2><p class="sub" style="margin:0">${a.desc}</p><span class="tag">Em breve</span></div>`;
     return `<a class="tile" href="${a.href}"${a.externo ? ' rel="noopener"' : ''}>${ic}<h2>${a.nome}</h2><p class="sub" style="margin:0">${a.desc}</p></a>`;
@@ -118,9 +120,9 @@ async function tabelaAcessos() {
   const [{ data: eq }, { data: ac }] = await Promise.all([
     sb.from('equipe').select('usuario_id, nome, papel, foto_path').order('nome'), sb.from('acessos_apps').select('usuario_id, app')]);
   const tem = new Set((ac || []).map((x) => `${x.usuario_id}|${x.app}`));
-  $('tab').innerHTML = `<table><thead><tr><th>Pessoa</th>${APPS.map((a) => `<th class="c">${a.nome}</th>`).join('')}</tr></thead><tbody>` +
+  $('tab').innerHTML = `<table><thead><tr><th>Pessoa</th>${APPS.filter((a) => !a.breve).map((a) => `<th class="c">${a.nome}</th>`).join('')}</tr></thead><tbody>` +
     (eq || []).map((p) => `<tr><td><div style="display:flex;align-items:center;gap:10px">${avatar(p.foto_path, p.nome)}<div><b>${esc(p.nome)}</b><br><span class="sub">${p.papel === 'admin' ? 'Administrador' : 'Atendente'}</span></div></div></td>` +
-      APPS.map((a) => p.papel === 'admin' ? '<td class="c sub">Tudo</td>' :
+      APPS.filter((a) => !a.breve).map((a) => p.papel === 'admin' ? '<td class="c sub">Tudo</td>' :
         `<td class="c"><input type="checkbox" data-u="${p.usuario_id}" data-a="${a.id}" aria-label="${esc(p.nome)}: ${a.nome}"${tem.has(`${p.usuario_id}|${a.id}`) ? ' checked' : ''}></td>`).join('') + '</tr>').join('') + '</tbody></table>';
   $('tab').onchange = async (ev) => {
     const c = ev.target; if (!c.dataset.u) return;
