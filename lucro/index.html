@@ -1235,6 +1235,9 @@ function renderCal(){
         '<button type="button" id="cBaixar" data-mes="'+ch+'">'+(f.baixado_em?'Baixar de novo':'Baixar fechamento')+'</button>'+
         (f.baixado_em?'<button type="button" id="cApagar" data-mes="'+ch+'" style="background:#b3261e">Apagar detalhes</button>':'');
     }
+  }else if(!passado&&y===HOJE.y&&m===HOJE.m){
+    ban.hidden=false;
+    ban.innerHTML='<p><b style="font-weight:500">Relatório de '+MESES[m]+'.</b> Baixe a planilha dos pedidos do mês até agora. O mês ainda está aberto, então isto não conta como fechamento e nada é apagado.</p><button type="button" id="cBaixar" data-mes="'+y+'-'+(m<9?'0':'')+(m+1)+'" data-parcial="1">Baixar relatório do mês</button>';
   }else ban.hidden=true;
 }
 function dTip(btn){
@@ -1370,6 +1373,7 @@ async function baixarFechamento(btn){
       var LR=[cols.map(function(k){return k==='loja_id'?'loja':k})].concat(R.map(function(x){return cols.map(function(k){return typeof x[k]==='number'?csvNum(x[k]):x[k]})}));
       setTimeout(function(){salvarCSV('lucro-resumo-dias-'+ch+'.csv',LR)},700);
     }
+    if(btn.getAttribute('data-parcial')){btn.disabled=false;btn.textContent=txt;aviso('Relatório baixado: '+peds.length.toLocaleString('pt-BR')+' pedidos até agora.',4000);return}
     var mk=await SB.rpc('lucro_marcar_baixado',{p_mes:ini});
     if(mk.error)throw mk.error;
     await carregarFech();renderCal();
