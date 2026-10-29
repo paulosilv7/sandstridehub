@@ -18,7 +18,7 @@ const LOGO = { ml: 'img/mercadolivre.png', sp: 'img/shopee.png', tt: 'img/tiktok
 const logo = (k, nome) => `<span class="mk mk-${k}"><img src="${LOGO[k]}" alt="${esc(nome)}"></span>`;
 const TIPO = { pos_venda: 'Pós-venda', pergunta: 'Pergunta do anúncio', chat: 'Chat' };
 const ESCOPO = { todas: 'Todas as lojas', mercado_livre: 'Mercado Livre', shopee: 'Shopee', tiktok_shop: 'TikTok Shop' };
-const ST_PEDIDO = { paid: 'Pago', confirmed: 'Confirmado', cancelled: 'Cancelado', payment_required: 'Aguardando pagamento', payment_in_process: 'Pagamento em análise', partially_paid: 'Parcialmente pago' };
+const ST_PEDIDO = { paid: 'Pago', confirmed: 'Confirmado', cancelled: 'Cancelado', payment_required: 'Aguardando pagamento', payment_in_process: 'Pagamento em análise', partially_paid: 'Parcialmente pago', unpaid: 'Aguardando pagamento', ready_to_ship: 'Pronto para envio', processed: 'Preparado para coleta', shipped: 'Enviado', to_confirm_receive: 'Entregue', in_cancel: 'Cancelamento solicitado', to_return: 'Devolução solicitada', completed: 'Concluído', delivered: 'Entregue', awaiting_shipment: 'Aguardando envio', awaiting_collection: 'Aguardando coleta', in_transit: 'Em trânsito', on_hold: 'Em espera' };
 const ST_ENVIO = { pending: 'Pendente', handling: 'Preparando', ready_to_ship: 'Pronto para envio', shipped: 'Enviado', delivered: 'Entregue', not_delivered: 'Não entregue', cancelled: 'Cancelado' };
 const FALAS = {
   feliz: ['Que dia produtivo! Obrigada pela parceria.', 'Adoro quando a caixa de entrada fica assim.', 'Cliente bem atendido volta a comprar!'],
@@ -115,7 +115,7 @@ function normalizar(row) {
   const espera = row.aguardando_resposta && !row.situacao && row.ultima_mensagem_em
     ? Math.max(0, Math.floor((Date.now() - new Date(row.ultima_mensagem_em).getTime()) / 60000)) : 0;
   const tags = (row.conversa_etiquetas || []).map((x) => S.etiquetas.find((e) => e.id === x.etiqueta_id)?.nome).filter(Boolean);
-  const pedido = row.tipo === 'pos_venda' && row.pedido_id_externo ? `#${row.pedido_id_externo}` : '';
+  const pedido = (row.tipo === 'pos_venda' || row.tipo === 'chat') && row.pedido_id_externo ? `#${row.pedido_id_externo}` : '';
   const produto = row.produto_titulo || '';
   return {
     id: row.id, lojaId: row.loja_id, lojaNome: loja?.nome ?? 'Loja', mkKey: loja?.marketplace ?? 'mercado_livre', mk: mk.k, sigla: mk.sigla, mkNome: mk.nome,
@@ -187,7 +187,7 @@ const SITUACAO = {
   devolucao: { t: 'Devolução', cls: 'warn' },
   devolvido: { t: 'Devolvida', cls: 'neutral' },
   reclamacao: { t: 'Reclamação', cls: 'warn' },
-  analise_ml: { t: 'Em análise no ML', cls: 'warn' },
+  analise_ml: { t: 'Em análise no marketplace', cls: 'warn' },
 };
 // Situações em que o marketplace não aceita mensagens do vendedor.
 const SEM_ENVIO = ['cancelado', 'devolucao', 'devolvido', 'analise_ml'];
@@ -338,7 +338,7 @@ function renderFilters() {
   const fora = S.convs.filter(emTratamento).length;
   const st = [['todas', 'Todas', total], ['aguardando', 'Não respondidas', aguard], ['respondidas', 'Respondidas', total - aguard - fora]];
   $('seg').innerHTML = st.map((x) => `<button type="button" class="seg-b" data-act="status" data-v="${x[0]}" aria-pressed="${S.status === x[0]}"><span class="seg-n">${x[2]}</span><span class="seg-l">${x[1]}</span></button>`).join('') +
-    `<button type="button" class="seg-b wide" data-act="status" data-v="marketplace" aria-pressed="${S.status === 'marketplace'}" title="Devoluções, reclamações e análises que o Mercado Livre ainda está tratando. Quando resolvidas, vão para Respondidas. Não entram nas métricas de não respondidas."><span class="seg-n">${fora}</span><span class="seg-l">Com o marketplace (em tratamento)</span></button>`;
+    `<button type="button" class="seg-b wide" data-act="status" data-v="marketplace" aria-pressed="${S.status === 'marketplace'}" title="Devoluções, reclamações e análises que o marketplace ainda está tratando. Quando resolvidas, vão para Respondidas. Não entram nas métricas de não respondidas."><span class="seg-n">${fora}</span><span class="seg-l">Com o marketplace (em tratamento)</span></button>`;
   const mk = [['todos', 'Todos', null], ['mercado_livre', 'Mercado Livre', 'ml'], ['shopee', 'Shopee', 'sp'], ['tiktok_shop', 'TikTok Shop', 'tt']];
   $('mks').innerHTML = mk.map((x) => `<button type="button" class="pill${x[2] ? ` logo pk-${x[2]}` : ''}" data-act="mk" data-v="${x[0]}" aria-pressed="${S.mk === x[0]}" aria-label="${x[1]}" title="${x[1]}">${x[2] ? logo(x[2], x[1]) : x[1]}</button>`).join('');
   const at = [['todos', 'Todos'], ['minhas', 'Minhas'], ['livres', 'Sem responsável']];
@@ -422,7 +422,7 @@ function renderThread() {
     return `<div class="msg ${loja ? 'loja' : 'cli'}">${m.texto ? `<div class="bub">${esc(m.texto)}</div>` : ''}${anexosHtml(m.anexos)}<div class="when">${loja && !m.enviada_por_ia ? esc(quem) : quem} · ${esc(quando(m.enviada_em))}</div></div>`;
   }).join('') || '<p class="mut">Carregando mensagens…</p>';
   let rodape;
-  if (c.situacao && SEM_ENVIO.includes(c.situacao)) rodape = `<p class="aviso"><strong>${esc(SITUACAO[c.situacao].t)} no Mercado Livre.</strong> ${esc(c.situacaoDetalhe || 'O marketplace não aceita mensagens neste momento.')} Acompanhe pelo painel do Mercado Livre. Esta conversa não conta nas não respondidas.</p>`;
+  if (c.situacao && SEM_ENVIO.includes(c.situacao)) rodape = `<p class="aviso"><strong>${esc(SITUACAO[c.situacao].t)}${c.situacao === 'analise_ml' ? '' : ' no ' + esc(MKS[c.mkKey]?.nome || 'marketplace')}.</strong> ${esc(c.situacaoDetalhe || 'O marketplace não aceita mensagens neste momento.')} Acompanhe pelo painel do ${esc(MKS[c.mkKey]?.nome || 'marketplace')}. Esta conversa não conta nas não respondidas.</p>`;
   else if (c.bloqueada) rodape = `<p class="aviso">${esc(c.motivo || 'O marketplace bloqueou as respostas desta conversa.')}</p>`;
   else if (c.mkKey !== 'mercado_livre' && c.mkKey !== 'tiktok_shop' && c.mkKey !== 'shopee') rodape = '<p class="aviso">O envio de respostas por esta loja ainda não está disponível aqui. Responda pelo aplicativo do marketplace.</p>';
   else if (outro) {
@@ -431,7 +431,7 @@ function renderThread() {
     const rap = S.rapidas.filter((r) => r.escopo === 'todas' || r.escopo === c.mkKey);
     const pode = c.tipo !== 'pergunta';
     rodape = '<div class="comp">' +
-      (c.situacao === 'reclamacao' ? `<p class="aviso"><strong>Reclamação aberta.</strong> ${esc(c.situacaoDetalhe)} O Mercado Livre pode recusar mensagens. Esta conversa não conta nas não respondidas.</p>` : '') +
+      (c.situacao === 'reclamacao' ? `<p class="aviso"><strong>Reclamação aberta.</strong> ${esc(c.situacaoDetalhe)} O marketplace pode recusar mensagens. Esta conversa não conta nas não respondidas.</p>` : '') +
       (c.escalada && !c.atendenteId ? `<p class="aviso"><strong>A Sandy passou esta conversa para a equipe.</strong> ${esc(c.escalada)}</p>` : '') +
       `<div class="rap"><span class="eyebrow">Respostas rápidas</span>${rap.length ? rap.map((r) => `<button type="button" class="chipr" data-act="rapida" data-id="${r.id}">${esc(r.titulo)}</button>`).join('') : '<span class="mut">Nenhuma cadastrada para esta loja.</span>'}</div>` +
       (S.aviso ? `<p class="aviso" role="alert">${esc(S.aviso)}</p>` : '') +
