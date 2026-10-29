@@ -701,13 +701,18 @@ function totAll(){
   return A;
 }
 var tvDur=700,tvT=null,anT=null,fxToken=0,bufMus=null,musSrc=null,musGain=null,musTried=false,trilha='musica',meta=0,celebrada=null,HOJE={y:2026,m:9,d:28},lastTv=0,lastLuc=0,somOn=true,AC=null,winT=null,tvOpen=false,fsReq=false,wl=null,chartData=null;
-var CFG={modo:'fixa',fixa:200,semana:[200,200,200,200,200,200,200],exc:[]};
+var CFG={modo:'fixa',fixa:200,semana:[200,200,200,200,200,200,200],exc:[],hist:[]};
 function isoD(y,m,d){return y+'-'+(m<9?'0':'')+(m+1)+'-'+(d<10?'0':'')+d}
 function metaInfo(y,m,d){
   var iso=isoD(y,m,d);
   for(var i=0;i<CFG.exc.length;i++)if(CFG.exc[i].d===iso)return {v:CFG.exc[i].v,src:'exc',n:CFG.exc[i].n||''};
-  if(CFG.modo==='semana')return {v:CFG.semana[new Date(y,m,d).getDay()],src:'sem',n:''};
-  return {v:CFG.fixa,src:'fixa',n:''};
+  var base=CFG;
+  if(iso<isoD(HOJE.y,HOJE.m,HOJE.d)){
+    // dias que já passaram usam a meta que valia naquele dia (não a de hoje)
+    for(var k=CFG.hist.length-1;k>=0;k--)if(CFG.hist[k].desde<=iso){base=CFG.hist[k];break}
+  }
+  if(base.modo==='semana')return {v:base.semana[new Date(y,m,d).getDay()],src:'sem',n:''};
+  return {v:base.fixa,src:'fixa',n:''};
 }
 function metaDoDia(y,m,d){return metaInfo(y,m,d).v}
 function aviso(t,ms){var e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(tt);tt=setTimeout(function(){e.hidden=true},ms||3000)}
@@ -720,6 +725,11 @@ function salvarCfg(){
     try{
       var r=await SB.from('lucro_metas').update({modo:n.modo,fixa:n.fixa,semana:n.semana,atualizado_por:USER.id,atualizado_em:new Date().toISOString()}).eq('id',1).select();
       if(r.error||!r.data||!r.data.length)throw new Error('sem permissão');
+      // guarda a meta a partir de hoje; os dias anteriores mantêm a meta que tinham
+      var hj=isoD(HOJE.y,HOJE.m,HOJE.d);
+      var h=await SB.from('lucro_metas_hist').upsert({desde:hj,modo:n.modo,fixa:n.fixa,semana:n.semana,atualizado_por:USER.id,atualizado_em:new Date().toISOString()},{onConflict:'desde'});
+      if(h.error)throw h.error;
+      CFG.hist=CFG.hist.filter(function(x){return x.desde!==hj}).concat([{desde:hj,modo:n.modo,fixa:n.fixa,semana:n.semana.slice()}]).sort(function(a,b){return a.desde<b.desde?-1:1});
       if(apagar.length){var d=await SB.from('lucro_metas_excecoes').delete().in('dia',apagar);if(d.error)throw d.error}
       if(n.exc.length){var u=await SB.from('lucro_metas_excecoes').upsert(n.exc,{onConflict:'dia'});if(u.error)throw u.error}
     }catch(e){aviso('Só administradores podem mudar a meta.');await carregarMetas();aplicarCfg(true)}
@@ -729,6 +739,8 @@ async function carregarMetas(){
   var a=await SB.from('lucro_metas').select('modo,fixa,semana').eq('id',1).maybeSingle();
   var b=await SB.from('lucro_metas_excecoes').select('dia,valor,nome').order('dia');
   if(a.data){CFG.modo=a.data.modo==='semana'?'semana':'fixa';CFG.fixa=+a.data.fixa||200;CFG.semana=(a.data.semana&&a.data.semana.length===7)?a.data.semana.map(Number):[200,200,200,200,200,200,200]}
+  var hh=await SB.from('lucro_metas_hist').select('desde,modo,fixa,semana').order('desde');
+  CFG.hist=(hh.data||[]).map(function(x){return {desde:x.desde,modo:x.modo==='semana'?'semana':'fixa',fixa:+x.fixa||200,semana:(x.semana&&x.semana.length===7)?x.semana.map(Number):[200,200,200,200,200,200,200]}});
   CFG.exc=(b.data||[]).map(function(e){return {d:e.dia,v:+e.valor,n:e.nome||''}});
   cfgSnap=snapCfg();
 }
@@ -1203,7 +1215,7 @@ function renderCal(){
   $('#cSum').innerHTML=
     '<div><div class="k">Lucro do mês</div><div class="v">'+brl0(soma)+'</div><div class="s">'+(temHoje?'até agora, com hoje':'mês fechado')+'</div></div>'+
     '<div><div class="k">Dias com lucro</div><div class="v">'+lucr+' de '+fech.length+'</div><div class="s">'+(fech.length-lucr)+' no vermelho</div></div>'+
-    '<div><div class="k">Meta batida</div><div class="v">'+meta9+' '+(meta9===1?'dia':'dias')+'</div><div class="s">'+(CFG.modo==='semana'||CFG.exc.some(function(e){return e.d.slice(0,7)===y+'-'+(m<9?'0':'')+(m+1)})?'metas variam por dia':'meta de '+brl0(CFG.fixa))+'</div></div>'+
+    '<div><div class="k">Meta batida</div><div class="v">'+meta9+' '+(meta9===1?'dia':'dias')+'</div><div class="s">'+(function(){var vs={};ds.forEach(function(o){if(!o.fut)vs[metaInfo(y,m,o.d).v]=1});var k=Object.keys(vs);return k.length>1?'metas variam por dia':'meta de '+brl0(+k[0]||CFG.fixa)})()+'</div></div>'+
     '<div><div class="k">Melhor dia</div><div class="v">'+(best?brl0(best.luc):'—')+'</div><div class="s">'+(best?'dia '+best.d:'')+'</div></div>';
   var maxL=Math.max.apply(null,fech.map(function(o){return Math.abs(o.luc)}).concat([1]));
   var h=DSEM.map(function(x){return '<div class="cwd">'+x+'</div>'}).join('');
