@@ -174,7 +174,8 @@ body{overflow-x:clip}
 #toast[hidden]{display:none}
 
 /* modo TV e comemoração */
-#tv{position:fixed;inset:0;z-index:50;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(16px,3vh,34px);padding:72px max(24px,env(safe-area-inset-right,0px)) 40px max(24px,env(safe-area-inset-left,0px));text-align:center;overflow:hidden}
+html.tv-on,html.tv-on body{overflow:hidden!important;scrollbar-width:none}html.tv-on::-webkit-scrollbar,html.tv-on body::-webkit-scrollbar,#tv::-webkit-scrollbar{display:none}
+#tv{scrollbar-width:none;position:fixed;inset:0;z-index:50;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(16px,3vh,34px);padding:72px max(24px,env(safe-area-inset-right,0px)) 40px max(24px,env(safe-area-inset-left,0px));text-align:center;overflow:hidden}
 #tv[hidden]{display:none}
 .tvtop{position:absolute;top:calc(18px + env(safe-area-inset-top,0px));left:calc(24px + env(safe-area-inset-left,0px));right:calc(24px + env(safe-area-inset-right,0px));display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .tvtop .sp{flex:1}
@@ -943,7 +944,7 @@ function renderMeta(){
   checkMeta(A);
 }
 function entrarTV(){
-  tvOpen=true;tvDrawn=false;var tvEl=$('#tv');tvEl.hidden=false;document.body.style.overflow='hidden';$('#tvSair').focus();
+  tvOpen=true;tvDrawn=false;document.documentElement.classList.add('tv-on');var tvEl=$('#tv');tvEl.hidden=false;document.body.style.overflow='hidden';$('#tvSair').focus();
   $('#tvFill').style.width='0%';lastTv=0;tvDur=1900;tvEl.classList.remove('in');void tvEl.offsetWidth;tvEl.classList.add('in');clearTimeout(tvT);tvT=setTimeout(function(){tvEl.classList.remove('in')},3200);
   renderMeta();drawTvChart();
   var d=document.documentElement;
@@ -951,7 +952,7 @@ function entrarTV(){
   if(navigator.wakeLock){navigator.wakeLock.request('screen').then(function(l){wl=l}).catch(function(){})}
 }
 function sairTV(){
-  tvOpen=false;$('#tv').hidden=true;document.body.style.overflow='';
+  tvOpen=false;$('#tv').hidden=true;document.body.style.overflow='';document.documentElement.classList.remove('tv-on');
   if(document.fullscreenElement&&document.exitFullscreen){document.exitFullscreen().catch(function(){})}
   fsReq=false;
   if(wl){wl.release().catch(function(){});wl=null}
