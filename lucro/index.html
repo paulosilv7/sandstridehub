@@ -560,9 +560,10 @@ html.tv-on,html.tv-on body{overflow:hidden!important;scrollbar-width:none}html.t
   </div>
 </main>
 <nav class="dock" aria-label="Menu rápido">
-  <button type="button" class="bk" id="back" aria-label="Voltar para o hub" title="Voltar para o hub"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <button type="button" class="bk" id="back" aria-label="Voltar para o hub (início)" title="Voltar para o hub"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.2 12 4l8.5 7.2"/><path d="M5.5 9.8V19a1 1 0 0 0 1 1H9.5v-5.2h5V20h3a1 1 0 0 0 1-1V9.8"/></svg></button>
   <div class="av" id="avatar" title="Quem está acessando" aria-label="Perfil de quem está acessando">·</div>
   <div class="sp1"></div>
+  <button type="button" class="bk" id="lucroBtn" aria-label="Lucro ao vivo" title="Lucro ao vivo" aria-expanded="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 17l5.5-5.5 4 4 7-7.5"/><path d="M15 8h5.5v5.5"/></svg></button>
   <button type="button" class="bk" id="tvBtn" aria-label="Modo TV" title="Modo TV"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2.5"/><path d="M8 20h8M12 16v4"/></svg></button>
   <button type="button" class="bk" id="calBtn" aria-label="Calendário de lucro" title="Calendário de lucro" aria-expanded="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></button>
   <button type="button" class="bk" id="metaBtn" aria-label="Configurações" title="Configurações" aria-expanded="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -1258,6 +1259,7 @@ function dTip(btn){
 function irPara(pg){
   var cal=pg==='cal',cfg=pg==='cfg';
   $('#pgHome').hidden=cal||cfg;$('#pgCal').hidden=!cal;$('#pgCfg').hidden=!cfg;$('#ctip').hidden=true;
+  $('#lucroBtn').setAttribute('aria-expanded',cal||cfg?'false':'true');
   $('#calBtn').setAttribute('aria-expanded',cal?'true':'false');
   $('#metaBtn').setAttribute('aria-expanded',cfg?'true':'false');
   if(cal){calMes={y:HOJE.y,m:HOJE.m};renderCal();Promise.all([carregarResumo(),carregarFech()]).then(function(){if(!$('#pgCal').hidden)renderCal()})}
@@ -1269,6 +1271,7 @@ function mudaMes(dm){
   if(dd(y,m,1)>dd(HOJE.y,HOJE.m,1)||y*12+m<CAL_MIN)return;
   calMes={y:y,m:m};renderCal();
 }
+$('#lucroBtn').addEventListener('click',function(){irPara('home')});
 $('#calBtn').addEventListener('click',function(){irPara($('#pgCal').hidden?'cal':'home')});
 $('#cBack').addEventListener('click',function(){irPara('home')});
 (function(){var hl=document.querySelectorAll('.hlogo');for(var i=1;i<hl.length;i++)if(hl[0])hl[i].src=hl[0].src})();
