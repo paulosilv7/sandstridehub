@@ -1365,7 +1365,9 @@ async function baixarFechamento(btn){
     var R=rs.data||[];
     if(R.length){
       var cols=Object.keys(R[0]).filter(function(k){return k!=='id'&&k!=='fechado'});
-      var LR=[cols].concat(R.map(function(x){return cols.map(function(k){return typeof x[k]==='number'?csvNum(x[k]):x[k]})}));
+      R.forEach(function(x){if(x.loja_id)x.loja_id=nomes[x.loja_id]||x.loja_id});
+      cols=cols.map(function(k){return k});
+      var LR=[cols.map(function(k){return k==='loja_id'?'loja':k})].concat(R.map(function(x){return cols.map(function(k){return typeof x[k]==='number'?csvNum(x[k]):x[k]})}));
       setTimeout(function(){salvarCSV('lucro-resumo-dias-'+ch+'.csv',LR)},700);
     }
     var mk=await SB.rpc('lucro_marcar_baixado',{p_mes:ini});
