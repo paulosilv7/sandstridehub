@@ -432,3 +432,20 @@ body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   body{padding-bottom:0;padding-top:16px}
 }
 .topo-pg .live{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--muted)}
+
+/* lista mais larga, filtros lado a lado e conversa até o fim da tela (o menu flutua por cima) */
+.seg{grid-template-columns:repeat(4,minmax(0,1fr))}
+.seg-l{white-space:normal;line-height:1.15;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+@media (min-width:861px){
+  .shell{height:calc(100vh - 32px);height:calc(100dvh - 32px)}
+  body{padding-bottom:16px}
+  .lista{flex:0 0 clamp(420px,36vw,560px);max-width:560px}
+  .rows{padding-bottom:76px}
+}
+
+/* configurações: quadros em duas colunas, sem esticar a tela toda */
+@media (min-width:1000px){
+  .vista[data-v="config"]{display:block;column-count:2;column-gap:14px}
+  .vista[data-v="config"]>*{break-inside:avoid;margin:0 0 14px}
+  .vista[data-v="config"]>:not(.box){column-span:all}
+}
