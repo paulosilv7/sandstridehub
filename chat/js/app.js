@@ -345,8 +345,9 @@ function renderFilters() {
   $('mks').innerHTML = mk.map((x) => `<button type="button" class="pill${x[2] ? ` logo pk-${x[2]}` : ''}" data-act="mk" data-v="${x[0]}" aria-pressed="${S.mk === x[0]}" aria-label="${x[1]}" title="${x[1]}">${x[2] ? logo(x[2], x[1]) : x[1]}</button>`).join('');
   const at = [['todos', 'Todos'], ['minhas', 'Minhas'], ['livres', 'Sem responsável']];
   $('ats').innerHTML = at.map((x) => `<button type="button" class="pill sm" data-act="atend" data-v="${x[0]}" aria-pressed="${S.atend === x[0]}">${x[1]}</button>`).join('');
-  if (S.loja !== 'todas' && !S.lojas.some((l) => l.id === S.loja)) S.loja = 'todas';
-  $('loja').innerHTML = '<option value="todas">Todas</option>' + S.lojas.map((l) => `<option value="${l.id}"${S.loja === l.id ? ' selected' : ''}>${esc(l.nome)}</option>`).join('');
+  const lojasVisiveis = S.lojas.filter((l) => S.mk === 'todos' || l.marketplace === S.mk);
+  if (S.loja !== 'todas' && !lojasVisiveis.some((l) => l.id === S.loja)) S.loja = 'todas';
+  $('loja').innerHTML = '<option value="todas">Todas</option>' + lojasVisiveis.map((l) => `<option value="${l.id}"${S.loja === l.id ? ' selected' : ''}>${esc(l.nome)}</option>`).join('');
   if (S.etq !== 'todas' && !S.etiquetas.some((e) => e.nome === S.etq)) S.etq = 'todas';
   $('etqSel').innerHTML = '<option value="todas">Todas</option>' + S.etiquetas.map((e) => `<option value="${esc(e.nome)}"${S.etq === e.nome ? ' selected' : ''}>${esc(e.nome)}</option>`).join('');
 }
