@@ -85,7 +85,7 @@ async function sincronizar(shopId: string, conversaId: string) {
 
   // Mensagens mais recentes primeiro.
   const dados = await ttsGet(`/customer_service/202309/conversations/${conversaId}/messages`, cred.token, cred.cipher, cred.app, {
-    page_size: "20", sort_order: "DESC", sort_field: "create_time",
+    page_size: "10", sort_order: "DESC", sort_field: "create_time",
   });
   const msgs: any[] = (dados?.messages ?? []).slice().reverse();
 
