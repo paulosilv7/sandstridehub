@@ -422,3 +422,13 @@ body{margin:0}
 
 .seg-b.wide{grid-column:1/-1;min-height:36px;flex-direction:row;gap:8px;padding:4px 10px}
 .seg-b.wide .seg-n{font-size:14px}
+
+/* menu flutuante no lugar da barra lateral */
+body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+.shell{max-width:none}
+.main{padding-top:0}
+@media (min-width:861px){
+  .shell{height:calc(100vh - 16px - 84px);height:calc(100dvh - 16px - 84px)}
+  body{padding-bottom:0;padding-top:16px}
+}
+.topo-pg .live{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--muted)}

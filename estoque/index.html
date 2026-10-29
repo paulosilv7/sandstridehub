@@ -1,4 +1,5 @@
-<!doctype html><html><head><meta charset=utf8><title>Estoque Galpão · Sandstride</title><link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png"><link rel="apple-touch-icon" href="/favicon-192.png"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><title>Estoque Galpão · Sandstride</title><link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png"><link rel="apple-touch-icon" href="/favicon-192.png"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="../css/dock.css">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,21 +30,17 @@
 
 
   /* ---------- Computador (tela larga): mesmo visual das outras ferramentas ---------- */
-  .lateral { display: none; }
+  .lateral, .cab-d { display: none; }
+  .lateral .bk[hidden] { display: none; }
+  .lateral .bk.ativo { background: var(--dock-accent); color: var(--dock-on-accent); }
   @media (min-width: 1000px) {
-    body { padding-left: 276px; }
-    .lateral { position: fixed; left: 16px; top: 16px; bottom: 16px; width: 240px; border-radius: 28px; padding: 22px 16px; display: flex; flex-direction: column; gap: 18px; background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 55%); box-shadow: 0 12px 32px rgba(0,0,0,.10); color: #fff; z-index: 30; }
-    .lateral .lg { padding: 4px 6px; }
-    .lateral .lg img { display: block; width: 100%; max-width: 190px; height: auto; filter: invert(1); }
-    .lateral nav { display: flex; flex-direction: column; gap: 6px; }
-    .lateral nav button { height: 50px; border: 0; border-radius: 25px; background: transparent; color: #fff; display: flex; align-items: center; gap: 12px; padding: 0 16px; font-family: inherit; font-weight: 700; font-size: 15px; text-align: left; cursor: pointer; }
-    .lateral nav button:hover { background: rgba(255,255,255,.08); }
-    .lateral nav button.ativo { background: #BCCBF5; color: #1A1A1A; }
-    .lateral nav svg { width: 18px; height: 18px; flex: none; }
-    .lateral .fim { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
-    .lateral .fim a { height: 42px; border-radius: 21px; border: 1.5px solid rgba(255,255,255,.25); color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
-    .lateral .fim a:hover { background: rgba(255,255,255,.08); }
-    .lateral .teste { align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; padding: 6px 10px; border-radius: 12px; background: #FFF1CC; color: #6B4600; }
+    body { padding-bottom: 96px; }
+    .lateral { display: flex; }
+    .cab-d { display: flex; align-items: center; gap: 14px 20px; max-width: 1120px; margin: 0 auto; padding: 20px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+    .cab-d img { height: 24px; width: auto; display: block; }
+    .cab-d .hsep { width: 1px; height: 26px; background: #CFCFCB; }
+    .cab-d h1 { margin: 0; font-size: 26px; font-weight: 400; letter-spacing: -.7px; }
+    .cab-d .teste { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; padding: 5px 10px; border-radius: 12px; background: #FFF1CC; color: #6B4600; }
     .topo, .pilula, .menu-abas { display: none !important; }
     #avisoTeste { display: none !important; }
     main { max-width: 1120px; padding-top: 24px; padding-bottom: 48px; }
@@ -61,8 +58,6 @@
     .painel-num { font-size: 23px; }
     .painel-grade .bloco + .div + .bloco { padding-left: 14px; } .painel-grade .bloco:first-child { padding-right: 10px; }
     body.com-barra main { padding-bottom: 48px; }
-    .barra-edicao { left: calc(50% + 138px); }
-    .toast { left: calc(50% + 138px); }
   }
 
   /* ---------- Topo ---------- */
@@ -488,17 +483,16 @@
 
 <div id="codigoInicial" data-c="" hidden></div>
 
-<aside class="lateral" id="lateral" aria-label="Menu">
-  <div class="lg"><img alt="Sandstride" id="lateralLogo"></div>
-  <span class="teste" id="lateralTeste" hidden>BASE DE TESTE</span>
-  <nav>
-    <button type="button" data-p="abaLancar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="8" height="8" rx="1.5"/></svg>Lançar</button>
-    <button type="button" data-p="abaEstoque"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>Estoque</button>
-    <button type="button" data-p="abaHistorico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Histórico</button>
-    <button type="button" data-p="btnNovo" id="lateralNovo" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Cadastrar produto</button>
-  </nav>
-  <div class="fim"><a href="../">← Central Sandstride</a></div>
-</aside>
+<nav class="dock lateral" id="lateral" aria-label="Menu rápido">
+  <a class="bk" href="../" aria-label="Voltar para a central" title="Central Sandstride"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.2 12 4l8.5 7.2"/><path d="M5.5 9.8V19a1 1 0 0 0 1 1H9.5v-5.2h5V20h3a1 1 0 0 0 1-1V9.8"/></svg></a>
+  <div class="av" id="eu" title="Quem está acessando">·</div>
+  <div class="sp1"></div>
+  <button type="button" class="bk" data-p="abaLancar" aria-label="Lançar" title="Lançar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="8" height="8" rx="1.5"/></svg></button>
+  <button type="button" class="bk" data-p="abaEstoque" aria-label="Estoque" title="Estoque"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg></button>
+  <button type="button" class="bk" data-p="abaHistorico" aria-label="Histórico" title="Histórico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+  <button type="button" class="bk" data-p="btnNovo" id="lateralNovo" aria-label="Cadastrar produto" title="Cadastrar produto" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+</nav>
+<div class="cab-d"><img alt="Sandstride" src="../img/sandstride-escuro.png"><span class="hsep" aria-hidden="true"></span><h1>Estoque Galpão</h1><span class="teste" id="lateralTeste" hidden>BASE DE TESTE</span></div>
 <main>
   <div class="topo">
     <button class="redondo" id="btnHistorico" onclick="abrirHistorico()" aria-label="Histórico de lançamentos" style="visibility:hidden" tabindex="-1" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 4v4h4"/><path d="M12 7.5V12l3 2"/></svg></button>
@@ -3026,7 +3020,9 @@ function aviso(titulo, texto) {
   const { data } = await sb.auth.getSession();
   const user = data?.session?.user;
   if (!user) { location.replace('../?next=' + encodeURIComponent(location.pathname)); return; }
-  const { data: eq } = await sb.from('equipe').select('papel').eq('usuario_id', user.id).maybeSingle();
+  const { data: eq } = await sb.from('equipe').select('papel, nome, foto_path').eq('usuario_id', user.id).maybeSingle();
+  { const av = document.getElementById('eu'), nm = eq?.nome || user.email || '?'; av.title = nm;
+    if (eq?.foto_path) { const im = document.createElement('img'); im.alt = nm; im.src = SUPABASE_URL + '/storage/v1/object/public/avatares/' + eq.foto_path; av.textContent = ''; av.appendChild(im); } else av.textContent = String(nm).trim().charAt(0).toUpperCase(); }
   let ok = eq?.papel === 'admin';
   if (!ok && eq) {
     const { data: a } = await sb.from('acessos_apps').select('app').eq('usuario_id', user.id).eq('app', 'estoque').maybeSingle();
@@ -3040,14 +3036,13 @@ function aviso(titulo, texto) {
 
 (function () {
   var lat = document.getElementById('lateral'); if (!lat) return;
-  var logo = document.querySelector('.topo .logo'); if (logo) document.getElementById('lateralLogo').src = logo.src;
   var ids = ['abaLancar', 'abaEstoque', 'abaHistorico', 'btnNovo'];
-  lat.querySelectorAll('nav button').forEach(function (b) {
+  lat.querySelectorAll('button[data-p]').forEach(function (b) {
     b.addEventListener('click', function () { var o = document.getElementById(b.getAttribute('data-p')); if (o) o.click(); });
   });
   function sincroniza() {
     var barra = document.getElementById('menuAbas'), novo = document.getElementById('btnNovo');
-    lat.querySelectorAll('nav button').forEach(function (b) {
+    lat.querySelectorAll('button[data-p]').forEach(function (b) {
       var o = document.getElementById(b.getAttribute('data-p'));
       var p = b.getAttribute('data-p');
       if (p === 'btnNovo') { b.hidden = !novo || novo.style.visibility === 'hidden'; b.classList.toggle('ativo', !!novo && novo.classList.contains('ativo')); }

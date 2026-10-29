@@ -328,10 +328,12 @@ function renderSandy() {
 /* ------------------------------------------------------------------ */
 function renderChrome() {
   const aguard = S.convs.filter((c) => c.aguardando).length;
-  $('navCount').textContent = aguard;
+  $('navCount').textContent = aguard; $('navCount').dataset.n = String(aguard);
   document.title = `${aguard ? `(${aguard}) ` : ''}Caixa de entrada Sandstride`;
   const fp = S.eu?.foto_path;
-  $('eu').innerHTML = `<span style="display:flex;align-items:center;gap:10px">${fp ? `<img src="${esc(`${SUPABASE_URL}/storage/v1/object/public/avatares/${fp}`)}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex:none">` : ''}<span>${esc(eu())} · ${souAdmin() ? 'Administrador' : 'Atendente'}</span></span>`;
+  const nomeEu = eu();
+  $('eu').title = `${nomeEu} · ${souAdmin() ? 'Administrador' : 'Atendente'}`;
+  $('eu').innerHTML = fp ? `<img src="${esc(`${SUPABASE_URL}/storage/v1/object/public/avatares/${fp}`)}" alt="${esc(nomeEu)}">` : esc(String(nomeEu || '?').trim().charAt(0).toUpperCase());
 }
 function renderFilters() {
   const total = S.convs.length, aguard = S.convs.filter((c) => c.aguardando).length;
@@ -540,7 +542,7 @@ function renderView() {
   const inbox = S.view === 'inbox';
   $('v-inbox').hidden = !inbox; $('vista').hidden = inbox;
   $('titulo').textContent = TITULOS[S.view];
-  document.querySelectorAll('.nav button').forEach((b) => {
+  document.querySelectorAll('.dock [data-act="view"]').forEach((b) => {
     if (b.getAttribute('data-v') === S.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
   if (!inbox) $('vista').innerHTML = S.view === 'rapidas' ? vistaRapidas() : vistaConfig();
@@ -602,19 +604,10 @@ const ICONES = {
 };
 function montarCasca() {
   $('raiz').innerHTML = `<div class="shell">
-  <aside class="side">
-    <div class="brand"><img class="wm-logo" src="img/sandstride.png" alt="Sandstride"><div class="wm-sub">Central de atendimento</div></div>
-    <label class="busca"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.8"/><path d="m14 14 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <input id="busca" type="search" placeholder="Cliente ou pedido" aria-label="Buscar cliente, pedido ou mensagem" autocomplete="off"></label>
-    <nav class="nav" aria-label="Navegação principal">
-      <button type="button" data-act="view" data-v="inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.inbox}</svg>Caixa de entrada <span class="count" id="navCount">0</span></button>
-      <button type="button" data-act="view" data-v="rapidas"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.rapidas}</svg>Respostas rápidas</button>
-      <button type="button" data-act="view" data-v="config"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.config}</svg>Configurações</button>
-    </nav>
-    <div class="lado-rodape"><div id="eu"></div><a class="sair" href="../" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-bottom:0">← Central</a><button type="button" class="sair" data-act="sair">Sair</button></div>
-  </aside>
   <main class="main">
-    <div class="head"><h1 id="titulo">Caixa de entrada</h1><span class="sp"></span><span class="live"><i id="liveDot"></i><span id="liveTxt">Conectando…</span></span></div>
+    <div class="topo-pg"><img class="hlogo" src="../img/sandstride-escuro.png" alt="Sandstride"><span class="hsep" aria-hidden="true"></span><h1 id="titulo">Caixa de entrada</h1><span class="sp"></span>
+      <label class="busca-top"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.8"/><path d="m14 14 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="busca" type="search" placeholder="Cliente ou pedido" aria-label="Buscar cliente, pedido ou mensagem" autocomplete="off"></label>
+      <span class="live"><i id="liveDot"></i><span id="liveTxt">Conectando…</span></span></div>
     <div class="inbox" id="v-inbox">
       <section class="sandy" id="sandy" aria-label="Sandy, atendente virtual"></section>
       <div class="cols" id="cols" data-tela="lista">
@@ -630,7 +623,15 @@ function montarCasca() {
       </div>
     </div>
     <div class="vista" id="vista" hidden></div>
-  </main></div>`;
+  </main></div>
+  <nav class="dock" aria-label="Menu rápido">
+    <a class="bk" href="../" aria-label="Voltar para a central" title="Central Sandstride"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.2 12 4l8.5 7.2"/><path d="M5.5 9.8V19a1 1 0 0 0 1 1H9.5v-5.2h5V20h3a1 1 0 0 0 1-1V9.8"/></svg></a>
+    <div class="av" id="eu" title="Quem está acessando">·</div>
+    <div class="sp1"></div>
+    <button type="button" class="bk" data-act="view" data-v="inbox" aria-label="Caixa de entrada" title="Caixa de entrada"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.inbox}</svg><span class="bdg" id="navCount">0</span></button>
+    <button type="button" class="bk" data-act="view" data-v="rapidas" aria-label="Respostas rápidas" title="Respostas rápidas"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.rapidas}</svg></button>
+    <button type="button" class="bk" data-act="view" data-v="config" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.config}</svg></button>
+  </nav>`;
 }
 function marcarConexao(ok) {
   const d = $('liveDot'), t = $('liveTxt'); if (!d || !t) return;
