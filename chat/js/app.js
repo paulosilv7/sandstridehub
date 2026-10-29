@@ -191,6 +191,9 @@ const SITUACAO = {
 };
 // Situações em que o marketplace não aceita mensagens do vendedor.
 const SEM_ENVIO = ['cancelado', 'devolucao', 'devolvido', 'analise_ml'];
+// Cancelamento e devolução já concluídos vão para Respondidas; só o que ainda está em tratamento fica em "Com o marketplace".
+const ENCERRADAS = ['cancelado', 'devolvido'];
+const emTratamento = (c) => !!c.situacao && !ENCERRADAS.includes(c.situacao);
 function estilo(c) {
   if (c.situacao && SITUACAO[c.situacao]) return SITUACAO[c.situacao];
   if (c.bloqueada) return { t: 'Bloqueada', cls: 'warn' };
@@ -209,8 +212,8 @@ const etqCls = (n) => `e${Math.max(0, S.etiquetas.findIndex((e) => e.nome === n)
 const norm = (t) => String(t || '').toLowerCase().replace(/#/g, '');
 function casa(c) {
   if (S.status === 'aguardando' && !c.aguardando) return false;
-  if (S.status === 'respondidas' && (c.aguardando || c.situacao)) return false;
-  if (S.status === 'marketplace' && !c.situacao) return false;
+  if (S.status === 'respondidas' && (c.aguardando || emTratamento(c))) return false;
+  if (S.status === 'marketplace' && !emTratamento(c)) return false;
   if (S.mk !== 'todos' && c.mkKey !== S.mk) return false;
   if (S.loja !== 'todas' && c.lojaId !== S.loja) return false;
   if (S.atend === 'minhas' && c.atendenteId !== S.user?.id) return false;
@@ -332,10 +335,10 @@ function renderChrome() {
 }
 function renderFilters() {
   const total = S.convs.length, aguard = S.convs.filter((c) => c.aguardando).length;
-  const fora = S.convs.filter((c) => c.situacao).length;
+  const fora = S.convs.filter(emTratamento).length;
   const st = [['todas', 'Todas', total], ['aguardando', 'Não respondidas', aguard], ['respondidas', 'Respondidas', total - aguard - fora]];
   $('seg').innerHTML = st.map((x) => `<button type="button" class="seg-b" data-act="status" data-v="${x[0]}" aria-pressed="${S.status === x[0]}"><span class="seg-n">${x[2]}</span><span class="seg-l">${x[1]}</span></button>`).join('') +
-    `<button type="button" class="seg-b wide" data-act="status" data-v="marketplace" aria-pressed="${S.status === 'marketplace'}" title="Cancelados, devoluções e reclamações que o Mercado Livre está tratando. Não entram nas métricas de não respondidas."><span class="seg-n">${fora}</span><span class="seg-l">Com o marketplace (cancelados, devoluções)</span></button>`;
+    `<button type="button" class="seg-b wide" data-act="status" data-v="marketplace" aria-pressed="${S.status === 'marketplace'}" title="Devoluções, reclamações e análises que o Mercado Livre ainda está tratando. Quando resolvidas, vão para Respondidas. Não entram nas métricas de não respondidas."><span class="seg-n">${fora}</span><span class="seg-l">Com o marketplace (em tratamento)</span></button>`;
   const mk = [['todos', 'Todos', null], ['mercado_livre', 'Mercado Livre', 'ml'], ['shopee', 'Shopee', 'sp'], ['tiktok_shop', 'TikTok Shop', 'tt']];
   $('mks').innerHTML = mk.map((x) => `<button type="button" class="pill${x[2] ? ` logo pk-${x[2]}` : ''}" data-act="mk" data-v="${x[0]}" aria-pressed="${S.mk === x[0]}" aria-label="${x[1]}" title="${x[1]}">${x[2] ? logo(x[2], x[1]) : x[1]}</button>`).join('');
   const at = [['todos', 'Todos'], ['minhas', 'Minhas'], ['livres', 'Sem responsável']];
