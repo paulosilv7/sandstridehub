@@ -1,4 +1,4 @@
-// Caixa de entrada Sandstride: site que junta as conversas das lojas e deixa a equipe responder.
+// Chats Sandstride: site que junta as conversas das lojas e deixa a equipe responder.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
@@ -324,12 +324,12 @@ function renderSandy() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Caixa de entrada                                                    */
+/* Chats                                                    */
 /* ------------------------------------------------------------------ */
 function renderChrome() {
   const aguard = S.convs.filter((c) => c.aguardando).length;
   $('navCount').textContent = aguard; $('navCount').dataset.n = String(aguard);
-  document.title = `${aguard ? `(${aguard}) ` : ''}Caixa de entrada Sandstride`;
+  document.title = `${aguard ? `(${aguard}) ` : ''}Chats Sandstride`;
   const fp = S.eu?.foto_path;
   const nomeEu = eu();
   $('eu').title = `${nomeEu} · ${souAdmin() ? 'Administrador' : 'Atendente'}`;
@@ -537,7 +537,7 @@ function vistaConfig() {
   h += '<div class="box"><h2>Sua conta</h2><div class="acoes"><a class="bt2" href="../" style="text-decoration:none;display:inline-flex;align-items:center">Voltar para a central</a><button type="button" class="bt2" data-act="sair">Sair</button></div></div>';
   return h;
 }
-const TITULOS = { inbox: 'Caixa de entrada', rapidas: 'Respostas rápidas', config: 'Configurações' };
+const TITULOS = { inbox: 'Chats', rapidas: 'Respostas rápidas', config: 'Configurações' };
 function renderView() {
   const inbox = S.view === 'inbox';
   $('v-inbox').hidden = !inbox; $('vista').hidden = inbox;
@@ -554,7 +554,7 @@ function renderView() {
 /* ------------------------------------------------------------------ */
 function telaLogin(msg = '', modo = 'entrar') {
   const rec = modo === 'recuperar';
-  $('raiz').innerHTML = `<div class="login"><form class="login-card" id="formLogin" novalidate><div class="fig">${sandySvg('tranquila', 'l')}</div><h1>Caixa de entrada Sandstride</h1><p class="sub">${rec ? 'Informe seu e-mail e enviaremos um link para criar uma nova senha.' : 'Entre com o e-mail e a senha da equipe.'}</p>` +
+  $('raiz').innerHTML = `<div class="login"><form class="login-card" id="formLogin" novalidate><div class="fig">${sandySvg('tranquila', 'l')}</div><h1>Chats Sandstride</h1><p class="sub">${rec ? 'Informe seu e-mail e enviaremos um link para criar uma nova senha.' : 'Entre com o e-mail e a senha da equipe.'}</p>` +
     (msg ? `<p class="erro" role="alert">${esc(msg)}</p>` : '') +
     '<label class="campo"><span class="eyebrow">E-mail</span><input id="l-email" type="email" autocomplete="username" required></label>' +
     (rec ? '' : '<label class="campo"><span class="eyebrow">Senha</span><input id="l-senha" type="password" autocomplete="current-password" required></label>') +
@@ -606,7 +606,7 @@ const ICONES = {
 function montarCasca() {
   $('raiz').innerHTML = `<div class="shell">
   <main class="main">
-    <div class="topo-pg"><img class="hlogo" src="../img/sandstride-escuro.png" alt="Sandstride"><span class="hsep" aria-hidden="true"></span><h1 id="titulo">Caixa de entrada</h1><span class="sp"></span>
+    <div class="topo-pg"><img class="hlogo" src="../img/sandstride-escuro.png" alt="Sandstride"><span class="hsep" aria-hidden="true"></span><h1 id="titulo">Chats</h1><span class="sp"></span>
       <label class="busca-top"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.8"/><path d="m14 14 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="busca" type="search" placeholder="Cliente ou pedido" aria-label="Buscar cliente, pedido ou mensagem" autocomplete="off"></label>
       <span class="live"><i id="liveDot"></i><span id="liveTxt">Conectando…</span></span></div>
     <div class="inbox" id="v-inbox">

@@ -7,16 +7,16 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const APPS = [
-  { id: 'chat', nome: 'Caixa de entrada', desc: 'Conversas e perguntas de todos os marketplaces.', href: 'chat/',
+  { id: 'chat', nome: 'Chats', desc: 'Conversas e perguntas de todos os marketplaces.', href: 'chat/',
     icone: '<path d="M5.5 5h13L21 13v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5l2.5-8Z M3 13h5.5l1 2.5h5l1-2.5H21"/>' },
   { id: 'precificacao', nome: 'Precificação', desc: 'Preços, margens e reajustes por marketplace.', href: 'precificacao/',
     icone: '<path d="M12 3v18M16 7.5c-.7-1.3-2.2-2-4-2-2.4 0-4 1.2-4 3 0 4.2 8.400 2.200 8.400 6.400 0 1.800-1.800 3.100-4.400 3.100-1.900 0-3.400-.8-4.200-2.200"/>' },
-  { id: 'estoque', nome: 'Estoque do galpão', desc: 'Estoque com grade de cor e tamanho.', href: 'estoque/',
+  { id: 'estoque', nome: 'Estoque', desc: 'Estoque com grade de cor e tamanho.', href: 'estoque/',
     icone: '<path d="M3 8 12 3l9 5v8l-9 5-9-5V8Zm0 0 9 5 9-5M12 13v8"/>' },
   { id: 'lucro', nome: 'Lucro ao vivo', desc: 'Lucro das vendas em tempo real, por loja e marketplace.', href: 'lucro/',
     icone: '<path d="M3 17l5-5 4 4 8-9M15 7h5v5"/>' },
-  { id: 'anuncios', nome: 'Criador de anúncios', desc: 'Títulos, descrições e fotos dos anúncios para cada marketplace.', breve: true,
-    icone: '<path d="M4 5h16v11H9l-5 4V5Zm4 4h8M8 12h5"/>' },
+  { id: 'contestacao', nome: 'Contestação', desc: 'Respostas a reclamações, cancelamentos e devoluções com ajuda da IA.', breve: true,
+    icone: '<path d="M12 3 4 6v5c0 5 3.400 8.500 8 10 4.600-1.500 8-5 8-10V6l-8-3Zm-3 9 2.500 2.500L15.500 9.500"/>' },
   { id: 'ads', nome: 'Gestor de Ads', desc: 'Gastos e resultados dos anúncios pagos em cada marketplace.', breve: true,
     icone: '<path d="M4 20V10m6 10V4m6 16v-7m5 7H3"/>' },
 ];
