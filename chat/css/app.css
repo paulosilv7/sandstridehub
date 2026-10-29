@@ -449,3 +449,27 @@ body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   .vista[data-v="config"]>*{break-inside:avoid;margin:0 0 14px}
   .vista[data-v="config"]>:not(.box){column-span:all}
 }
+
+/* lista mais compacta: cabem pelo menos 3 conversas na primeira tela */
+@media (min-width:861px){
+  .lista{padding:12px;gap:8px}
+  .seg{padding:3px;border-radius:20px}
+  .seg-b{min-height:40px;padding:3px 4px;border-radius:17px;gap:0}
+  .seg-n{font-size:14px}
+  .seg-l{font-size:11px}
+  .mks{gap:5px}
+  .pill,.pill.sm{height:28px;font-size:12px;padding:0 11px}
+  .pill.logo .mk{height:20px}
+  .dupla{gap:8px}
+  .loja{gap:3px}
+  .loja .eyebrow,.filtros2 .eyebrow{font-size:9.5px}
+  .loja .sel{height:34px;padding:0 12px}
+  .loja select{font-size:12.5px}
+  .filtros2{flex-direction:row;align-items:center;gap:8px;flex-wrap:wrap}
+  .rows{gap:6px}
+  .row{padding:10px 12px;gap:10px;border-radius:16px}
+  .row .av{width:34px;height:34px;border-radius:17px;font-size:13px}
+  .rb{gap:2px}
+  .row .nm{font-size:13px}
+  .rows{padding-bottom:76px}
+}
