@@ -150,13 +150,61 @@ async function situacaoDoPedido(token: string, pedido: any, bloqueioMsg: any, br
 }
 
 // ---------------------------------------------------------------------
+// Anexos: o ML só entrega o nome do arquivo; baixamos a foto e guardamos no nosso armazenamento.
+// ---------------------------------------------------------------------
+function tipoDoArquivo(b: Uint8Array): string | null {
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return "image/gif";
+  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return "image/webp";
+  if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46) return "application/pdf";
+  return null;
+}
+
+async function baixarAnexo(token: string, pedido: string, a: any): Promise<any> {
+  if (!a || a.path || !a.filename) return a;
+  const nome = a.original_filename ?? a.filename;
+  try {
+    const r = await fetch(`${API}/messages/attachments/${encodeURIComponent(a.filename)}?tag=post_sale&site_id=MLB`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) { console.error("ml-anexo", r.status, a.filename); return a; }
+    const buf = new Uint8Array(await r.arrayBuffer());
+    if (buf.byteLength > 10 * 1024 * 1024) return a;
+    const mime = tipoDoArquivo(buf);
+    if (!mime) return a;
+    const path = `ml/${pedido}/${a.filename}`;
+    const { error } = await supabase.storage.from("anexos").upload(path, buf, { contentType: mime, upsert: true });
+    if (error) { await diag("ml-anexo", `erro ao guardar ${a.filename}: ${error.message}`); return a; }
+    return { tipo: mime === "application/pdf" ? "arq" : "img", nome, path, mime, tamanho: buf.byteLength };
+  } catch (e) {
+    await diag("ml-anexo", `${e instanceof Error ? e.message : e}`);
+    return a;
+  }
+}
+
+async function converterAnexos(token: string, pedido: string, anexos: any[]): Promise<any[]> {
+  const saida: any[] = [];
+  for (const a of anexos) saida.push(await baixarAnexo(token, pedido, a));
+  return saida;
+}
+
+// ---------------------------------------------------------------------
 // Mensagens
 // ---------------------------------------------------------------------
-async function importarMensagens(conv: any, loja: any, dados: any): Promise<number> {
+async function importarMensagens(conv: any, loja: any, dados: any, token: string): Promise<number> {
   const lista: any[] = Array.isArray(dados?.messages) ? dados.messages : [];
-  if (!lista.length) return 0;
 
-  const { data: existentes } = await supabase.from("mensagens").select("id, id_externo, texto, de, criado_em").eq("conversa_id", conv.id);
+  const { data: existentes } = await supabase.from("mensagens").select("id, id_externo, texto, de, criado_em, anexos").eq("conversa_id", conv.id);
+
+  // Mensagens já gravadas com anexo ainda sem arquivo (vieram só com o nome): baixa agora.
+  for (const m of existentes ?? []) {
+    const pend = Array.isArray(m.anexos) && m.anexos.some((a: any) => a?.filename && !a?.path);
+    if (!pend) continue;
+    const novos = await converterAnexos(token, conv.id_externo, m.anexos);
+    if (JSON.stringify(novos) !== JSON.stringify(m.anexos)) await supabase.from("mensagens").update({ anexos: novos }).eq("id", m.id);
+  }
+  if (!lista.length) return 0;
   const jaTem = new Set((existentes ?? []).map((m: any) => m.id_externo));
   const locais = (existentes ?? []).filter((m: any) => String(m.id_externo).startsWith("local-") && m.de === "loja");
   const usadas = new Set<string>();
@@ -168,8 +216,9 @@ async function importarMensagens(conv: any, loja: any, dados: any): Promise<numb
     if (m.message_moderation?.status === "rejected") continue;
 
     const texto = typeof m.text === "string" ? m.text : (m.text?.plain ?? null);
-    const anexos = Array.isArray(m.message_attachments) ? m.message_attachments : [];
-    if (!texto && !anexos.length) continue;
+    const anexosBrutos = Array.isArray(m.message_attachments) ? m.message_attachments : [];
+    if (!texto && !anexosBrutos.length) continue;
+    const anexos = await converterAnexos(token, conv.id_externo, anexosBrutos);
 
     const de = String(m.from?.user_id) === String(loja.id_externo) ? "loja" : "cliente";
     const quando = m.message_date?.created ?? m.message_date?.received ?? m.message_date?.available ?? new Date().toISOString();
@@ -204,7 +253,7 @@ async function sincronizarConversa(conv: any, loja: any, explorar = false): Prom
   let dadosMsgs: any = null;
   try {
     dadosMsgs = await ml(`/messages/packs/${conv.id_externo}/sellers/${loja.id_externo}?tag=post_sale&mark_as_read=false&limit=50`, token);
-    resumo.novas = await importarMensagens(conv, loja, dadosMsgs);
+    resumo.novas = await importarMensagens(conv, loja, dadosMsgs, token);
     bruto.conversation_status = dadosMsgs?.conversation_status ?? null;
   } catch (e) {
     resumo.erro_msgs = `${e instanceof Error ? e.message : e}`.slice(0, 200);
