@@ -419,3 +419,6 @@ body{margin:0}
 .envio textarea:focus{box-shadow:0 0 0 2px var(--sel)}
 .thread .corpo{padding:3px}
 .bub{white-space:pre-wrap}
+
+.seg-b.wide{grid-column:1/-1;min-height:36px;flex-direction:row;gap:8px;padding:4px 10px}
+.seg-b.wide .seg-n{font-size:14px}

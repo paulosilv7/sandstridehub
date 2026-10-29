@@ -112,14 +112,14 @@ function normalizar(row) {
   const loja = S.lojas.find((l) => l.id === row.loja_id);
   const mk = MKS[loja?.marketplace] ?? MKS.mercado_livre;
   const atendente = S.equipe.find((u) => u.usuario_id === row.atendente_id);
-  const espera = row.aguardando_resposta && row.ultima_mensagem_em
+  const espera = row.aguardando_resposta && !row.situacao && row.ultima_mensagem_em
     ? Math.max(0, Math.floor((Date.now() - new Date(row.ultima_mensagem_em).getTime()) / 60000)) : 0;
   const tags = (row.conversa_etiquetas || []).map((x) => S.etiquetas.find((e) => e.id === x.etiqueta_id)?.nome).filter(Boolean);
   const pedido = row.tipo === 'pos_venda' && row.pedido_id_externo ? `#${row.pedido_id_externo}` : '';
   const produto = row.produto_titulo || '';
   return {
     id: row.id, lojaId: row.loja_id, lojaNome: loja?.nome ?? 'Loja', mkKey: loja?.marketplace ?? 'mercado_livre', mk: mk.k, sigla: mk.sigla, mkNome: mk.nome,
-    tipo: row.tipo, nome: row.cliente_nome || 'Cliente', aguardando: row.aguardando_resposta, espera,
+    tipo: row.tipo, nome: row.cliente_nome || 'Cliente', aguardando: row.aguardando_resposta && !row.situacao, situacao: row.situacao || null, situacaoDetalhe: row.situacao_detalhe || '', espera,
     bloqueada: row.bloqueada, motivo: row.motivo_bloqueio, atendenteId: row.atendente_id,
     atendenteNome: atendente?.nome ?? null, ia: row.atendida_por_ia, escalada: row.escalada_motivo,
     ultimaTexto: row.ultima_mensagem_texto || '', ultimaDe: row.ultima_mensagem_de, ultimaEm: row.ultima_mensagem_em,
@@ -182,7 +182,17 @@ const souAdmin = () => S.eu?.papel === 'admin';
 /* Regras de exibição                                                  */
 /* ------------------------------------------------------------------ */
 const parada = (c) => c.aguardando && !c.bloqueada && c.espera >= S.cfg.aviso;
+const SITUACAO = {
+  cancelado: { t: 'Cancelada', cls: 'warn' },
+  devolucao: { t: 'Devolução', cls: 'warn' },
+  devolvido: { t: 'Devolvida', cls: 'neutral' },
+  reclamacao: { t: 'Reclamação', cls: 'warn' },
+  analise_ml: { t: 'Em análise no ML', cls: 'warn' },
+};
+// Situações em que o marketplace não aceita mensagens do vendedor.
+const SEM_ENVIO = ['cancelado', 'devolucao', 'devolvido', 'analise_ml'];
 function estilo(c) {
+  if (c.situacao && SITUACAO[c.situacao]) return SITUACAO[c.situacao];
   if (c.bloqueada) return { t: 'Bloqueada', cls: 'warn' };
   if (!c.aguardando) return { t: 'Respondida', cls: 'good' };
   if (c.espera < S.cfg.aviso) return { t: fmt(c.espera), cls: 'neutral' };
@@ -199,7 +209,8 @@ const etqCls = (n) => `e${Math.max(0, S.etiquetas.findIndex((e) => e.nome === n)
 const norm = (t) => String(t || '').toLowerCase().replace(/#/g, '');
 function casa(c) {
   if (S.status === 'aguardando' && !c.aguardando) return false;
-  if (S.status === 'respondidas' && c.aguardando) return false;
+  if (S.status === 'respondidas' && (c.aguardando || c.situacao)) return false;
+  if (S.status === 'marketplace' && !c.situacao) return false;
   if (S.mk !== 'todos' && c.mkKey !== S.mk) return false;
   if (S.loja !== 'todas' && c.lojaId !== S.loja) return false;
   if (S.atend === 'minhas' && c.atendenteId !== S.user?.id) return false;
@@ -321,8 +332,10 @@ function renderChrome() {
 }
 function renderFilters() {
   const total = S.convs.length, aguard = S.convs.filter((c) => c.aguardando).length;
-  const st = [['todas', 'Todas', total], ['aguardando', 'Não respondidas', aguard], ['respondidas', 'Respondidas', total - aguard]];
-  $('seg').innerHTML = st.map((x) => `<button type="button" class="seg-b" data-act="status" data-v="${x[0]}" aria-pressed="${S.status === x[0]}"><span class="seg-n">${x[2]}</span><span class="seg-l">${x[1]}</span></button>`).join('');
+  const fora = S.convs.filter((c) => c.situacao).length;
+  const st = [['todas', 'Todas', total], ['aguardando', 'Não respondidas', aguard], ['respondidas', 'Respondidas', total - aguard - fora]];
+  $('seg').innerHTML = st.map((x) => `<button type="button" class="seg-b" data-act="status" data-v="${x[0]}" aria-pressed="${S.status === x[0]}"><span class="seg-n">${x[2]}</span><span class="seg-l">${x[1]}</span></button>`).join('') +
+    `<button type="button" class="seg-b wide" data-act="status" data-v="marketplace" aria-pressed="${S.status === 'marketplace'}" title="Cancelados, devoluções e reclamações que o Mercado Livre está tratando. Não entram nas métricas de não respondidas."><span class="seg-n">${fora}</span><span class="seg-l">Com o marketplace (cancelados, devoluções)</span></button>`;
   const mk = [['todos', 'Todos', null], ['mercado_livre', 'Mercado Livre', 'ml'], ['shopee', 'Shopee', 'sp'], ['tiktok_shop', 'TikTok Shop', 'tt']];
   $('mks').innerHTML = mk.map((x) => `<button type="button" class="pill${x[2] ? ` logo pk-${x[2]}` : ''}" data-act="mk" data-v="${x[0]}" aria-pressed="${S.mk === x[0]}" aria-label="${x[1]}" title="${x[1]}">${x[2] ? logo(x[2], x[1]) : x[1]}</button>`).join('');
   const at = [['todos', 'Todos'], ['minhas', 'Minhas'], ['livres', 'Sem responsável']];
@@ -394,7 +407,7 @@ function renderThread() {
   const box = $('thread'); if (!box) return;
   const c = atual();
   if (!c) { box.innerHTML = '<div class="vazio" style="margin:auto;text-align:center">Escolha uma conversa na lista para responder.</div>'; S.sigThread = ''; return; }
-  const sig = JSON.stringify([c.id, c.atendenteId, c.ia, c.bloqueada, c.tags, c.escalada, c.aguardando, c.dados, S.msgs.map((m) => m.id + m.estado), S.painel, S.anexos.map((a) => a.nome), S.aviso, S.enviando, S.rapidas.length, eu()]);
+  const sig = JSON.stringify([c.id, c.atendenteId, c.ia, c.bloqueada, c.situacao, c.tags, c.escalada, c.aguardando, c.dados, S.msgs.map((m) => m.id + m.estado), S.painel, S.anexos.map((a) => a.nome), S.aviso, S.enviando, S.rapidas.length, eu()]);
   const foco = document.activeElement?.id === 'draft';
   const selIni = foco ? document.activeElement.selectionStart : 0;
   const e = estilo(c);
@@ -406,7 +419,8 @@ function renderThread() {
     return `<div class="msg ${loja ? 'loja' : 'cli'}">${m.texto ? `<div class="bub">${esc(m.texto)}</div>` : ''}${anexosHtml(m.anexos)}<div class="when">${loja && !m.enviada_por_ia ? esc(quem) : quem} · ${esc(quando(m.enviada_em))}</div></div>`;
   }).join('') || '<p class="mut">Carregando mensagens…</p>';
   let rodape;
-  if (c.bloqueada) rodape = `<p class="aviso">${esc(c.motivo || 'O marketplace bloqueou as respostas desta conversa.')}</p>`;
+  if (c.situacao && SEM_ENVIO.includes(c.situacao)) rodape = `<p class="aviso"><strong>${esc(SITUACAO[c.situacao].t)} no Mercado Livre.</strong> ${esc(c.situacaoDetalhe || 'O marketplace não aceita mensagens neste momento.')} Acompanhe pelo painel do Mercado Livre. Esta conversa não conta nas não respondidas.</p>`;
+  else if (c.bloqueada) rodape = `<p class="aviso">${esc(c.motivo || 'O marketplace bloqueou as respostas desta conversa.')}</p>`;
   else if (c.mkKey !== 'mercado_livre' && c.mkKey !== 'tiktok_shop' && c.mkKey !== 'shopee') rodape = '<p class="aviso">O envio de respostas por esta loja ainda não está disponível aqui. Responda pelo aplicativo do marketplace.</p>';
   else if (outro) {
     rodape = `<p class="aviso">${c.ia ? 'A Sandy está atendendo esta conversa. Se você assumir, ela para de responder aqui.' : `${esc(c.atendenteNome || 'Outra pessoa')} está atendendo esta conversa. Para responder, assuma a conversa.`}</p><div class="acoes"><button type="button" class="btn" data-act="assumir">${c.ia ? 'Assumir e pausar a Sandy' : 'Assumir conversa'}</button></div>`;
@@ -414,6 +428,7 @@ function renderThread() {
     const rap = S.rapidas.filter((r) => r.escopo === 'todas' || r.escopo === c.mkKey);
     const pode = c.tipo !== 'pergunta';
     rodape = '<div class="comp">' +
+      (c.situacao === 'reclamacao' ? `<p class="aviso"><strong>Reclamação aberta.</strong> ${esc(c.situacaoDetalhe)} O Mercado Livre pode recusar mensagens. Esta conversa não conta nas não respondidas.</p>` : '') +
       (c.escalada && !c.atendenteId ? `<p class="aviso"><strong>A Sandy passou esta conversa para a equipe.</strong> ${esc(c.escalada)}</p>` : '') +
       `<div class="rap"><span class="eyebrow">Respostas rápidas</span>${rap.length ? rap.map((r) => `<button type="button" class="chipr" data-act="rapida" data-id="${r.id}">${esc(r.titulo)}</button>`).join('') : '<span class="mut">Nenhuma cadastrada para esta loja.</span>'}</div>` +
       (S.aviso ? `<p class="aviso" role="alert">${esc(S.aviso)}</p>` : '') +
