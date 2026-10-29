@@ -387,8 +387,6 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))}
   <button type="button" class="bk" data-a="nav" data-v="lote" id="nav-lote" aria-label="Reajuste em lote" title="Reajuste em lote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M4 7h11M4 12h8M4 17h11M17 9l3-3 3 3M20 6v12" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <button type="button" class="bk" data-a="nav" data-v="prejuizos" id="nav-prejuizos" aria-label="Prejuízos" title="Prejuízos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="bdg" id="nav-count" hidden></span></button>
   <button type="button" class="bk" data-a="nav" data-v="config" id="nav-config" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" stroke-linecap="round"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
-  <div class="sp1"></div>
-  <button type="button" class="bk" id="sair" aria-label="Sair" title="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M16 8l4 4-4 4M20 12H9"/></svg></button>
 </nav>
 <div class="toast" id="toast" hidden></div>
 
@@ -1383,7 +1381,6 @@ const app = document.getElementById('app');
 function aviso(titulo, texto, botao, destino) {
   app.innerHTML = '<div class="head"><h1>' + titulo + '</h1></div><div class="card"><p class="muted">' + texto + '</p><div class="btns" style="margin-top:14px"><a class="btn dark" style="display:inline-flex;align-items:center;text-decoration:none" href="' + destino + '">' + botao + '</a></div></div>';
 }
-document.getElementById('sair').addEventListener('click', async () => { await sb.auth.signOut(); location.href = '../'; });
 if (/[?&]base=teste\b/.test(location.search)) document.getElementById('aviso-teste').hidden = false;
 (async () => {
   const { data } = await sb.auth.getSession();
