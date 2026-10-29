@@ -1223,10 +1223,18 @@ function renderCal(){
   function linha(o){return '<div class="rr"><span class="rd '+(o.luc>=0?'g':'r')+'">'+o.d+'</span><span class="rn">'+DLONG[new Date(y,m,o.d).getDay()]+'</span><span class="rv">'+(o.luc<0?'−':'')+brl0(Math.abs(o.luc))+'</span></div>'}
   $('#cRank').innerHTML=fech.length?'<div class="rt">Melhores dias</div>'+ord.slice(0,3).map(linha).join('')+'<div class="gap"></div><div class="rt">Piores dias</div>'+ord.slice(-3).reverse().map(linha).join(''):'<div class="rt">Sem dias fechados neste mês</div>';
   var ban=$('#cBan');
-  if(false){
-    var ped=ds.reduce(function(a,o){return a+o.ped},0);
+  var passado=(y*12+m)<(HOJE.y*12+HOJE.m);
+  if(passado&&FECH_OK){
+    var ch=y+'-'+(m<9?'0':'')+(m+1),f=FECH[ch]||{};
+    var ped=ds.reduce(function(a,o){return a+(o.ped||0)},0);
     ban.hidden=false;
-    ban.innerHTML='<p><b style="font-weight:500">Fechamento de setembro.</b> O resumo dos dias já está salvo. Os detalhes de cerca de '+ped.toLocaleString('pt-BR')+' pedidos podem ser baixados e apagados a partir de 1º de novembro, para liberar espaço.</p><button type="button" id="cBaixar">Baixar fechamento</button>';
+    if(f.apagado_em){
+      ban.innerHTML='<p><b style="font-weight:500">Fechamento de '+MESES[m]+'.</b> Os detalhes dos pedidos já foram baixados e apagados. O resumo dos dias continua salvo.</p>';
+    }else{
+      ban.innerHTML='<p><b style="font-weight:500">Fechamento de '+MESES[m]+'.</b> O resumo dos dias já está salvo para sempre. Os detalhes de cerca de '+ped.toLocaleString('pt-BR')+' pedidos podem ser baixados em planilha'+(f.baixado_em?' (último download em '+new Date(f.baixado_em).toLocaleDateString('pt-BR')+')':'')+'. Só depois do download dá para apagá-los e liberar espaço.</p>'+
+        '<button type="button" id="cBaixar" data-mes="'+ch+'">'+(f.baixado_em?'Baixar de novo':'Baixar fechamento')+'</button>'+
+        (f.baixado_em?'<button type="button" id="cApagar" data-mes="'+ch+'" style="background:#b3261e">Apagar detalhes</button>':'');
+    }
   }else ban.hidden=true;
 }
 function dTip(btn){
@@ -1249,7 +1257,7 @@ function irPara(pg){
   $('#pgHome').hidden=cal||cfg;$('#pgCal').hidden=!cal;$('#pgCfg').hidden=!cfg;$('#ctip').hidden=true;
   $('#calBtn').setAttribute('aria-expanded',cal?'true':'false');
   $('#metaBtn').setAttribute('aria-expanded',cfg?'true':'false');
-  if(cal){calMes={y:HOJE.y,m:HOJE.m};renderCal();carregarResumo().then(function(){if(!$('#pgCal').hidden)renderCal()})}
+  if(cal){calMes={y:HOJE.y,m:HOJE.m};renderCal();Promise.all([carregarResumo(),carregarFech()]).then(function(){if(!$('#pgCal').hidden)renderCal()})}
   if(cfg){$('#wkIn').dataset.ok='0';renderCfg()}
   try{window.scrollTo(0,0)}catch(e){}
 }
@@ -1264,10 +1272,8 @@ $('#cBack').addEventListener('click',function(){irPara('home')});
 $('#cPrev').addEventListener('click',function(){mudaMes(-1)});
 $('#cNext').addEventListener('click',function(){mudaMes(1)});
 $('#pgCal').addEventListener('click',function(e){
-  if(e.target.id==='cBaixar'){
-    var t=$('#toast');t.textContent='Na versão final, baixa um PDF e uma planilha com o lucro por dia, loja e produto.';t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true},3200);
-    return;
-  }
+  if(e.target.id==='cBaixar'){baixarFechamento(e.target);return}
+  if(e.target.id==='cApagar'){apagarDetalhes(e.target);return}
   var b=e.target.closest('.cd[data-d]');if(b)dTip(b);
 });
 $('#cGrid').addEventListener('pointerover',function(e){var b=e.target.closest('.cd[data-d]');if(b&&e.pointerType!=='touch')dTip(b)});
@@ -1316,6 +1322,68 @@ async function carregar(){
   var r=await SB.rpc('lucro_painel');
   if(r.error||!r.data){var pill=$('#sincPill');if(pill){pill.textContent='Sem conexão com o banco';pill.className='pill bad'}return}
   aplicarDados(r.data);render();
+}
+var FECH={},FECH_OK=false;
+async function carregarFech(){
+  var r=await SB.from('lucro_fechamentos').select('mes,baixado_em,apagado_em');
+  if(r.error||!r.data)return;
+  FECH={};r.data.forEach(function(x){FECH[String(x.mes).slice(0,7)]=x});FECH_OK=true;
+}
+function csvCel(v){if(v===null||v===undefined)return '';v=String(v);return /[;"\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function csvNum(v){return v===null||v===undefined||v===''?'':String(v).replace('.',',')}
+function salvarCSV(nome,linhas){
+  var blob=new Blob(['\ufeff'+linhas.map(function(l){return l.map(csvCel).join(';')}).join('\r\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);
+}
+async function baixarFechamento(btn){
+  var ch=btn.getAttribute('data-mes'),pp=ch.split('-'),y=+pp[0],m=+pp[1];
+  var ini=ch+'-01',fim=(m===12?(y+1)+'-01':y+'-'+(m<9?'0':'')+(m+1))+'-01';
+  btn.disabled=true;var txt=btn.textContent;btn.textContent='Preparando…';
+  try{
+    var nomes={};LOJAS.forEach(function(L){nomes[L.id]=L.nome});
+    var pr=await SB.from('lucro_produtos').select('id,nome'),prod={};
+    (pr.data||[]).forEach(function(x){prod[x.id]=x.nome});
+    var peds=[],from=0;
+    for(;;){
+      var r=await SB.from('lucro_pedidos').select('*,lucro_itens(*)').gte('dia',ini).lt('dia',fim).order('dia').order('pago_em').range(from,from+499);
+      if(r.error)throw r.error;
+      peds=peds.concat(r.data||[]);if(!r.data||r.data.length<500)break;from+=500;
+    }
+    var rs=await SB.from('lucro_resumo_dia').select('*').gte('dia',ini).lt('dia',fim).order('dia');
+    if(rs.error)throw rs.error;
+    var cab=['Dia','Loja','Pedido','Status','Pago em','SKU','Anúncio','Título','Produto vinculado','Quantidade','Preço unitário','Desconto do vendedor (pedido)','Taxa do marketplace (pedido)','Frete do vendedor (pedido)','Alíquota de imposto','Custos gerais por par','Custos gerais por pedido'];
+    var L=[cab];
+    peds.forEach(function(o){
+      var its=o.lucro_itens&&o.lucro_itens.length?o.lucro_itens:[{}];
+      its.forEach(function(i,ix){
+        L.push([o.dia,nomes[o.loja_id]||o.loja_id,o.pedido_externo,o.status,o.pago_em,i.sku||'',i.anuncio_id||'',i.titulo||'',prod[i.produto_id]||'',i.quantidade||'',csvNum(i.preco_unitario),
+          ix===0?csvNum(o.desconto_vendedor):'',ix===0?csvNum(o.taxa_marketplace):'',ix===0?csvNum(o.frete_vendedor):'',csvNum(o.aliquota_imposto),csvNum(o.custos_gerais_par),ix===0?csvNum(o.custos_gerais_pedido):'']);
+      });
+    });
+    salvarCSV('lucro-detalhes-'+ch+'.csv',L);
+    var R=rs.data||[];
+    if(R.length){
+      var cols=Object.keys(R[0]).filter(function(k){return k!=='id'&&k!=='fechado'});
+      var LR=[cols].concat(R.map(function(x){return cols.map(function(k){return typeof x[k]==='number'?csvNum(x[k]):x[k]})}));
+      setTimeout(function(){salvarCSV('lucro-resumo-dias-'+ch+'.csv',LR)},700);
+    }
+    var mk=await SB.rpc('lucro_marcar_baixado',{p_mes:ini});
+    if(mk.error)throw mk.error;
+    await carregarFech();renderCal();
+    aviso('Fechamento baixado: '+peds.length.toLocaleString('pt-BR')+' pedidos. Confira os arquivos antes de apagar os detalhes.',5000);
+  }catch(err){
+    btn.disabled=false;btn.textContent=txt;aviso('Não foi possível baixar o fechamento. Tente de novo.',4000);
+  }
+}
+async function apagarDetalhes(btn){
+  var ch=btn.getAttribute('data-mes'),pp=ch.split('-');
+  if(!window.confirm('Apagar os detalhes dos pedidos de '+MESES[+pp[1]-1]+'? O resumo dos dias continua salvo, mas os pedidos só poderão ser vistos nas planilhas baixadas.'))return;
+  btn.disabled=true;
+  var r=await SB.rpc('lucro_limpar_detalhes',{p_mes:ch+'-01'});
+  if(r.error){btn.disabled=false;aviso('Não foi possível apagar: '+(r.error.message||'erro'),4500);return}
+  await carregarFech();renderCal();
+  aviso('Detalhes apagados ('+Number(r.data||0).toLocaleString('pt-BR')+' pedidos). O resumo dos dias foi mantido.',4500);
 }
 async function carregarResumo(){
   var from=0,todos=[];
