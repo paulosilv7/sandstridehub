@@ -950,7 +950,7 @@ async function iniciar() {
   try {
     const { data } = await sb.auth.getSession();
     const user = data?.session?.user;
-    if (!user) { location.replace('../?next=/chat/'); return; }
+    if (!user) { location.replace('../?next=' + encodeURIComponent('/chat/' + location.search)); return; }
     S.user = user;
     const { data: eq } = await sb.from('equipe').select('usuario_id, nome, papel, foto_path').eq('usuario_id', user.id).maybeSingle();
     if (!eq) { iniciando = false; return telaSemAcesso(); }
@@ -964,6 +964,9 @@ async function iniciar() {
     S.sel = null;
     renderView(); renderInbox();
     ligarTempoReal();
+    // Link direto para uma conversa (ex.: aviso da Sandy no Telegram): /chat/?c=<id>
+    const abrir = new URLSearchParams(location.search).get('c');
+    if (abrir) { history.replaceState(null, '', location.pathname); if (S.convs.some((x) => x.id === abrir)) escolher(abrir); }
     iniciando = false;
   } catch (e) {
     console.error(e); iniciando = false;

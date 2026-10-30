@@ -148,7 +148,7 @@ async function iniciar() {
     eu = e;
     const { data: ac } = await sb.from('acessos_apps').select('app').eq('usuario_id', user.id);
     acessos = new Set((ac || []).map((x) => x.app));
-    if (proximo && /^\/[a-z0-9\-/]*$/i.test(proximo) && !proximo.startsWith('//')) { location.replace(proximo); return; }
+    if (proximo && /^\/[a-z0-9\-/]*(\?c=[0-9a-f-]{36})?$/i.test(proximo) && !proximo.startsWith('//')) { location.replace(proximo); return; }
     await tela();
   } catch (err) { console.error(err); $('raiz').innerHTML = '<p class="muted" style="text-align:center;margin-top:30vh">Não foi possível carregar. Atualize a página.</p>'; }
   iniciando = false;
