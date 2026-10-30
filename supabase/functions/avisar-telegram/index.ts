@@ -35,11 +35,31 @@ async function grupo(): Promise<string | null> {
 async function descobrir() {
   const ups: any[] = await telegram("getUpdates", { allowed_updates: ["message", "my_chat_member"] });
   const chats = ups.map((u) => u.message?.chat ?? u.my_chat_member?.chat).filter((c) => c && (c.type === "group" || c.type === "supergroup"));
-  if (!chats.length) { await diag("nenhum grupo encontrado: adicione o bot ao grupo e mande uma mensagem qualquer no grupo"); return; }
+  if (!chats.length) {
+    const eu: any = await telegram("getMe").catch(() => ({}));
+    const tipos = ups.map((u) => Object.keys(u).filter((k) => k !== "update_id").join("+") + ":" + (u.message?.chat?.type ?? u.my_chat_member?.chat?.type ?? "?"));
+    await diag(`nenhum grupo encontrado (bot @${eu.username ?? "?"}, ${ups.length} atualizações: ${tipos.join(", ").slice(0, 400) || "nenhuma"}). Adicione o bot ao grupo e mande uma mensagem no grupo.`);
+    return;
+  }
   const c = chats[chats.length - 1];
   await supabase.from("configuracoes").upsert({ chave: "telegram_chat_id", valor: String(c.id) }, { onConflict: "chave" });
   await telegram("sendMessage", { chat_id: c.id, text: "✅ Sandy conectada a este grupo. Vou avisar aqui quando um cliente precisar de uma pessoa." });
   await diag(`grupo conectado: ${c.title ?? c.id}`);
+}
+
+// Troca a foto de perfil do bot (JPG publicado no site).
+async function trocarFoto(url: string) {
+  if (!TOKEN) throw new Error("segredo TELEGRAM_BOT_TOKEN não cadastrado");
+  if (!url.startsWith(SITE + "/")) throw new Error("a foto precisa estar no site da Central");
+  const img = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  if (!img.ok) throw new Error(`não consegui baixar a foto (${img.status})`);
+  const bytes = new Uint8Array(await img.arrayBuffer());
+  const f = new FormData();
+  f.append("photo", JSON.stringify({ type: "static", photo: "attach://foto" }));
+  f.append("foto", new Blob([bytes], { type: "image/jpeg" }), "sandy.jpg");
+  const r = await fetch(`https://api.telegram.org/bot${TOKEN}/setMyProfilePhoto`, { method: "POST", body: f, signal: AbortSignal.timeout(20_000) });
+  const j: any = await r.json().catch(() => ({}));
+  await diag(j.ok ? "foto de perfil atualizada" : `foto: ${j.description ?? r.status}`);
 }
 
 async function avisar(registroId: number) {
@@ -77,6 +97,7 @@ Deno.serve(async (req) => {
   const tarefa = async () => {
     try {
       if (corpo.descobrir) await descobrir();
+      else if (corpo.foto_url) await trocarFoto(String(corpo.foto_url));
       else if (corpo.teste) {
         const chat = await grupo();
         if (!chat) await diag("grupo ainda não conectado");
