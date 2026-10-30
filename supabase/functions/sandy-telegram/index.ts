@@ -212,13 +212,15 @@ function instrucoes(quem: string, contexto: string) {
     "Ao citar conversas, inclua o link para abrir.",
     "Quando a equipe ensinar algo ('aprende', 'de agora em diante', 'responda mais ou menos assim' sobre um tipo de situação), use a ferramenta ensinar e depois confirme em uma frase o que guardou.",
     "Se pedirem para responder um cliente específico com um texto, use responder_cliente com o conversa_id certo e confirme o envio. Se não estiver claro qual cliente, pergunte antes. Nunca envie a um cliente algo que não foi pedido.",
+    "Você também recebe áudios (já transcritos) e imagens (prints, fotos de produto, de etiqueta, de conversa). Use o que vê na imagem para ajudar; se não der para ler, diga.",
     "Assuntos fora do atendimento da loja: responda brevemente que você cuida do atendimento.",
     contexto ? `CONTEXTO (mensagem a que estão respondendo): ${contexto}` : "",
   ].filter(Boolean).join("\n");
 }
 
-async function conversarComModelo(texto: string, quem: string, contexto: string): Promise<string> {
-  const msgs: any[] = [{ role: "system", content: instrucoes(quem, contexto) }, { role: "user", content: texto }];
+async function conversarComModelo(texto: string, quem: string, contexto: string, imagem?: string): Promise<string> {
+  const conteudo: any = imagem ? [{ type: "text", text: texto || "(sem texto, só a imagem)" }, { type: "image_url", image_url: { url: imagem } }] : texto;
+  const msgs: any[] = [{ role: "system", content: instrucoes(quem, contexto) }, { role: "user", content: conteudo }];
   for (let i = 0; i < 5; i++) {
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI}` }, signal: AbortSignal.timeout(45_000),
@@ -241,6 +243,31 @@ async function conversarComModelo(texto: string, quem: string, contexto: string)
 }
 
 // ---------------------------------------------------------------------
+// Áudio e imagem (arquivos do Telegram, até 20 MB)
+// ---------------------------------------------------------------------
+async function baixarArquivo(fileId: string): Promise<Uint8Array> {
+  const f = await telegram("getFile", { file_id: fileId });
+  const r = await fetch(`https://api.telegram.org/file/bot${TOKEN}/${f.file_path}`, { signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`não consegui baixar o arquivo (${r.status})`);
+  return new Uint8Array(await r.arrayBuffer());
+}
+async function transcrever(bytes: Uint8Array, nome: string): Promise<string> {
+  const f = new FormData();
+  f.append("file", new Blob([bytes]), nome);
+  f.append("model", "gpt-4o-mini-transcribe");
+  f.append("language", "pt");
+  const r = await fetch("https://api.openai.com/v1/audio/transcriptions", { method: "POST", headers: { Authorization: `Bearer ${OPENAI}` }, body: f, signal: AbortSignal.timeout(60_000) });
+  const j: any = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`transcrição ${r.status}: ${String(j?.error?.message ?? "").slice(0, 200)}`);
+  return String(j.text ?? "").trim();
+}
+function base64(bytes: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+// ---------------------------------------------------------------------
 // Mensagens do grupo
 // ---------------------------------------------------------------------
 let usuarioBot: string | null = null;
@@ -254,16 +281,32 @@ async function processar(u: any) {
     await diag(`grupo migrou para ${msg.migrate_to_chat_id}`);
     return;
   }
-  const texto = String(msg.text ?? msg.caption ?? "").trim();
-  if (!texto || msg.from?.is_bot) return;
+  if (msg.from?.is_bot) return;
+  let texto = String(msg.text ?? msg.caption ?? "").trim();
+  const audio = msg.voice ?? msg.audio ?? (String(msg.document?.mime_type ?? "").startsWith("audio/") ? msg.document : null);
+  const foto = Array.isArray(msg.photo) && msg.photo.length ? msg.photo[msg.photo.length - 1]
+    : (String(msg.document?.mime_type ?? "").startsWith("image/") ? msg.document : null);
+  if (!texto && !audio && !foto) return;
   if (String(msg.chat?.id) !== grupo) {
     if (msg.chat?.type === "private") await telegram("sendMessage", { chat_id: msg.chat.id, text: "Oi! Eu só converso no grupo da equipe da Sandstride. 🙂" }).catch(() => {});
     return;
   }
   if (!usuarioBot) usuarioBot = (await telegram("getMe")).username ?? "";
   const respondeABot = msg.reply_to_message?.from?.username === usuarioBot;
-  const chamada = /\bsandy\b/i.test(texto) || (usuarioBot && texto.toLowerCase().includes(`@${usuarioBot.toLowerCase()}`)) || respondeABot;
-  if (!chamada) return;
+  const citaSandy = (t: string) => /\bsandy\b/i.test(t) || (!!usuarioBot && t.toLowerCase().includes(`@${usuarioBot.toLowerCase()}`));
+  // Áudio: só transcreve se for resposta a ela ou se o áudio for curto o bastante para valer a pena conferir (até 3 min).
+  if (audio && !texto && (respondeABot || Number(audio.duration ?? 0) <= 180) && Number(audio.file_size ?? 0) < 20_000_000) {
+    try { texto = await transcrever(await baixarArquivo(audio.file_id), msg.voice ? "audio.ogg" : (audio.file_name ?? "audio.mp3")); }
+    catch (e) { await diag(`áudio: ${e instanceof Error ? e.message : e}`); if (respondeABot) texto = "[áudio que não consegui ouvir]"; }
+    if (texto && !respondeABot && !citaSandy(texto)) return; // áudio para outra pessoa do grupo
+  }
+  if (!(respondeABot || citaSandy(texto))) return;
+  let imagem: string | undefined;
+  if (foto && Number(foto.file_size ?? 0) < 15_000_000) {
+    try { imagem = `data:${foto.mime_type ?? "image/jpeg"};base64,${base64(await baixarArquivo(foto.file_id))}`; }
+    catch (e) { await diag(`imagem: ${e instanceof Error ? e.message : e}`); }
+  }
+  if (audio) texto = `(mensagem de áudio transcrita) ${texto}`;
 
   await telegram("sendChatAction", { chat_id: msg.chat.id, action: "typing" }).catch(() => {});
   const quem = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ") || "alguém da equipe";
@@ -275,7 +318,7 @@ async function processar(u: any) {
     contexto = `${rt.slice(0, 800)}${conv ? `\n(conversa_id desta conversa: ${conv[1]})` : ""}`;
   }
   let resposta: string;
-  try { resposta = await conversarComModelo(texto.replace(new RegExp(`@${usuarioBot}`, "ig"), "").trim(), quem, contexto); }
+  try { resposta = await conversarComModelo(texto.replace(new RegExp(`@${usuarioBot}`, "ig"), "").trim(), quem, contexto, imagem); }
   catch (e) { await diag(`erro: ${e instanceof Error ? e.message : e}`); resposta = "Tive um problema para responder agora. Tenta de novo daqui a pouco?"; }
   // Envia em partes, com "digitando..." entre elas, como uma pessoa.
   const partes = resposta.split(/\n?\s*\|\|\|\s*\n?/).map((t) => t.trim()).filter(Boolean).slice(0, 5);
