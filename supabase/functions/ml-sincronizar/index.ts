@@ -1,6 +1,6 @@
 // Confere de tempos em tempos as conversas pós-venda do Mercado Livre:
 //  1) traz as mensagens que a loja enviou por fora do nosso chat (aplicativo do ML, UpSeller etc.)
-//     e as que o aviso automático do ML deixou passar;
+//     e as que o aviso automático do ML deixou passar, já baixando as fotos e arquivos anexados;
 //  2) lê a situação real do pedido (cancelado, devolução, reclamação em análise) e grava em
 //     conversas.situacao, para o chat tirar essas conversas das "não respondidas".
 // Chamada pelo agendador do banco (pg_cron + pg_net) com o cabeçalho x-lucro-token.
@@ -106,6 +106,10 @@ async function situacaoDoPedido(token: string, pedido: any, bloqueioMsg: any, br
         if (reclamacao?.situacao === "analise_ml") break;
       }
     } catch (e) { bruto.claim_erro = `${e instanceof Error ? e.message : e}`.slice(0, 200); }
+  }
+  // Reclamação aberta com o chat bloqueado pelo ML (ex.: blocked_by_claim): não dá para responder, vai para "Com o marketplace".
+  if (reclamacao?.situacao === "reclamacao" && String(bloqueioMsg?.status ?? "") === "blocked") {
+    return { situacao: "analise_ml", detalhe: "Reclamação aberta e o Mercado Livre bloqueou as mensagens deste pedido." };
   }
   if (reclamacao) return reclamacao;
 
