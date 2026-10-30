@@ -533,7 +533,7 @@ function vistaSandy() {
     `<label class="chk"><input id="sy-ativa" type="checkbox"${y.ativa ? ' checked' : ''}${dis}>Sandy ligada</label>` +
     `<span class="eyebrow">Lojas em que ela pode atender</span><div class="grade">${S.lojas.filter((l) => l.ativa).map((l) => `<label class="chk"><input class="sy-loja" data-id="${l.id}" type="checkbox"${l.sandy_ativa ? ' checked' : ''}${dis}>${esc(l.nome)} <span class="mut">${esc(MKS[l.marketplace]?.nome || '')}</span></label>`).join('')}</div>` +
     `<label class="campo"><span class="eyebrow">Assuntos que sempre vão para uma pessoa (palavras separadas por vírgula)</span><textarea id="sy-palavras" maxlength="3000"${dis}>${esc(y.palavras)}</textarea></label>` +
-    '<p class="mut" style="margin:0">Se a mensagem do cliente tiver qualquer uma dessas palavras, a Sandy nem tenta responder: marca a conversa como "Precisa de uma pessoa". Reembolso, devolução, defeito e reclamação já vêm incluídos.</p>' +
+    '<p class="mut" style="margin:0">Se a mensagem do cliente tiver qualquer uma dessas palavras, a Sandy nem tenta responder: marca a conversa como "Precisa de uma pessoa". Pedido errado, defeito, cancelamento, devolução e reembolso têm tratamento próprio: ela acolhe o cliente com um texto padrão e passa para a equipe. Assuntos graves (Procon, golpe etc.) ficam numa lista à parte.</p>' +
     (ad ? '<div class="acoes"><button type="button" class="btn" data-act="sandy-salvar-geral">Salvar</button></div>' : '') + '</div>';
   h += '<div class="box"><h2>O que a Sandy sabe</h2><div class="txt">Ela só responde com o que estiver aqui. Se a resposta não estiver nestas informações, ela passa a conversa para a equipe em vez de inventar.</div></div>';
   if (S.novaBase || S.editBase) h += formBase(y.base.find((x) => x.id === S.editBase));
@@ -858,7 +858,10 @@ document.addEventListener('click', async (ev) => {
       let ok = await guardar(sb.from('configuracoes').upsert([{ chave: 'sandy_ativa', valor: String(ligar) }, { chave: 'sandy_escalar_palavras', valor: val('sy-palavras').trim() }], { onConflict: 'chave' }));
       for (const i of document.querySelectorAll('.sy-loja')) {
         if (!ok) break;
-        ok = await guardar(sb.from('lojas').update({ sandy_ativa: i.checked }).eq('id', i.getAttribute('data-id')));
+        const r = await sb.from('lojas').update({ sandy_ativa: i.checked }).eq('id', i.getAttribute('data-id')).select('id');
+        // Sem permissão, o banco não dá erro: só não altera nada. Por isso conferimos se alguma linha mudou.
+        ok = !r.error && (r.data || []).length === 1;
+        if (!ok) S.msg = 'Não foi possível salvar as lojas. Confira se você é administrador e tente de novo.';
       }
       if (ok) { S.msg = ligar ? 'Sandy ligada nas lojas marcadas.' : 'Configuração salva. A Sandy está desligada.'; await carregarBase(); await carregarSandy(); }
       renderView(); break;
