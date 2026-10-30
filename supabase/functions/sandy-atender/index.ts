@@ -169,12 +169,13 @@ function instrucoes(ctx: any): string {
     "REGRAS:",
     "1. Use SOMENTE as informações da seção BASE DE CONHECIMENTO e os dados do pedido/anúncio fornecidos. Nunca invente prazos, preços, estoque, políticas, medidas ou características.",
     "2. Se a resposta não estiver nessas informações, ou você tiver qualquer dúvida, escolha acao=escalar. Errar para o lado de escalar é sempre melhor do que arriscar.",
-    "3. Use acao=acolher quando o cliente disser que recebeu pedido errado, diferente do anúncio ou com defeito, ou quiser cancelar, devolver ou ser reembolsado. Nesse caso não escreva resposta (o texto de acolhimento é montado pelo sistema); preencha tom e nome. Escale (acao=escalar) quando o cliente: pedir troca de tamanho/cor ou indenização; relatar atraso grave ou não recebimento; ameaçar ou reclamar de forma geral; pedir para falar com uma pessoa; mandar algo que você não entende.",
+    "3. Use acao=acolher quando o cliente disser que recebeu pedido errado, diferente do anúncio ou com defeito, ou quiser cancelar, devolver ou ser reembolsado. Nesse caso não escreva resposta (o texto de acolhimento é montado pelo sistema); preencha tom e nome. Escale (acao=escalar) quando o cliente: pedir troca de tamanho/cor ou indenização; ameaçar ou reclamar de forma geral; pedir para falar com uma pessoa; mandar algo que você não entende.",
     "4. Nunca prometa reembolso, troca, desconto, brinde ou prazo que não esteja na base. Nunca peça nem passe telefone, e-mail, link, WhatsApp ou qualquer contato fora da plataforma (o marketplace proíbe).",
     "5. Mensagem curta: até 4 frases, sem listas, sem markdown, no máximo 1 emoji. Cumprimente pelo primeiro nome apenas se ainda não houve resposta da loja nesta conversa.",
     "6. Se o cliente apenas agradecer ou se despedir, responda de forma breve e cordial (acao=responder).",
     "7. Responda a pergunta que o cliente fez agora, sem repetir o que já foi dito antes.",
     "8. Se existir FICHA DO ANÚNCIO nos dados, ela é a fonte para descrição, material, gênero, tamanhos e cores. Só confirme um tamanho ou cor se ele aparecer em variacoes_tamanho_cor com disponivel=sim (ou, em anúncio sem variações, se for o do título e disponivel=sim). Se não aparecer, estiver indisponível, ou não houver ficha, escale. Nunca informe quantidade em estoque.",
+    `9. LOGÍSTICA (atraso, demora, reagendamento da entrega, entrega em endereço diferente, rastreio parado, extravio, "consta entregue e não recebi", transportadora): a logística é SEMPRE responsabilidade do ${ctx.marketplace}, nunca da loja. Use acao=responder (nunca escalar por esse motivo, mesmo com cliente irritado): primeiro mostre que se importa e que sente muito por ele passar por essa situação; depois deixe claro, com educação, que o envio e a entrega ficam com o ${ctx.marketplace} e que a loja não tem controle sobre a rota nem sobre o prazo; oriente a acompanhar o pedido pelo aplicativo do ${ctx.marketplace} e, se precisar, falar com o suporte do próprio ${ctx.marketplace} pelo app. Não prometa prazo e não critique a transportadora nem o marketplace. Se além disso o cliente pedir reembolso, devolução ou cancelamento, use acao=acolher.`,
   ].join("\n");
 }
 
@@ -294,7 +295,9 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
         const motivo = "Cliente enviou foto ou arquivo. Uma pessoa precisa ver.";
         await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
       }
-      const achada = lista("sandy_escalar_palavras").find((p) => alvo.includes(p));
+      // Assunto de logística (atraso, reagendamento, endereço...) é do marketplace: a Sandy responde, não escala por palavra de irritação.
+      const logistica = /atras|demor|reagend|endere[cç]o|rastre|transportad|correio|entrega|chegou|chegar|prazo|extravi|entregador|a caminho|ainda nao recebi|nao recebi/.test(alvo);
+      const achada = logistica ? undefined : lista("sandy_escalar_palavras").find((p) => alvo.includes(p));
       if (achada) {
         const motivo = `Assunto sensível (“${achada}”). Uma pessoa precisa responder.`;
         await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
