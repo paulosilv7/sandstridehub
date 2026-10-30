@@ -328,8 +328,18 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       produto: conv.produto_titulo, pedido, situacao: conv.situacao, jaRespondeu: !!ultimaLoja, conhecimento,
       mensagens: ordem.filter((m: any) => m.texto).map((m: any) => ({ de: m.de, texto: String(m.texto).slice(0, 600) })),
     };
+    // Cliente só mandou o cartão do produto/pedido, sem escrever nada: pergunta como pode ajudar (sem gastar com o modelo).
+    const soCartao = novas.every((m: any) => /^(Produto|Pedido) enviado\b/i.test(String(m.texto ?? "").trim()) && !(Array.isArray(m.anexos) && m.anexos.length));
     let d;
-    try { d = await perguntarAoModelo(ctx); }
+    if (soCartao) {
+      const cn = String(conv.cliente_nome ?? "").trim();
+      // Só usa o nome se parecer nome de pessoa (maiúscula no início ou nome completo), nunca nome de usuário tipo "joao123" ou "jhonnielramon".
+      const pareceNome = /^[A-Za-zÀ-ÿ]{2,14}$/.test(ctx.primeiroNome) && !/\d/.test(cn) && (/^[A-ZÀ-Ý]/.test(cn) || /\s/.test(cn));
+      const nome = pareceNome ? ctx.primeiroNome.charAt(0).toUpperCase() + ctx.primeiroNome.slice(1).toLowerCase() : "";
+      d = { acao: "responder", tom: "calmo", nome,
+        resposta: `Olá${nome ? `, ${nome}` : ""}! Tudo bem? 😊 Vi que você nos enviou este produto. Você tem alguma dúvida sobre ele? Me conta como posso te ajudar!`,
+        motivo: "Cliente enviou só o cartão do produto, sem mensagem; a Sandy perguntou como pode ajudar." };
+    } else try { d = await perguntarAoModelo(ctx); }
     catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       await diag("sandy-atender", `erro no modelo: ${msg}`);
