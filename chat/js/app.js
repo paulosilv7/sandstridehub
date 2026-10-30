@@ -108,18 +108,20 @@ function lerConfig(linhas) {
     dias: Number(m.dias_retencao ?? 7),
   };
 }
+// Reclamação aberta continua sendo conversa normal (dá para responder); cancelamento, devolução e análise não contam como não respondida.
+const contaComoConversa = (sit) => !sit || sit === 'reclamacao';
 function normalizar(row) {
   const loja = S.lojas.find((l) => l.id === row.loja_id);
   const mk = MKS[loja?.marketplace] ?? MKS.mercado_livre;
   const atendente = S.equipe.find((u) => u.usuario_id === row.atendente_id);
-  const espera = row.aguardando_resposta && !row.situacao && row.ultima_mensagem_em
+  const espera = row.aguardando_resposta && contaComoConversa(row.situacao) && row.ultima_mensagem_em
     ? Math.max(0, Math.floor((Date.now() - new Date(row.ultima_mensagem_em).getTime()) / 60000)) : 0;
   const tags = (row.conversa_etiquetas || []).map((x) => S.etiquetas.find((e) => e.id === x.etiqueta_id)?.nome).filter(Boolean);
   const pedido = (row.tipo === 'pos_venda' || row.tipo === 'chat') && row.pedido_id_externo ? `#${row.pedido_id_externo}` : '';
   const produto = row.produto_titulo || '';
   return {
     id: row.id, lojaId: row.loja_id, lojaNome: loja?.nome ?? 'Loja', mkKey: loja?.marketplace ?? 'mercado_livre', mk: mk.k, sigla: mk.sigla, mkNome: mk.nome,
-    tipo: row.tipo, nome: row.cliente_nome || 'Cliente', aguardando: row.aguardando_resposta && !row.situacao, situacao: row.situacao || null, situacaoDetalhe: row.situacao_detalhe || '', espera,
+    tipo: row.tipo, nome: row.cliente_nome || 'Cliente', aguardando: row.aguardando_resposta && contaComoConversa(row.situacao), situacao: row.situacao || null, situacaoDetalhe: row.situacao_detalhe || '', espera,
     bloqueada: row.bloqueada, motivo: row.motivo_bloqueio, atendenteId: row.atendente_id,
     atendenteNome: atendente?.nome ?? null, ia: row.atendida_por_ia, escalada: row.escalada_motivo,
     ultimaTexto: row.ultima_mensagem_texto || '', ultimaDe: row.ultima_mensagem_de, ultimaEm: row.ultima_mensagem_em,
@@ -191,9 +193,9 @@ const SITUACAO = {
 };
 // Situações em que o marketplace não aceita mensagens do vendedor.
 const SEM_ENVIO = ['cancelado', 'devolucao', 'devolvido', 'analise_ml'];
-// Cancelamento e devolução já concluídos vão para Respondidas; só o que ainda está em tratamento fica em "Com o marketplace".
-const ENCERRADAS = ['cancelado', 'devolvido'];
-const emTratamento = (c) => !!c.situacao && !ENCERRADAS.includes(c.situacao);
+// Decisão do Paulo (30/10/2026): só o que está em análise pelo marketplace fica em "Com o marketplace".
+// Cancelamento e devolução (em andamento ou concluídos) vão para Respondidas.
+const emTratamento = (c) => c.situacao === 'analise_ml';
 function estilo(c) {
   if (c.situacao && SITUACAO[c.situacao]) return SITUACAO[c.situacao];
   if (c.bloqueada) return { t: 'Bloqueada', cls: 'warn' };
@@ -338,7 +340,7 @@ function renderChrome() {
 function renderFilters() {
   const total = S.convs.length, aguard = S.convs.filter((c) => c.aguardando).length;
   const fora = S.convs.filter(emTratamento).length;
-  const tip = { marketplace: 'Devoluções, reclamações e análises que o Mercado Livre ainda está tratando. Quando resolvidas, vão para Respondidas. Não entram nas métricas de não respondidas.' };
+  const tip = { marketplace: 'Casos em análise pelo marketplace. Quando a análise termina, vão para Respondidas. Não entram nas métricas de não respondidas.' };
   const st = [['todas', 'Todas', total], ['aguardando', 'Não respondidas', aguard], ['marketplace', 'Com o marketplace', fora], ['respondidas', 'Respondidas', total - aguard - fora]];
   $('seg').innerHTML = st.map((x) => `<button type="button" class="seg-b" data-act="status" data-v="${x[0]}" aria-pressed="${S.status === x[0]}"${tip[x[0]] ? ` title="${tip[x[0]]}"` : ''}><span class="seg-n">${x[2]}</span><span class="seg-l">${x[1]}</span></button>`).join('');
   const mk = [['todos', 'Todos', null], ['mercado_livre', 'Mercado Livre', 'ml'], ['shopee', 'Shopee', 'sp'], ['tiktok_shop', 'TikTok Shop', 'tt']];
@@ -436,7 +438,7 @@ function renderThread() {
     const rap = S.rapidas.filter((r) => r.escopo === 'todas' || r.escopo === c.mkKey);
     const pode = c.tipo !== 'pergunta';
     rodape = '<div class="comp">' +
-      (c.situacao === 'reclamacao' ? `<p class="aviso"><strong>Reclamação aberta.</strong> ${esc(c.situacaoDetalhe)} O marketplace pode recusar mensagens. Esta conversa não conta nas não respondidas.</p>` : '') +
+      (c.situacao === 'reclamacao' ? `<p class="aviso"><strong>Reclamação aberta.</strong> ${esc(c.situacaoDetalhe)} O marketplace pode recusar mensagens.</p>` : '') +
       (c.escalada && !c.atendenteId ? `<p class="aviso"><strong>A Sandy passou esta conversa para a equipe.</strong> ${esc(c.escalada)}</p>` : '') +
       `<div class="rap"><span class="eyebrow">Respostas rápidas</span>${rap.length ? rap.map((r) => `<button type="button" class="chipr" data-act="rapida" data-id="${r.id}">${esc(r.titulo)}</button>`).join('') : '<span class="mut">Nenhuma cadastrada para esta loja.</span>'}</div>` +
       (S.aviso ? `<p class="aviso" role="alert">${esc(S.aviso)}</p>` : '') +
