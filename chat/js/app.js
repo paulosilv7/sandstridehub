@@ -359,7 +359,7 @@ function renderList() {
     return `<button type="button" class="row" data-act="sel" data-id="${c.id}" aria-pressed="${c.id === S.sel}"><span class="av">${inicial(c.nome)}</span><span class="rb">` +
       `<span class="r1"><span class="nm">${esc(c.nome)}</span><span class="tg ${e.cls}">${esc(e.t)}</span></span>` +
       `<span class="r2">${logo(c.mk, c.mkNome)}<span class="tx">${esc(c.lojaNome)} · ${TIPO[c.tipo] ?? ''}</span></span>` +
-      `<span class="r3">${c.ultimaDe === 'loja' ? 'Você: ' : ''}${esc(c.ultimaTexto)}</span>` +
+      `<span class="r3">${c.ultimaDe === 'loja' ? 'Você: ' : c.ultimaDe === 'sistema' ? `${esc(c.mkNome)}: ` : ''}${esc(c.ultimaTexto)}</span>` +
       (et ? `<span class="rowetq">${et}</span>` : '') +
       `<span class="resp${c.atendenteId === S.user?.id ? ' eu' : ''}">${esc(respTxt(c))}</span></span></button>`;
   }).join('') : `<div class="vazio">${S.convs.length ? 'Nenhuma conversa com esses filtros.' : 'Nenhuma conversa ainda. Quando chegar uma pergunta ou mensagem em uma loja conectada, ela aparece aqui sozinha.'}</div>`;
