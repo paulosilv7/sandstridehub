@@ -69,7 +69,9 @@ async function resumoAtendimento(a: any) {
   else ini = inicioDoDia(0);
   const { data, error } = await supabase.rpc("sandy_resumo_atendimento", { p_inicio: ini.toISOString(), p_fim: fim.toISOString() });
   if (error) return { erro: error.message };
-  return { periodo: rotulo, ...data };
+  const m = Number(data?.tempo_mediano_primeira_resposta_min);
+  const tempo = Number.isFinite(m) && m > 0 ? (m < 60 ? `${Math.round(m)} min` : `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, "0")}`) : null;
+  return { periodo: rotulo, ...data, tempo_mediano_primeira_resposta: tempo };
 }
 
 async function listarPendentes(a: any) {
@@ -202,7 +204,10 @@ function instrucoes(quem: string, contexto: string) {
   return [
     "Você é a Sandy, atendente virtual da Sandstride (loja de tênis em Mercado Livre, Shopee e TikTok Shop), conversando com a equipe no grupo interno do Telegram.",
     `Agora: ${agora} (horário de Brasília). Quem está falando: ${quem}.`,
-    "Fale em português do Brasil, de forma curta, simpática e direta, como uma colega de trabalho. Texto simples, sem markdown; pode usar quebras de linha e no máximo 1 emoji.",
+    "Fale em português do Brasil como uma colega de trabalho de verdade conversando no WhatsApp/Telegram: natural, leve, simpática e direta. Nada de tom de relatório ou de robô.",
+    "Divida a resposta em 1 a 4 mensagens curtas, do jeito que uma pessoa mandaria (ex.: primeiro a visão geral, depois o detalhe, depois um comentário). Separe cada mensagem com uma linha contendo só ||| . Respostas simples cabem numa mensagem só.",
+    "Arredonde e humanize números: tempos em horas e minutos (ex.: 1h44, não 103,8 minutos), use 'quase', 'umas', 'mais ou menos' quando fizer sentido. Pode comentar se o número está bom ou ruim de forma leve.",
+    "Texto simples, sem markdown, sem listas com marcadores longas; no máximo 1 emoji no total. Não termine toda resposta oferecendo ajuda ou fazendo pergunta; só pergunte quando fizer sentido.",
     "Para números, pendentes e pedidos, use SEMPRE as ferramentas; nunca invente dados. Se a ferramenta não trouxer, diga que não encontrou.",
     "Ao citar conversas, inclua o link para abrir.",
     "Quando a equipe ensinar algo ('aprende', 'de agora em diante', 'responda mais ou menos assim' sobre um tipo de situação), use a ferramenta ensinar e depois confirme em uma frase o que guardou.",
@@ -217,7 +222,7 @@ async function conversarComModelo(texto: string, quem: string, contexto: string)
   for (let i = 0; i < 5; i++) {
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI}` }, signal: AbortSignal.timeout(45_000),
-      body: JSON.stringify({ model: MODELO, temperature: 0.3, max_tokens: 700, tools: FERRAMENTAS, messages: msgs }),
+      body: JSON.stringify({ model: MODELO, temperature: 0.5, max_tokens: 700, tools: FERRAMENTAS, messages: msgs }),
     });
     const j: any = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(`OpenAI ${r.status}: ${String(j?.error?.message ?? "").slice(0, 200)}`);
@@ -272,7 +277,18 @@ async function processar(u: any) {
   let resposta: string;
   try { resposta = await conversarComModelo(texto.replace(new RegExp(`@${usuarioBot}`, "ig"), "").trim(), quem, contexto); }
   catch (e) { await diag(`erro: ${e instanceof Error ? e.message : e}`); resposta = "Tive um problema para responder agora. Tenta de novo daqui a pouco?"; }
-  await telegram("sendMessage", { chat_id: msg.chat.id, text: resposta.slice(0, 3900), reply_to_message_id: msg.message_id, disable_web_page_preview: true });
+  // Envia em partes, com "digitando..." entre elas, como uma pessoa.
+  const partes = resposta.split(/\n?\s*\|\|\|\s*\n?/).map((t) => t.trim()).filter(Boolean).slice(0, 5);
+  for (let i = 0; i < partes.length; i++) {
+    if (i > 0) {
+      await telegram("sendChatAction", { chat_id: msg.chat.id, action: "typing" }).catch(() => {});
+      await new Promise((r) => setTimeout(r, Math.min(900 + partes[i].length * 25, 3500)));
+    }
+    await telegram("sendMessage", {
+      chat_id: msg.chat.id, text: partes[i].slice(0, 3900), disable_web_page_preview: true,
+      ...(i === 0 ? { reply_to_message_id: msg.message_id } : {}),
+    });
+  }
 }
 
 Deno.serve(async (req) => {
