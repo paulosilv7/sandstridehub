@@ -152,7 +152,7 @@ function textoSeguro(t: string): string | null {
   return null;
 }
 
-async function atender(conversaId: string, simular: boolean): Promise<any> {
+async function atender(conversaId: string, simular: boolean, textoTeste?: string): Promise<any> {
   const saida: any = { conversa: conversaId, simular };
 
   const { data: cfg } = await supabase.from("configuracoes").select("chave, valor").in("chave", ["sandy_ativa", "sandy_escalar_palavras"]);
@@ -183,9 +183,14 @@ async function atender(conversaId: string, simular: boolean): Promise<any> {
     // Mensagens da conversa
     const { data: msgs } = await supabase.from("mensagens").select("id, de, texto, anexos, enviada_em, enviada_por_ia")
       .eq("conversa_id", conversaId).order("enviada_em", { ascending: false }).limit(14);
-    const ordem = (msgs ?? []).slice().reverse();
-    const ultimaLoja = [...ordem].reverse().find((m: any) => m.de === "loja");
-    const novas = ordem.filter((m: any) => m.de === "cliente" && (!ultimaLoja || m.enviada_em > ultimaLoja.enviada_em));
+    let ordem = (msgs ?? []).slice().reverse();
+    let ultimaLoja = [...ordem].reverse().find((m: any) => m.de === "loja");
+    let novas = ordem.filter((m: any) => m.de === "cliente" && (!ultimaLoja || m.enviada_em > ultimaLoja.enviada_em));
+    // Teste: avalia uma frase avulsa de cliente como se fosse a única mensagem da conversa.
+    if (simular && textoTeste) {
+      novas = [{ de: "cliente", texto: textoTeste, anexos: [], enviada_em: new Date().toISOString() }];
+      ordem = [...novas]; ultimaLoja = undefined;
+    }
     if (!novas.length) return { ...saida, resultado: "sem mensagem nova do cliente" };
 
     // Se chegou mensagem depois da espera, deixa a execução mais nova cuidar.
@@ -273,10 +278,11 @@ async function atender(conversaId: string, simular: boolean): Promise<any> {
   }
 }
 
-async function executar(conversaId: string, simular: boolean, esperar: boolean) {
+async function executar(conversaId: string, simular: boolean, esperar: boolean, textoTeste?: string) {
   try {
     if (esperar) await dormir(ESPERA_SEGUNDOS * 1000);
-    const r = await atender(conversaId, simular);
+    const r = await atender(conversaId, simular, textoTeste);
+    if (textoTeste) r.pergunta = textoTeste;
     if (simular || r.decisao === "erro") await diag(simular ? "sandy-simulacao" : "sandy-atender", JSON.stringify(r));
     return r;
   } catch (e) {
@@ -308,6 +314,6 @@ Deno.serve(async (req) => {
   const conversaId = String(corpo.conversa_id ?? "");
   if (!conversaId) return new Response(JSON.stringify({ ok: false, erro: "conversa_id obrigatório" }), { status: 400 });
   // @ts-ignore EdgeRuntime existe no Supabase
-  EdgeRuntime.waitUntil(executar(conversaId, !!corpo.simular, !corpo.simular && !corpo.sem_espera));
+  EdgeRuntime.waitUntil(executar(conversaId, !!corpo.simular, !corpo.simular && !corpo.sem_espera, corpo.simular && corpo.texto_teste ? String(corpo.texto_teste).slice(0, 800) : undefined));
   return new Response(JSON.stringify({ ok: true }), { status: 202, headers: { "Content-Type": "application/json" } });
 });
