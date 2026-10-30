@@ -194,12 +194,20 @@ async function executarFerramenta(nome: string, a: any, quem: string) {
     if (nome === "ensinar") return await ensinar(a, quem);
     if (nome === "listar_conhecimento") return await listarConhecimento();
     if (nome === "esquecer") return await esquecer(a);
-    if (nome === "responder_cliente") return await responderCliente(a);
+    if (nome === "responder_cliente") {
+      const r = await responderCliente(a);
+      if ((r as any).erro) await diag(`responder_cliente (${String(a.conversa_id ?? "").slice(0, 8)}): ${(r as any).erro}`);
+      return r;
+    }
     return { erro: "ferramenta desconhecida" };
-  } catch (e) { return { erro: e instanceof Error ? e.message : String(e) }; }
+  } catch (e) {
+    const erro = e instanceof Error ? e.message : String(e);
+    await diag(`ferramenta ${nome}: ${erro}`);
+    return { erro };
+  }
 }
 
-function instrucoes(quem: string, contexto: string) {
+function instrucoes(quem: string, contexto: string, lojasTxt = "") {
   const agora = new Date().toLocaleString("pt-BR", { timeZone: FUSO, weekday: "long", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   return [
     "Você é a Sandy, atendente virtual da Sandstride (loja de tênis em Mercado Livre, Shopee e TikTok Shop), conversando com a equipe no grupo interno do Telegram.",
@@ -213,6 +221,8 @@ function instrucoes(quem: string, contexto: string) {
     "Quando a equipe ensinar algo ('aprende', 'de agora em diante', 'responda mais ou menos assim' sobre um tipo de situação), use a ferramenta ensinar e depois confirme em uma frase o que guardou.",
     "Se pedirem para responder um cliente específico com um texto, use responder_cliente com o conversa_id certo e confirme o envio. Se não estiver claro qual cliente, pergunte antes. Nunca envie a um cliente algo que não foi pedido.",
     "Você também recebe áudios (já transcritos) e imagens (prints, fotos de produto, de etiqueta, de conversa). Use o que vê na imagem para ajudar; se não der para ler, diga.",
+    lojasTxt ? `Você atende TODAS estas lojas da empresa (nenhuma é "de outra empresa"): ${lojasTxt}. Uma conversa de qualquer uma delas é sua para responder.` : "",
+    "Se responder_cliente voltar com erro, conte à equipe o erro exato que a ferramenta devolveu, sem inventar outro motivo. Não suponha que a conversa seja de outra loja.",
     "Assuntos fora do atendimento da loja: responda brevemente que você cuida do atendimento.",
     contexto ? `CONTEXTO (mensagem a que estão respondendo): ${contexto}` : "",
   ].filter(Boolean).join("\n");
@@ -220,7 +230,9 @@ function instrucoes(quem: string, contexto: string) {
 
 async function conversarComModelo(texto: string, quem: string, contexto: string, imagem?: string): Promise<string> {
   const conteudo: any = imagem ? [{ type: "text", text: texto || "(sem texto, só a imagem)" }, { type: "image_url", image_url: { url: imagem } }] : texto;
-  const msgs: any[] = [{ role: "system", content: instrucoes(quem, contexto) }, { role: "user", content: conteudo }];
+  const { data: ls } = await supabase.from("lojas").select("nome, marketplace");
+  const lojasTxt = (ls ?? []).map((l: any) => `${l.nome} (${MK[l.marketplace] ?? l.marketplace})`).join(", ");
+  const msgs: any[] = [{ role: "system", content: instrucoes(quem, contexto, lojasTxt) }, { role: "user", content: conteudo }];
   for (let i = 0; i < 5; i++) {
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI}` }, signal: AbortSignal.timeout(45_000),
