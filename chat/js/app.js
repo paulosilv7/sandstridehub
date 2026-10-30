@@ -564,7 +564,7 @@ function vistaConfig() {
     (notif === 'default' ? '<div class="acoes"><button type="button" class="btn" data-act="ativar-notif">Ativar avisos</button></div>' : '') + '</div>';
   h += `<div class="box"><h2>Etiquetas de problemas</h2><div class="txt">Servem para quem assumir a conversa entender rápido do que se trata.</div><div class="etqs">${S.etiquetas.map((e) => `<span class="etq ${etqCls(e.nome)}">${esc(e.nome)}${ad ? `<button type="button" data-act="rm-etq-cfg" data-id="${e.id}" aria-label="Apagar etiqueta ${esc(e.nome)}">×</button>` : ''}</span>`).join('')}</div>` +
     (ad ? '<div class="envio"><input id="n-etq" type="text" maxlength="24" placeholder="Nova etiqueta" aria-label="Nova etiqueta"><button type="button" class="btn" data-act="add-etq-cfg">Adicionar</button></div>' : '') + '</div>';
-  h += '<div class="box"><h2>Equipe</h2>' + S.equipe.map((m) => {
+  h += '<div class="box"><h2>Equipe</h2>' + S.equipe.filter((m) => m.nome !== 'Sandy').map((m) => {
     const eh = m.usuario_id === S.user?.id;
     const rm = eh ? '<span class="mut">Você</span>' : !ad ? '' : (S.delMembro === m.usuario_id
       ? `<span class="mut">Remover?</span><button type="button" class="bt2 perigo" data-act="rm-membro" data-id="${m.usuario_id}">Sim, remover</button><button type="button" class="bt2" data-act="cancelar-apagar">Não</button>`
