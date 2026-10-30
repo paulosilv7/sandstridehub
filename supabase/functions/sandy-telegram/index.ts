@@ -136,9 +136,26 @@ async function esquecer(a: any) {
 }
 
 // Envio para o cliente pelo mesmo caminho da equipe, como Sandy.
+async function usuarioSandy(): Promise<string> {
+  const c = await config("sandy_usuario_id");
+  if (c) return c;
+  const email = "sandy.atendente@sandstride.local";
+  let id: string | null = null;
+  const { data: novo, error } = await supabase.auth.admin.createUser({
+    email, password: crypto.randomUUID() + crypto.randomUUID(), email_confirm: true, user_metadata: { nome: "Sandy" },
+  });
+  if (novo?.user) id = novo.user.id;
+  else {
+    const { data: lista } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    id = lista?.users?.find((u: any) => u.email === email)?.id ?? null;
+    if (!id) throw new Error(`não consegui criar o usuário da Sandy: ${error?.message}`);
+  }
+  await supabase.from("equipe").upsert({ usuario_id: id, nome: "Sandy", papel: "atendente" }, { onConflict: "usuario_id" });
+  await supabase.from("configuracoes").upsert({ chave: "sandy_usuario_id", valor: id }, { onConflict: "chave" });
+  return id!;
+}
 async function jwtSandy(): Promise<string> {
-  const id = await config("sandy_usuario_id");
-  if (!id) throw new Error("usuário da Sandy ainda não criado");
+  const id = await usuarioSandy();
   const { data: u } = await supabase.auth.admin.getUserById(id);
   const email = u?.user?.email;
   if (!email) throw new Error("usuário da Sandy sem e-mail");
@@ -341,7 +358,7 @@ async function processar(u: any) {
     }
     await telegram("sendMessage", {
       chat_id: msg.chat.id, text: partes[i].slice(0, 3900), disable_web_page_preview: true,
-      ...(i === 0 ? { reply_to_message_id: msg.message_id } : {}),
+      ...(i === 0 ? { reply_to_message_id: msg.message_id, allow_sending_without_reply: true } : {}),
     });
   }
 }
