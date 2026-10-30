@@ -73,22 +73,73 @@ async function credenciais(lojaId: string, origem: string): Promise<{ token: str
 
 const PUSH_URL = Deno.env.get("SHOPEE_PUSH_URL") ?? "https://imlgfmaqmzfonvbmlwpd.supabase.co/functions/v1/shopee-notificacoes";
 
-const CONHECIDOS = new Set(["text", "image", "video", "sticker", "item", "item_list", "order"]);
-// Tipos automáticos da Shopee que não são conversa de verdade (por enquanto só registramos o conteúdo para estudo).
-const IGNORAR = new Set(["faq_liveagent", "bundle_message"]);
+// Tipos que já sabemos ler (os outros são registrados em diagnosticos para estudo).
+const CONHECIDOS = new Set(["text", "image", "video", "sticker", "item", "item_list", "order", "variation_card", "notification",
+  "customer_service_entrance", "logistics_card", "return_refund_card", "faq_liveagent", "bundle_message", "crm_order_rate"]);
+// Tipos automáticos sem informação útil para a equipe.
+const IGNORAR = new Set(["bundle_message", "crm_order_rate"]);
 
-function converter(m: any): { texto: string | null; anexos: any[] } | null {
+const emPt = (lista: any[], campo: string) =>
+  String((lista ?? []).find((x: any) => x?.language === "pt-BR")?.[campo] ?? (lista ?? []).find((x: any) => x?.language === "en")?.[campo] ?? "").trim();
+const diaMes = (ts: any) => {
+  const n = Number(ts);
+  return n ? new Date(n > 1e12 ? n : n * 1000).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" }) : "";
+};
+
+type Convertida = { texto: string | null; anexos: any[]; sistema?: boolean; item?: { item: string; shop: string }; variacao?: string };
+function converter(m: any): Convertida | null {
   const tipo = String(m.message_type ?? "").toLowerCase();
   const c = m.content ?? {};
+  const sn = String(m.source_content?.order_sn ?? c.order_sn ?? "").trim();
   if (IGNORAR.has(tipo)) return null;
   if (tipo === "text") return { texto: c.text ?? null, anexos: [] };
   if (tipo === "image") return { texto: null, anexos: [{ tipo: "img", nome: "imagem", url: c.url ?? c.thumb_url ?? null }] };
   if (tipo === "video") return { texto: null, anexos: [{ tipo: "arq", nome: "vídeo" }] };
   if (tipo === "sticker") return { texto: "[figurinha]", anexos: [] };
-  if (tipo === "item" || tipo === "item_list") return { texto: "[Produto enviado]", anexos: [] };
-  if (tipo === "order") return { texto: `[Pedido] ${c.order_sn ?? ""}`.trim(), anexos: [] };
-  return { texto: `[${tipo || "mensagem"}]`, anexos: [] };
+  if (tipo === "item" || tipo === "item_list") {
+    const it = tipo === "item" ? c : (c.item_list?.[0] ?? c.items?.[0] ?? c);
+    const id = it?.item_id ?? it?.itemid ?? it?.id;
+    return { texto: "Produto enviado", anexos: [], item: id ? { item: String(id), shop: String(it?.shop_id ?? it?.shopid ?? "") } : undefined };
+  }
+  if (tipo === "variation_card") {
+    const mods: any[] = c.item_card_v2?.item_model_v2 ?? [];
+    const v = mods.find((x: any) => String(x.model_id) === String(c.model_id)) ?? mods[0];
+    const variacao = String(v?.name?.text ?? "").replace(/,\s*/g, ", ").trim();
+    return { texto: "Produto enviado", anexos: [], variacao, item: c.product_id ? { item: String(c.product_id), shop: String(c.shop_id ?? "") } : undefined };
+  }
+  if (tipo === "order") return { texto: `Pedido enviado no chat: ${sn || "sem número"}`, anexos: [] };
+  if (tipo === "notification") return { texto: String(c.notification_for_receiver || c.notification_for_sender || "Aviso da Shopee"), anexos: [], sistema: true };
+  if (tipo === "customer_service_entrance") return { texto: `A Shopee mostrou ao cliente o botão para falar com o atendimento da Shopee${sn ? ` (pedido ${sn})` : ""}.`, anexos: [], sistema: true };
+  if (tipo === "logistics_card") {
+    const t = c.logistic_tracking_info ?? {};
+    const prev = diaMes(t.estimate_delivery_time);
+    return { texto: `Rastreio: ${t.latest_tracking_info || "atualização de envio"}${prev ? ` · previsão de entrega ${prev}` : ""}`, anexos: [], sistema: true };
+  }
+  if (tipo === "return_refund_card") {
+    const d = c.rr_detail ?? {};
+    const sol = emPt(d.translated_detail, "solution"), mot = emPt(d.translated_detail, "reason");
+    const prod = String(c.order_info?.order_title ?? "").trim();
+    return { texto: `Solicitação de ${sol ? sol.toLowerCase() : "devolução/reembolso"}${mot ? ` · motivo: ${mot}` : ""}${prod ? ` · ${prod}` : ""}`, anexos: [], sistema: true };
+  }
+  if (tipo === "faq_liveagent") return { texto: `O cliente tocou em "${String(c.text ?? "").trim() || "opção"}" no assistente da Shopee.`, anexos: [], sistema: true };
+  return { texto: `Mensagem automática da Shopee (${tipo || "sem tipo"}).`, anexos: [], sistema: true };
 }
+
+// Nome do produto (só dá para consultar anúncios da própria loja).
+const nomes = new Map<string, string | null>();
+async function nomeDoProduto(cred: { token: string; shopId: string }, it: { item: string; shop: string }): Promise<string | null> {
+  if (it.shop && it.shop !== cred.shopId) return null;
+  if (nomes.has(it.item)) return nomes.get(it.item)!;
+  let nome: string | null = null;
+  try {
+    const r = await loja("GET", "/api/v2/product/get_item_base_info", cred.token, cred.shopId, { item_id_list: it.item });
+    nome = r?.item_list?.[0]?.item_name ?? null;
+  } catch (e) { await diag("shopee-notificacoes", `nome do produto ${it.item}: ${e instanceof Error ? e.message : e}`); }
+  nomes.set(it.item, nome);
+  return nome;
+}
+// Mensagens antigas gravadas como "[tipo]" ou "[Produto enviado]" são reescritas quando a conversa é lida de novo.
+const provisoria = (t: string | null) => !!t && /^\[(Produto enviado|Pedido\]|[a-z_]+\])/.test(t);
 
 async function sincronizar(shopId: string, conversaId: string) {
   const { data: l } = await supabase.from("lojas").select("id").eq("marketplace", "shopee").eq("id_externo", shopId).maybeSingle();
@@ -113,6 +164,7 @@ async function sincronizar(shopId: string, conversaId: string) {
   }
 
   let convId = existente?.id as string | undefined;
+  let mudou = false;
   if (!convId) {
     const { data: nova, error } = await supabase.from("conversas").upsert(
       { loja_id: l.id, tipo: "chat", id_externo: conversaId, cliente_nome: nome ?? "Cliente Shopee", cliente_id_externo: clienteId },
@@ -126,17 +178,27 @@ async function sincronizar(shopId: string, conversaId: string) {
 
   for (const m of msgs) {
     const deLoja = String(m.from_shop_id ?? "") === cred.shopId || String(m.from_id) === cred.shopId;
-    const de = deLoja ? "loja" : "cliente";
     const tipoMsg = String(m.message_type ?? "").toLowerCase();
     if (!CONHECIDOS.has(tipoMsg)) await diag("shopee-tipo", `tipo ${tipoMsg}: ${JSON.stringify(m).slice(0, 1200)}`);
     const conv = converter(m);
     if (!conv) continue;
+    if (conv.item) {
+      const nomeProd = await nomeDoProduto(cred, conv.item);
+      conv.texto = `Produto enviado: ${nomeProd ?? `código ${conv.item.item}`}${conv.variacao ? ` · ${conv.variacao}` : ""}`;
+    }
+    const de = conv.sistema ? "sistema" : deLoja ? "loja" : "cliente";
     const ts = Number(m.created_timestamp);
     const quando = new Date(ts > 1e12 ? ts : ts * 1000).toISOString();
     const id = String(m.message_id);
+    const { data: ja } = await supabase.from("mensagens").select("id, de, texto").eq("conversa_id", convId).eq("id_externo", id).maybeSingle();
+    if (ja) {
+      if (provisoria(ja.texto) && (ja.texto !== conv.texto || ja.de !== de)) {
+        await supabase.from("mensagens").update({ de, texto: conv.texto, anexos: conv.anexos }).eq("id", ja.id);
+        mudou = true;
+      }
+      continue;
+    }
     if (de === "loja") {
-      const { data: ja } = await supabase.from("mensagens").select("id").eq("conversa_id", convId).eq("id_externo", id).maybeSingle();
-      if (ja) continue;
       const { data: local } = await supabase.from("mensagens").select("id, enviada_em").eq("conversa_id", convId).like("id_externo", "local-%").eq("texto", conv.texto ?? "").order("enviada_em", { ascending: false }).limit(1);
       if (local?.[0] && Math.abs(new Date(local[0].enviada_em).getTime() - new Date(quando).getTime()) < 5 * 60_000) {
         await supabase.from("mensagens").update({ id_externo: id }).eq("id", local[0].id);
@@ -148,6 +210,8 @@ async function sincronizar(shopId: string, conversaId: string) {
     }, { onConflict: "conversa_id,id_externo", ignoreDuplicates: true });
     if (error) await diag("shopee-notificacoes", `erro ao gravar mensagem: ${error.message}`);
   }
+  // Se um aviso antigo deixou de contar como mensagem da loja/cliente, refaz o resumo da conversa.
+  if (mudou) await supabase.rpc("recalcular_ultima_mensagem", { p_conversa: convId });
 }
 
 async function processar(ev: any, bruto: string) {
@@ -180,9 +244,28 @@ async function tratar(req: Request, bruto: string) {
   await processar(ev, bruto);
 }
 
+// Uso interno: relê conversas já gravadas (cabeçalho x-lucro-token). Corpo: {reprocessar: [{shop_id, conversation_id}]}
+async function reprocessar(lista: any[]) {
+  for (const x of lista.slice(0, 60)) {
+    try { await sincronizar(String(x.shop_id), String(x.conversation_id)); }
+    catch (e) { await diag("shopee-notificacoes", `reprocessar ${x.conversation_id}: ${e instanceof Error ? e.message : e}`); }
+  }
+  await diag("shopee-notificacoes", `reprocessadas ${Math.min(lista.length, 60)} conversas`);
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return OK();
   const bruto = await req.text();
+  const interno = req.headers.get("x-lucro-token");
+  if (interno) {
+    const { data: seg } = await supabase.from("lucro_segredo").select("valor").limit(1).maybeSingle();
+    if (!seg?.valor || interno !== seg.valor) return new Response("não autorizado", { status: 401 });
+    let corpo: any = {};
+    try { corpo = JSON.parse(bruto); } catch (_) { /* vazio */ }
+    // @ts-ignore EdgeRuntime existe no Supabase
+    EdgeRuntime.waitUntil(reprocessar(Array.isArray(corpo.reprocessar) ? corpo.reprocessar : []));
+    return new Response(JSON.stringify({ ok: true }), { status: 202, headers: { "Content-Type": "application/json" } });
+  }
   // @ts-ignore EdgeRuntime existe no Supabase
   EdgeRuntime.waitUntil(tratar(req, bruto));
   return OK();

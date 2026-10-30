@@ -420,6 +420,8 @@ function renderThread() {
   const meu = c.atendenteId === S.user?.id;
   const outro = (c.atendenteId && !meu) || c.ia;
   const msgs = S.msgs.map((m) => {
+    // Avisos automáticos do marketplace (rastreio, pedido de reembolso, atalho de atendimento etc.).
+    if (m.de === 'sistema') return `<div class="msg sis"><div class="bub">${esc(m.texto || 'Aviso do marketplace')}</div><div class="when">${esc(c.mkNome || 'Marketplace')} · ${esc(quando(m.enviada_em))}</div></div>`;
     const loja = m.de === 'loja';
     const quem = loja ? (m.enviada_por_ia ? '<span class="iab">Sandy</span> ' : (S.equipe.find((u) => u.usuario_id === m.enviada_por)?.nome ?? 'Loja')) : esc(c.nome);
     return `<div class="msg ${loja ? 'loja' : 'cli'}">${m.texto ? `<div class="bub">${esc(m.texto)}</div>` : ''}${anexosHtml(m.anexos)}<div class="when">${loja && !m.enviada_por_ia ? esc(quem) : quem} · ${esc(quando(m.enviada_em))}</div></div>`;
