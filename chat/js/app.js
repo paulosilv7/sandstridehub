@@ -130,7 +130,7 @@ function normalizar(row) {
 }
 async function carregarBase() {
   const [l, e, r, c, q] = await Promise.all([
-    sb.from('lojas').select('id, marketplace, nome, id_externo, ativa').order('nome'),
+    sb.from('lojas').select('id, marketplace, nome, id_externo, ativa, sandy_ativa').order('nome'),
     sb.from('etiquetas').select('id, nome, ordem').order('ordem').order('nome'),
     sb.from('respostas_rapidas').select('id, titulo, texto, escopo').order('titulo'),
     sb.from('configuracoes').select('chave, valor'),
@@ -506,6 +506,50 @@ function vistaRapidas() {
   }).join('') + '</div>';
   return h;
 }
+const PALAVRAS_PADRAO = '';
+async function carregarSandy() {
+  const [c, b, g] = await Promise.all([
+    sb.from('configuracoes').select('chave, valor').in('chave', ['sandy_ativa', 'sandy_escalar_palavras']),
+    sb.from('sandy_conhecimento').select('id, titulo, texto, escopo, ativo').order('titulo'),
+    sb.from('sandy_registros').select('id, conversa_id, decisao, motivo, resposta, criado_em').order('criado_em', { ascending: false }).limit(25),
+  ]);
+  const m = Object.fromEntries((c.data || []).map((x) => [x.chave, x.valor]));
+  S.sandy = { ativa: m.sandy_ativa === 'true', palavras: m.sandy_escalar_palavras ?? PALAVRAS_PADRAO, base: b.data || [], reg: g.data || [] };
+}
+function formBase(b) {
+  b = b || { titulo: '', texto: '', escopo: 'todas' };
+  return `<div class="box"><h2>${b.id ? 'Editar informação' : 'Nova informação'}</h2><div class="form2">` +
+    `<label class="campo"><span class="eyebrow">Assunto</span><input id="sb-titulo" type="text" maxlength="120" value="${esc(b.titulo)}" placeholder="Ex.: Prazo de envio"></label>` +
+    `<label class="campo"><span class="eyebrow">Vale para</span><select id="sb-escopo">${Object.keys(ESCOPO).map((k) => `<option value="${k}"${b.escopo === k ? ' selected' : ''}>${ESCOPO[k]}</option>`).join('')}</select></label></div>` +
+    `<label class="campo"><span class="eyebrow">O que a Sandy deve saber e dizer</span><textarea id="sb-texto" maxlength="4000" placeholder="Escreva como você explicaria para um cliente. Ex.: Enviamos em até 2 dias úteis depois da aprovação do pagamento.">${esc(b.texto)}</textarea></label>` +
+    `<div class="acoes"><button type="button" class="btn" data-act="sandy-salvar-base" data-id="${esc(b.id || '')}">Salvar</button><button type="button" class="bt2" data-act="sandy-cancelar">Cancelar</button></div></div>`;
+}
+const DECISAO = { respondeu: ['Respondeu', 'info'], escalou: ['Passou para a equipe', 'warn'], ignorou: ['Não atuou', 'info'], erro: ['Erro', 'warn'] };
+function vistaSandy() {
+  const y = S.sandy, ad = souAdmin(), dis = ad ? '' : ' disabled';
+  if (!y) return '<p class="mut">Carregando…</p>';
+  let h = `<p class="sub">A Sandy responde sozinha as perguntas simples dos clientes e passa para a equipe tudo o que for delicado. ${ad ? '' : 'Só administradores alteram esta tela.'}</p>${notaHtml()}`;
+  h += `<div class="box"><h2>Atendimento automático</h2><div class="txt">Enquanto estiver desligado, a Sandy não envia nada. Ligue por loja, começando por uma só, e acompanhe o que ela fez no registro abaixo. Se você ou alguém da equipe assumir uma conversa, ela para de responder ali.</div>` +
+    `<label class="chk"><input id="sy-ativa" type="checkbox"${y.ativa ? ' checked' : ''}${dis}>Sandy ligada</label>` +
+    `<span class="eyebrow">Lojas em que ela pode atender</span><div class="grade">${S.lojas.filter((l) => l.ativa).map((l) => `<label class="chk"><input class="sy-loja" data-id="${l.id}" type="checkbox"${l.sandy_ativa ? ' checked' : ''}${dis}>${esc(l.nome)} <span class="mut">${esc(MKS[l.marketplace]?.nome || '')}</span></label>`).join('')}</div>` +
+    `<label class="campo"><span class="eyebrow">Assuntos que sempre vão para uma pessoa (palavras separadas por vírgula)</span><textarea id="sy-palavras" maxlength="3000"${dis}>${esc(y.palavras)}</textarea></label>` +
+    '<p class="mut" style="margin:0">Se a mensagem do cliente tiver qualquer uma dessas palavras, a Sandy nem tenta responder: marca a conversa como "Precisa de uma pessoa". Reembolso, devolução, defeito e reclamação já vêm incluídos.</p>' +
+    (ad ? '<div class="acoes"><button type="button" class="btn" data-act="sandy-salvar-geral">Salvar</button></div>' : '') + '</div>';
+  h += '<div class="box"><h2>O que a Sandy sabe</h2><div class="txt">Ela só responde com o que estiver aqui. Se a resposta não estiver nestas informações, ela passa a conversa para a equipe em vez de inventar.</div></div>';
+  if (S.novaBase || S.editBase) h += formBase(y.base.find((x) => x.id === S.editBase));
+  else if (ad) h += '<div class="acoes"><button type="button" class="btn" data-act="sandy-nova">Nova informação</button></div>';
+  h += '<div class="grade">' + (y.base.map((b) => {
+    const ap = !ad ? '' : S.delBase === b.id
+      ? `<span class="mut">Apagar mesmo?</span><button type="button" class="bt2 perigo" data-act="sandy-apagar" data-id="${b.id}">Sim, apagar</button><button type="button" class="bt2" data-act="sandy-cancelar">Não</button>`
+      : `<button type="button" class="bt2" data-act="sandy-editar" data-id="${b.id}">Editar</button><button type="button" class="bt2" data-act="sandy-pedir-apagar" data-id="${b.id}">Apagar</button>`;
+    return `<div class="box"><div class="lin"><h2>${esc(b.titulo)}</h2><span class="sp"></span><span class="tg2 info">${ESCOPO[b.escopo]}</span></div><div class="txt">${esc(b.texto)}</div><div class="acoes">${ap}</div></div>`;
+  }).join('') || '<p class="mut">Nenhuma informação cadastrada ainda.</p>') + '</div>';
+  h += '<div class="box"><h2>O que a Sandy fez</h2>' + (y.reg.length ? y.reg.map((g) => {
+    const c = S.convs.find((x) => x.id === g.conversa_id), d = DECISAO[g.decisao] || [g.decisao, 'info'];
+    return `<div class="lin"><div style="flex:1;min-width:160px"><div class="nm" style="white-space:normal">${esc(c?.nome || 'Conversa')} <span class="mut">${esc(quando(g.criado_em))}</span></div><div class="mut" style="white-space:normal">${esc(g.resposta || g.motivo || '')}</div></div><span class="tg2 ${d[1]}">${d[0]}</span></div>`;
+  }).join('') : '<p class="mut" style="margin:0">Ainda não houve atendimento da Sandy.</p>') + '</div>';
+  return h;
+}
 function vistaConfig() {
   const c = S.cfg, ad = souAdmin(), dis = ad ? '' : ' disabled';
   let h = `<p class="sub">Avisos, etiquetas, equipe e armazenamento. ${ad ? '' : 'Só administradores alteram esta tela.'}</p>${notaHtml()}`;
@@ -538,7 +582,7 @@ function vistaConfig() {
   h += '<div class="box"><h2>Sua conta</h2><div class="acoes"><a class="bt2" href="../" style="text-decoration:none;display:inline-flex;align-items:center">Voltar para a central</a><button type="button" class="bt2" data-act="sair">Sair</button></div></div>';
   return h;
 }
-const TITULOS = { inbox: 'Chats', rapidas: 'Respostas rápidas', config: 'Configurações' };
+const TITULOS = { inbox: 'Chats', rapidas: 'Respostas rápidas', sandy: 'Sandy', config: 'Configurações' };
 function renderView() {
   const inbox = S.view === 'inbox';
   $('v-inbox').hidden = !inbox; $('vista').hidden = inbox;
@@ -547,7 +591,7 @@ function renderView() {
   document.querySelectorAll('.dock [data-act="view"]').forEach((b) => {
     if (b.getAttribute('data-v') === S.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
-  if (!inbox) $('vista').innerHTML = S.view === 'rapidas' ? vistaRapidas() : vistaConfig();
+  if (!inbox) $('vista').innerHTML = S.view === 'rapidas' ? vistaRapidas() : S.view === 'sandy' ? vistaSandy() : vistaConfig();
 }
 
 /* ------------------------------------------------------------------ */
@@ -601,6 +645,7 @@ function telaSemAcesso() {
 /* ------------------------------------------------------------------ */
 const ICONES = {
   inbox: '<path d="M5.5 5h13L21 13v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5l2.5-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 13h5.5l1 2.5h5l1-2.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  sandy: '<path d="M12 3l1.8 4.7L18.5 9.500 13.800 11.300 12 16l-1.800-4.700L5.500 9.500l4.700-1.800L12 3Zm6.500 11 .8 2.200 2.200.8-2.200.8-.8 2.200-.8-2.200-2.200-.8 2.200-.8.8-2.200Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
   rapidas: '<path d="M13 3 5 13h6l-1 8 8-10h-6l1-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
   config: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="16" cy="6" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="10" cy="12" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="18" r="2" stroke="currentColor" stroke-width="1.8"/>',
 };
@@ -632,6 +677,7 @@ function montarCasca() {
     <div class="sp1"></div>
     <button type="button" class="bk" data-act="view" data-v="inbox" aria-label="Chats" title="Caixa de entrada"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.inbox}</svg><span class="bdg" id="navCount">0</span></button>
     <button type="button" class="bk" data-act="view" data-v="rapidas" aria-label="Respostas rápidas" title="Respostas rápidas"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.rapidas}</svg></button>
+    <button type="button" class="bk" data-act="view" data-v="sandy" aria-label="Sandy" title="Sandy"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.sandy}</svg></button>
     <button type="button" class="bk" data-act="view" data-v="config" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.config}</svg></button>
   </nav>`;
 }
@@ -673,8 +719,9 @@ async function recarregarBaseEVisao() {
 /* ------------------------------------------------------------------ */
 const val = (id) => { const el = $(id); return el ? el.value.trim() : ''; };
 function ir(v) {
-  S.view = v; S.msg = ''; S.editRap = null; S.novaRap = false; S.delRap = null; S.delMembro = null;
+  S.view = v; S.msg = ''; S.editRap = null; S.novaRap = false; S.delRap = null; S.delMembro = null; S.editBase = null; S.novaBase = false; S.delBase = null;
   renderView(); if (v === 'inbox') renderInbox();
+  if (v === 'sandy') carregarSandy().then(() => { if (S.view === 'sandy') renderView(); });
 }
 async function escolher(id) {
   S.sel = id; S.draft = ''; S.anexos = []; S.aviso = ''; S.msgs = []; S.tela = 'conversa';
@@ -789,6 +836,33 @@ document.addEventListener('click', async (ev) => {
     case 'apagar-rap':
       if (await guardar(sb.from('respostas_rapidas').delete().eq('id', id), 'Resposta apagada.')) { S.delRap = null; await carregarBase(); }
       renderView(); break;
+    case 'sandy-nova': S.novaBase = true; S.editBase = null; S.msg = ''; renderView(); break;
+    case 'sandy-editar': S.editBase = id; S.novaBase = false; S.msg = ''; renderView(); break;
+    case 'sandy-cancelar': S.novaBase = false; S.editBase = null; S.delBase = null; renderView(); break;
+    case 'sandy-pedir-apagar': S.delBase = id; renderView(); break;
+    case 'sandy-apagar':
+      if (await guardar(sb.from('sandy_conhecimento').delete().eq('id', id), 'Informação apagada.')) { S.delBase = null; await carregarSandy(); }
+      renderView(); break;
+    case 'sandy-salvar-base': {
+      const t = val('sb-titulo').trim(), x = val('sb-texto').trim(), e = val('sb-escopo');
+      if (!t || !x) { S.msg = 'Preencha o assunto e o texto.'; renderView(); break; }
+      const ok = id ? await guardar(sb.from('sandy_conhecimento').update({ titulo: t, texto: x, escopo: e, atualizado_em: new Date().toISOString() }).eq('id', id), 'Informação salva.')
+        : await guardar(sb.from('sandy_conhecimento').insert({ titulo: t, texto: x, escopo: e, criado_por: S.user.id }), 'Informação salva.');
+      if (ok) { S.novaBase = false; S.editBase = null; await carregarSandy(); }
+      renderView(); break;
+    }
+    case 'sandy-salvar-geral': {
+      const ligar = $('sy-ativa').checked, marcadas = Array.from(document.querySelectorAll('.sy-loja')).filter((i) => i.checked);
+      if (ligar && !marcadas.length) { S.msg = 'Marque pelo menos uma loja para a Sandy atender.'; renderView(); break; }
+      if (ligar && !S.sandy.base.length) { S.msg = 'Cadastre ao menos uma informação em "O que a Sandy sabe" antes de ligar.'; renderView(); break; }
+      let ok = await guardar(sb.from('configuracoes').upsert([{ chave: 'sandy_ativa', valor: String(ligar) }, { chave: 'sandy_escalar_palavras', valor: val('sy-palavras').trim() }], { onConflict: 'chave' }));
+      for (const i of document.querySelectorAll('.sy-loja')) {
+        if (!ok) break;
+        ok = await guardar(sb.from('lojas').update({ sandy_ativa: i.checked }).eq('id', i.getAttribute('data-id')));
+      }
+      if (ok) { S.msg = ligar ? 'Sandy ligada nas lojas marcadas.' : 'Configuração salva. A Sandy está desligada.'; await carregarBase(); await carregarSandy(); }
+      renderView(); break;
+    }
     case 'salvar-alerta': {
       const av = Number(val('cf-aviso')), ur = Number(val('cf-urgente'));
       if (ur <= av) { S.msg = 'O prazo de urgente precisa ser maior que o prazo de aviso.'; renderView(); break; }
