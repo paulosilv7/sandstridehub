@@ -429,7 +429,8 @@ async function carregar(){
     SB.from('devol_config').select('chave,valor'),
     SB.from('devol_regras').select('*').order('criado_em'),
     SB.from('devol_economia').select('*,devol_casos(loja_id,pedido,solicitacao_id)').order('criado_em',{ascending:false}),
-    SB.from('devol_uso_ia').select('dia,etapa,custo_brl').gte('dia',inicioMes()),
+    SB.from('sandy_uso').select('origem,custo_usd,criado_em').like('origem','devolucao%').gte('criado_em',inicioMes()),
+    SB.from('configuracoes').select('valor').eq('chave','cambio_usd_brl').maybeSingle(),
     SB.from('devol_modelos').select('id,titulo,versao,ativo').order('titulo')
   ]);
   var falha=q.filter(function(x){return x.error;})[0];
@@ -442,8 +443,10 @@ async function carregar(){
   S.cfg={};(q[3].data||[]).forEach(function(c){S.cfg[c.chave]=c.valor;});
   S.regras=q[4].data||[];
   S.eco=(q[5].data||[]).map(function(e){var c=e.devol_casos||{},lj=LOJAID[c.loja_id]||{};return {tipo:e.tipo,valor:+e.valor,conf:!!e.conferido,extrato:e.extrato_ref,mk:MKS[lj.marketplace]||'ml',loja:lj.apelido||'—',pedido:c.pedido,dia:new Date(e.criado_em).toLocaleDateString('pt-BR',{day:'numeric',month:'short'})};});
-  S.uso=q[6].data||[];GASTO_IA_MES=S.uso.reduce(function(s,u){return s+(+u.custo_brl||0);},0);
-  S.modelos=q[7].data||[];
+  var cambio=Number(String((q[7].data&&q[7].data.valor)||'5.5').replace(',','.'))||5.5;
+  S.uso=(q[6].data||[]).map(function(u){return {dia:new Date(u.criado_em).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}),etapa:u.origem,custo_brl:(+u.custo_usd||0)*cambio};});
+  GASTO_IA_MES=S.uso.reduce(function(s,u){return s+u.custo_brl;},0);
+  S.modelos=q[8].data||[];
   S.erro='';S.carregando=false;
 }
 async function carregarSilencioso(){try{await carregar();render(true,false);}catch(e){}}
@@ -452,17 +455,18 @@ async function carregarCaso(id){
   try{
     var r=await Promise.all([
       SB.from('devol_eventos').select('tipo,dados,criado_em').eq('caso_id',id).order('id',{ascending:false}).limit(40),
-      SB.from('devol_anexos').select('caminho,tipo,estado,bytes').eq('caso_id',id).neq('estado','excluido')
+      SB.from('devol_anexos').select('caminho,tipo,estado,bytes').eq('caso_id',id).neq('estado','excluido'),
+      SB.from('devol_relatos').select('recomendacao,motivo,relato,pedido_financeiro,provas,alertas,categoria,criado_em').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1)
     ]);
     var anexos=r[1].data||[],imgs=anexos.filter(function(a){return a.tipo!=='video';});
     var urls={};
     if(imgs.length){var su=await SB.storage.from('devol-provas').createSignedUrls(imgs.map(function(a){return a.caminho;}),3600);(su.data||[]).forEach(function(u){urls[u.path]=u.signedUrl;});}
-    S.cx={id:id,carregando:false,eventos:r[0].data||[],anexos:anexos.map(function(a){return {url:urls[a.caminho]||null,tipo:a.tipo,bytes:a.bytes};})};
+    S.cx={id:id,carregando:false,relato:(r[2].data||[])[0]||null,eventos:r[0].data||[],anexos:anexos.map(function(a){return {url:urls[a.caminho]||null,tipo:a.tipo,bytes:a.bytes};})};
   }catch(e){S.cx={id:id,carregando:false,eventos:[],anexos:[],erro:true};}
   if(S.tela==='caso'&&S.casoId===id)render(true,false);
 }
 async function carregarLotes(){
-  var r=await SB.from('devol_recebimentos').select('id,criado_em,descricao_equipe,rastreio,pedido_lido,identificacao,devol_anexos(count)').order('criado_em',{ascending:false}).limit(8);
+  var r=await SB.from('devol_recebimentos').select('id,criado_em,descricao_equipe,rastreio,pedido_lido,identificacao,analise,analise_erro,devol_anexos(count)').order('criado_em',{ascending:false}).limit(8);
   S.lotes=r.data||[];if(S.tela==='receber')render(true,false);
 }
 function hex(buf){return Array.prototype.map.call(new Uint8Array(buf),function(b){return ('0'+b.toString(16)).slice(-2);}).join('');}
@@ -754,7 +758,7 @@ function receber(){
   var podeEnv=L.fotos.length>0&&!L.enviando;
   var passos=[['Recebido','O lote entra na fila com o texto exato que você escreveu.'],['Arquivado','Cada arquivo é guardado com tamanho e SHA-256 registrados.'],['Identificado','Por enquanto é manual: informe o pedido ou o rastreio. A leitura automática da etiqueta vem na próxima etapa.'],['Preparado','A Sandy prepara o relato em modo sombra e deixa para a sua aprovação.'],['Enviado','Desligado: nada sai deste sistema ainda.']].map(function(p,i){var cls=L.enviado&&i<2?'ok':'';return '<div class="passo"><span class="n '+cls+'">'+(i+1)+'</span><span><b>'+p[0]+'</b><small>'+p[1]+'</small></span></div>';}).join('');
   var dica=L.enviando?'Enviando e arquivando…':(L.enviado?'Lote recebido e arquivado.':(L.fotos.length===0?'Adicione pelo menos uma foto para enviar.':'Sem descrição, a condição fica pendente e eu pergunto depois.'));
-  var rec=S.lotes.map(function(l){var n=(l.devol_anexos&&l.devol_anexos[0]&&l.devol_anexos[0].count)||0;return '<div class="idrow"><span class="a">'+new Date(l.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span><span class="b">'+esc(l.descricao_equipe||'(sem descrição)')+(l.pedido_lido?' · pedido '+esc(l.pedido_lido):'')+'</span><span class="tag">'+n+(n===1?' arquivo':' arquivos')+'</span><span class="tag '+(l.identificacao==='identificado'?'good':'warn')+'">'+(l.identificacao==='identificado'?'Identificado':'A identificar')+'</span></div>';}).join('');
+  var rec=S.lotes.map(function(l){var n=(l.devol_anexos&&l.devol_anexos[0]&&l.devol_anexos[0].count)||0;return '<div class="idrow"><span class="a">'+new Date(l.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span><span class="b">'+esc(l.descricao_equipe||'(sem descrição)')+(l.pedido_lido?' · pedido '+esc(l.pedido_lido):'')+'</span><span class="tag">'+n+(n===1?' arquivo':' arquivos')+'</span><span class="tag '+(l.identificacao==='identificado'?'good':'warn')+'">'+(l.identificacao==='identificado'?'Identificado':'A identificar')+'</span><span class="tag '+(l.analise==='concluida'?'info':(l.analise==='erro'?'bad':'mute'))+'">'+({pendente:'Sandy vai ler',processando:'Sandy lendo…',concluida:'Sandy leu',erro:'Erro na leitura'}[l.analise]||'')+'</span></div>';}).join('');
   return head()+'<div class="cols"><section class="card" style="flex:2 1 460px;gap:22px" aria-label="Novo lote">'+
     '<div><h2 class="sech">1. Fotos do lote</h2><div class="slots" style="margin-top:14px">'+slots+'</div>'+
     '<div class="row fotos" style="margin-top:14px"><button type="button" class="btn" data-a="abrir" data-v="f-camera">'+ico('receber',18)+'Tirar foto agora</button><button type="button" class="btn" data-a="abrir" data-v="f-galeria">'+ico('receber',18)+'Escolher da galeria</button><button type="button" class="btn ghost" data-a="limpar">Limpar</button></div>'+
@@ -791,9 +795,20 @@ function detalhe(){
     '</section>'+
     '<section class="card" style="gap:10px"><h2 class="sech">Histórico</h2>'+(cx.carregando?'<p class="sub">Carregando…</p>':(evs||'<div class="empty">Sem registros ainda.</div>'))+'</section></div>'+
   '<div style="flex:1 1 380px"><section class="card"><h2 class="sech">Fotos do caso</h2>'+(fotos?'<div class="slots">'+fotos+'</div><p class="sub">As fotos saem automaticamente quando o caso fica conciliado ou encerrado e o prazo de retenção passa.</p>':'<div class="empty">Nenhuma foto ligada a este caso. Lotes recebidos entram aqui depois de identificados.</div>')+'</section>'+
-    '<section class="card"><h2 class="sech">Decisão</h2><p class="sub" style="font-size:13.5px">Modo sombra: a Sandy ainda não prepara contestações nem envia nada aos marketplaces. Quando ela preparar um relato, ele aparece aqui para você aprovar, com a trava contra envio duplicado.</p></section></div></div>';
+    '<section class="card" style="gap:10px"><h2 class="sech">Relato da Sandy</h2>'+relatoHtml(cx.relato)+'</section></div></div>';
 }
 
+function relatoHtml(r){
+  if(!r)return '<p class="sub" style="font-size:13.5px">Ainda sem relato. Quando um lote de fotos for ligado a este caso, a Sandy lê, analisa e deixa o relato aqui para você aprovar. Modo sombra: nada é enviado ao marketplace.</p>';
+  var rec={contestar:['Contestar','good'],nao_contestar:['Não contestar','warn'],pedir_informacao:['Falta informação','info']}[r.recomendacao]||['',''];
+  var al=(r.alertas||[]).map(function(a){return '<div class="idrow"><span class="a">Atenção</span><span class="b">'+esc(a)+'</span></div>';}).join('');
+  var pv=(r.provas||[]).map(function(a){return '<li>'+esc(a)+'</li>';}).join('');
+  return '<div class="row" style="gap:8px"><span class="tag '+rec[1]+'">'+rec[0]+'</span>'+(r.categoria?'<span class="tag">'+esc(r.categoria)+'</span>':'')+'</div><p style="font-size:14px">'+esc(r.motivo||'')+'</p>'+
+    (r.relato?'<div class="box"><div class="kk">Relato para o marketplace</div><div class="vl" style="white-space:pre-wrap;font-weight:400">'+esc(r.relato)+'</div></div>':'')+
+    (r.pedido_financeiro?'<div class="box az"><div class="kk">Pedido financeiro</div><div class="vl" style="font-weight:400">'+esc(r.pedido_financeiro)+'</div></div>':'')+
+    (pv?'<div><div class="kk" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Provas sugeridas</div><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">'+pv+'</ul></div>':'')+al+
+    (r.recomendacao==='contestar'?'<button type="button" class="btn lg off" disabled>Aprovar e enviar (envio desligado)</button><p class="sub" style="font-size:12.5px">O envio aos marketplaces está desligado. Quando for ligado, a aprovação grava a intenção, confere o histórico oficial e só então envia, sem duplicar.</p>':'');
+}
 function custos(){
   var e=ecoCalc(),admin=S.papelAdmin;
   var tg=function(chave,nome,desc,somenteLeitura){var on=S.cfg[chave]==='true';return '<div class="setrow"><span><b>'+nome+'</b><small>'+desc+'</small></span>'+(somenteLeitura?'<span class="tag '+(on?'warn':'mute')+'">'+(on?'Ligado':'Desligado')+'</span>':'<button type="button" class="sw'+(on?' on':'')+'" data-a="chave" data-v="'+chave+'" role="switch" aria-checked="'+on+'" aria-label="'+nome+'"'+(admin?'':' disabled')+'><i></i></button>')+'</div>';};
@@ -801,7 +816,7 @@ function custos(){
   var cnx=['ml','sp','tt'].map(function(m){var n=S.casos.filter(function(c){return c.mk===m;}).length;var ult=S.cfg[{ml:'ultima_leitura_ml',sp:'ultima_leitura_shopee',tt:'ultima_leitura_tiktok'}[m]];var min=ult?Math.max(0,Math.round((Date.now()-new Date(ult).getTime())/60000)):null;return '<div class="cnx">'+mk(m)+'<span class="nm">'+MK[m].nome+' · '+n+' casos lidos</span><small>'+(min===null?'sem leitura':'há '+(min<60?min+' min':Math.round(min/60)+' h'))+'</small><span class="tag '+(min!==null&&min<45?'good':'warn')+'">'+(min!==null&&min<45?'Lendo':'Atrasada')+'</span></div>';}).join('');
   var arm=S.cfg.armazenamento_uso_pct,limp=null;try{limp=JSON.parse(S.cfg.ultima_limpeza_fotos||'null');}catch(x){}
   var hoje=new Date().toISOString().slice(0,10),gHoje=S.uso.filter(function(u){return u.dia===hoje;}).reduce(function(s,u){return s+(+u.custo_brl||0);},0);
-  var ETAPAS=[['ler_etiqueta','1. Ler a etiqueta'],['analisar_estado','2. Analisar o estado'],['redigir','3. Redigir a contestação'],['ler_decisao','4. Ler a decisão']];
+  var ETAPAS=[['devolucao_etiqueta','1. Ler a etiqueta'],['devolucao_estado','2. Analisar o estado'],['devolucao_relato','3. Redigir a contestação'],['devolucao_decisao','4. Ler a decisão']];
   var et=ETAPAS.map(function(x){var v=S.uso.filter(function(u){return u.etapa===x[0];}).reduce(function(s,u){return s+(+u.custo_brl||0);},0);return '<div class="meter"><div class="l"><span>'+x[1]+'</span><span>'+brl(v)+'</span></div><div class="bar"><span style="width:'+(GASTO_IA_MES>0?Math.round(v/GASTO_IA_MES*100):0)+'%"></span></div></div>';}).join('');
   var eco=S.eco.length?
     '<div class="eco"><div class="tl"><div class="t" style="grid-column:1 / -1"><div class="k" style="color:var(--muted)">Economia total</div><div class="v good" style="font-size:40px">'+brl(e.tot)+'</div><div class="s">'+e.ganhas+(e.ganhas===1?' caso ganho':' casos ganhos')+'</div></div>'+
@@ -810,7 +825,7 @@ function custos(){
     '<div class="ecolist">'+S.eco.map(function(x){return '<div class="ecorow">'+mk(x.mk)+'<span class="c1"><b>'+esc(x.pedido?'Pedido '+x.pedido:'Caso')+'</b><span class="sub">'+esc(x.loja+' · '+x.dia)+'</span></span><span class="tag info">'+TIPOS_ECO[TIPO_IDX[x.tipo]]+'</span><span class="tag '+(x.conf?'good':'warn')+'">'+(x.conf?'Conferido':'A conciliar')+'</span><span class="val">'+brl(x.valor)+'</span></div>';}).join('')+'</div>'
     :'<div class="empty">Ainda não há economia registrada. Ela aparece aqui quando uma contestação for ganha, e só vira "conferida" com a referência do extrato.</div>';
   return head()+
-  '<section class="strip lg"><div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))"><div class="tile"><div class="k">Gasto de IA hoje</div><div class="v">'+brl(gHoje)+'</div></div><div class="tile"><div class="k">Gasto no mês</div><div class="v">'+brl(GASTO_IA_MES)+'</div></div><div class="tile"><div class="k">Armazenamento de arquivos</div><div class="v">'+(arm!==undefined?arm+'%':'—')+'</div><div class="s">'+(limp?'Última limpeza: '+new Date(limp.em).toLocaleDateString('pt-BR')+' · '+limp.arquivos+' arquivos':'Limpeza diária ainda não rodou')+'</div></div></div></section>'+
+  '<section class="strip lg"><div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))"><div class="tile"><div class="k">Gasto de IA hoje'+(admin?'':' (só administradores)')+'</div><div class="v">'+brl(gHoje)+'</div></div><div class="tile"><div class="k">Gasto no mês</div><div class="v">'+brl(GASTO_IA_MES)+'</div></div><div class="tile"><div class="k">Armazenamento de arquivos</div><div class="v">'+(arm!==undefined?arm+'%':'—')+'</div><div class="s">'+(limp?'Última limpeza: '+new Date(limp.em).toLocaleDateString('pt-BR')+' · '+limp.arquivos+' arquivos':'Limpeza diária ainda não rodou')+'</div></div></div></section>'+
   '<section class="card"><h2 class="sech">Economia gerada pela Sandy</h2><p class="sub">É o dinheiro que você teria perdido se o caso não tivesse sido contestado: frete de volta, produto não ressarcido ou reembolso indevido.</p>'+eco+'</section>'+
   '<div class="g2"><section class="card"><h2 class="sech">Chaves de segurança</h2><div class="fill">'+ch+(admin?'':'<p class="sub" style="font-size:12.5px;flex:0">Só administradores alteram o interruptor geral.</p>')+'</div></section><section class="card"><h2 class="sech">Gasto de IA por etapa (mês)</h2><div class="fill">'+et+'</div></section></div>'+
   '<section class="card"><h2 class="sech">Leitura dos marketplaces</h2><div class="fill">'+cnx+'</div></section>';
