@@ -352,7 +352,10 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       mensagens: ordem.filter((m: any) => m.texto).map((m: any) => ({ de: m.de, texto: String(m.texto).slice(0, 600), nova: novas.includes(m) })),
     };
     // Cliente só mandou o cartão do produto/pedido, sem escrever nada: pergunta como pode ajudar (sem gastar com o modelo).
-    const soCartao = novas.every((m: any) => /^(Produto|Pedido) enviado\b/i.test(String(m.texto ?? "").trim()) && !(Array.isArray(m.anexos) && m.anexos.length));
+    // Formatos: "Produto enviado", "Pedido enviado" e "[Pedido] 5868..." (só o número do pedido).
+    const ehCartao = (t: string) => /^(Produto|Pedido) enviado\b/i.test(t) || /^\[(Produto|Pedido)\]\s*[\w-]*$/i.test(t);
+    const soCartao = novas.every((m: any) => ehCartao(String(m.texto ?? "").trim()) && !(Array.isArray(m.anexos) && m.anexos.length));
+    const falouPedido = novas.some((m: any) => /pedido/i.test(String(m.texto ?? "")));
     let d;
     if (soCartao) {
       const cn = String(conv.cliente_nome ?? "").trim();
@@ -360,8 +363,8 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       const pareceNome = /^[A-Za-zÀ-ÿ]{2,14}$/.test(ctx.primeiroNome) && !/\d/.test(cn) && (/^[A-ZÀ-Ý]/.test(cn) || /\s/.test(cn));
       const nome = pareceNome ? ctx.primeiroNome.charAt(0).toUpperCase() + ctx.primeiroNome.slice(1).toLowerCase() : "";
       d = { acao: "responder", tom: "calmo", nome,
-        resposta: `Olá${nome ? `, ${nome}` : ""}! Tudo bem? 😊 Vi que você nos enviou este produto. Você tem alguma dúvida sobre ele? Me conta como posso te ajudar!`,
-        motivo: "Cliente enviou só o cartão do produto, sem mensagem; a Sandy perguntou como pode ajudar." };
+        resposta: `Olá${nome ? `, ${nome}` : ""}! Tudo bem? 😊 Vi que você nos enviou ${falouPedido ? "o seu pedido" : "este produto"}. Você tem alguma dúvida sobre ele? Me conta como posso te ajudar!`,
+        motivo: "Cliente enviou só o cartão do produto/pedido, sem mensagem; a Sandy perguntou como pode ajudar." };
     } else if (soAgradece) {
       d = { acao: "responder", tom: "calmo", nome: "", resposta: "Por nada! Qualquer dúvida, é só chamar por aqui 😊",
         motivo: "[encerramento] Cliente agradeceu ou confirmou; a Sandy encerrou com cordialidade." };
