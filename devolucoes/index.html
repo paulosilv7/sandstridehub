@@ -423,8 +423,10 @@ function adaptar(r){
   var ph=r.prazo_em?Math.round((new Date(r.prazo_em).getTime()-Date.now())/3600000):null;
   var rec=REC[r.id]||null,decidir=rec==='nao_contestar'&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1;
   if(decidir)st=3;
-  return {id:r.id,rec:rec,decidir:decidir,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
-    problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(ROT[r.status]||r.status),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
+  var expirado=!decidir&&mk==='sp'&&r.tipo_origem==='ACCEPTED'&&ph!==null&&ph<0&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1;
+  if(expirado)ph=null;
+  return {id:r.id,rec:rec,decidir:decidir,expirado:expirado,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
+    problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(expirado?'Prazo da loja encerrado':(ROT[r.status]||r.status)),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
     mkt:r.situacao_mkt||'',protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
 function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-01';}
@@ -568,6 +570,7 @@ var GRUPOS=[
 function grupoDe(c){
   var s=c.status;
   if(c.decidir)return 'voce';
+  if(c.expirado)return 'decididos';
   if(['PREPARADO','RECURSO_DISPONIVEL','COMPLEMENTACAO','AGUARDANDO_PROVAS','ENVIO_INCERTO'].indexOf(s)>-1)return 'voce';
   if(['NOVO','AGUARDANDO_ANALISE'].indexOf(s)>-1)return 'preparo';
   if(['ENVIADO','EM_ANALISE'].indexOf(s)>-1)return 'enviados';
@@ -811,6 +814,7 @@ function detalhe(){
 }
 
 function proxPasso(c){
+  if(c.expirado)return '<div style="flex:1 1 100%;font-size:16px;line-height:1.4;margin-top:4px">A devolução foi aceita e já voltou. O prazo da loja na Shopee <b>já encerrou</b>, então não há mais o que fazer neste caso.</div>';
   var ini=['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(c.status)>-1,txt,btn='';
   if(c.decidir)txt='A Sandy sugere <b>não contestar</b>. Veja o relato abaixo e decida.';
   else if(c.status==='PREPARADO')txt='A Sandy preparou o relato. Confira abaixo.';
