@@ -69,22 +69,30 @@ async function avisar(registroId: number) {
   if (!r) return;
   const acolheu = r.decisao === "respondeu" && String(r.motivo ?? "").startsWith("[acolhimento]");
   if (!acolheu && !["escalou", "erro"].includes(r.decisao)) return;
+  // Um aviso só por necessidade: se a equipe já foi avisada desta conversa e ninguém da loja respondeu depois, não repete.
+  const { data: antes } = await supabase.from("sandy_registros").select("id, criado_em, decisao, motivo")
+    .eq("conversa_id", r.conversa_id).lt("id", r.id).gt("criado_em", new Date(Date.now() - 24 * 3600_000).toISOString())
+    .order("id", { ascending: false }).limit(10);
+  const avisoAnterior = (antes ?? []).find((x: any) => x.decisao === "escalou" || x.decisao === "erro" || String(x.motivo ?? "").startsWith("[acolhimento]"));
+  if (avisoAnterior) {
+    const { count } = await supabase.from("mensagens").select("id", { count: "exact", head: true })
+      .eq("conversa_id", r.conversa_id).eq("de", "loja").gt("enviada_em", avisoAnterior.criado_em);
+    if (!count) return;
+  }
   const { data: c } = await supabase.from("conversas")
     .select("id, cliente_nome, produto_titulo, ultima_mensagem_texto, lojas(nome, marketplace)").eq("id", r.conversa_id).maybeSingle();
   if (!c) return;
   const loja: any = Array.isArray(c.lojas) ? c.lojas[0] : c.lojas;
   const { data: ult } = await supabase.from("mensagens").select("texto").eq("conversa_id", c.id).eq("de", "cliente")
     .not("texto", "is", null).order("enviada_em", { ascending: false }).limit(1).maybeSingle();
-  const titulo = acolheu ? "💬 <b>A Sandy acolheu o cliente — falta dar andamento</b>"
-    : r.decisao === "erro" ? "⚠️ <b>A Sandy teve um problema — responda você</b>" : "🙋 <b>Precisa de uma pessoa</b>";
-  const motivo = String(r.motivo ?? "").replace(/^\[acolhimento\]\s*/, "");
+  // Aviso curto: quem, onde, o que precisa e o link. Tudo em uma mensagem.
+  const icone = acolheu ? "💬" : r.decisao === "erro" ? "⚠️" : "🙋";
+  const motivo = String(r.motivo ?? "").replace(/^\[acolhimento\]\s*/, "").slice(0, 160);
   const linhas = [
-    titulo,
-    `<b>Cliente:</b> ${esc(c.cliente_nome || "Cliente")}`,
-    `<b>Loja:</b> ${esc(loja?.nome ?? "")} (${esc(MK[loja?.marketplace] ?? loja?.marketplace ?? "")})`,
-    motivo ? `<b>Motivo:</b> ${esc(motivo)}` : null,
-    ult?.texto ? `<b>Cliente disse:</b> “${esc(String(ult.texto).slice(0, 300))}”` : null,
-    `<a href="${SITE}/chat/?c=${c.id}">Abrir a conversa</a>`,
+    `${icone} <b>${esc(c.cliente_nome || "Cliente")}</b> · ${esc(loja?.nome ?? "")} (${esc(MK[loja?.marketplace] ?? loja?.marketplace ?? "")})`,
+    acolheu ? "Sandy acolheu; falta dar andamento." : motivo ? esc(motivo) : null,
+    ult?.texto ? `“${esc(String(ult.texto).slice(0, 140))}”` : null,
+    `<a href="${SITE}/chat/?c=${c.id}">Abrir conversa</a>`,
   ].filter(Boolean).join("\n");
   await telegram("sendMessage", { chat_id: chat, text: linhas, parse_mode: "HTML", disable_web_page_preview: true });
 }

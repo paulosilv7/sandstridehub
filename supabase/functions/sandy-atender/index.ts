@@ -152,8 +152,9 @@ const ESQUEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["acao", "resposta", "motivo", "tom", "nome"],
+    required: ["acao", "resposta", "motivo", "tom", "nome", "sem_problema"],
     properties: {
+      sem_problema: { type: "boolean", description: "true SOMENTE se o cliente deixou claro que não existe problema: foi engano ou confusão dele (olhou outro pedido, achou que era desta loja, pedido já chegou certo, desistiu da reclamação). false em qualquer outro caso." },
       acao: { type: "string", enum: ["responder", "acolher", "escalar"] },
       resposta: { type: "string", description: "Texto para o cliente. Vazio se a ação for escalar ou acolher." },
       tom: { type: "string", enum: ["calmo", "irritado"], description: "calmo SOMENTE se o cliente for educado e tranquilo. irritado se houver reclamação enfática, exigência, ironia, palavrão, caixa alta, exclamações, ofensa ou ameaça. Na dúvida, irritado." },
@@ -177,6 +178,7 @@ function instrucoes(ctx: any): string {
     "8. Se existir FICHA DO ANÚNCIO nos dados, ela é a fonte para descrição, material, gênero, tamanhos e cores. Só confirme um tamanho ou cor se ele aparecer em variacoes_tamanho_cor com disponivel=sim (ou, em anúncio sem variações, se for o do título e disponivel=sim). Se não aparecer, estiver indisponível, ou não houver ficha, escale. Nunca informe quantidade em estoque.",
     `9. LOGÍSTICA (atraso, demora, reagendamento da entrega, entrega em endereço diferente, rastreio parado, extravio, "consta entregue e não recebi", transportadora): a logística é SEMPRE responsabilidade do ${ctx.marketplace}, nunca da loja. Use acao=responder (nunca escalar por esse motivo, mesmo com cliente irritado): primeiro mostre que se importa e que sente muito por ele passar por essa situação; depois deixe claro, com educação, que o envio e a entrega ficam com o ${ctx.marketplace} e que a loja não tem controle sobre a rota nem sobre o prazo; oriente a acompanhar o pedido pelo aplicativo do ${ctx.marketplace} e, se precisar, falar com o suporte do próprio ${ctx.marketplace} pelo app. Não prometa prazo e não critique a transportadora nem o marketplace. Se além disso o cliente pedir reembolso, devolução ou cancelamento, use acao=acolher.`,
     "10. Analise SOMENTE as MENSAGENS NOVAS do cliente. Tudo que veio antes (HISTÓRICO ANTERIOR) já foi tratado pela loja: nunca escale por causa de um pedido antigo que a loja já respondeu. Se as mensagens novas apenas agradecem, confirmam, concordam, se despedem ou só informam algo sem pedir nada (ex.: \"tá bom, obrigada\", \"vou ver com minha colega\", \"entendi\"), a conversa está resolvida: responda brevemente com cordialidade (acao=responder), sem repetir o que já foi dito e sem fazer novas perguntas. Escale somente se houver pedido ou dúvida NOVA que você não consiga resolver com a base.",
+    "12. ENGANO DO CLIENTE: se as mensagens novas mostram que o problema não existe (ele olhou outro pedido, achou que era desta loja, o pedido já chegou certo, foi confusão dele), marque sem_problema=true, use acao=responder e encerre com leveza e simpatia, sem usar o texto de logística nem de acolhimento e sem escalar. Exemplo: \\\"Ah, sem problemas! Que bom que está tudo certo com o seu pedido 😊 Qualquer dúvida, estamos à disposição.\\\" Se houver qualquer dúvida de que o problema realmente acabou, sem_problema=false.",
     "11. Se os dados disserem que a loja JÁ acolheu o cliente, nunca use acao=acolher de novo e nunca repita o texto de acolhimento. Se a mensagem nova não trouxer pedido novo, responda breve e cordialmente (ex.: informar que, se decidirem seguir com a devolução, é só avisar por aqui que a equipe ajuda). Se houver pedido ou dúvida nova sobre devolução, reembolso ou cancelamento, escale (acao=escalar).",
   ].join("\n");
 }
@@ -219,7 +221,7 @@ async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: st
   const bruto = j?.choices?.[0]?.message?.content;
   const d = JSON.parse(bruto ?? "{}");
   if (!["responder", "acolher", "escalar"].includes(d.acao)) throw new Error("resposta do modelo fora do formato");
-  return { acao: d.acao, resposta: String(d.resposta ?? "").trim(), motivo: String(d.motivo ?? "").trim(), tom: d.tom === "irritado" ? "irritado" : "calmo", nome: String(d.nome ?? "").trim() };
+  return { acao: d.acao, resposta: String(d.resposta ?? "").trim(), motivo: String(d.motivo ?? "").trim(), tom: d.tom === "irritado" ? "irritado" : "calmo", nome: String(d.nome ?? "").trim(), sem_problema: d.sem_problema === true };
 }
 
 // ---------------------------------------------------------------------
@@ -378,7 +380,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
     }
     // Palavra de pedido errado/cancelamento/devolução: nunca vai como resposta comum.
-    if (gatilhoAcolher && !jaAcolheu && d.acao === "responder") {
+    if (gatilhoAcolher && !jaAcolheu && d.acao === "responder" && !d.sem_problema) {
       const motivo = `Assunto de pedido errado/cancelamento/devolução (“${gatilhoAcolher}”). Uma pessoa precisa responder.`;
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
     }
