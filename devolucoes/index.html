@@ -595,7 +595,7 @@ function toast(m){var t=document.getElementById('toast');t.textContent=m;t.hidde
 
 /* ---------- peças comuns ---------- */
 function head(){
-  return '<header class="head"><img class="hlogo" alt="Sandstride" src="'+LOGO+'"><span class="hsep" aria-hidden="true"></span><h1>'+TITULOS[S.tela]+'</h1>'+avatarHtml()+'</header>';
+  return '<header class="head"><img class="hlogo" alt="Sandstride" src="'+LOGO+'"><span class="hsep" aria-hidden="true"></span><h1>'+TITULOS[S.tela]+'</h1></header>';
 }
 function avatarHtml(){var ini=esc(String(S.nome||'?').trim().charAt(0).toUpperCase());return '<a class="meuav" href="../" title="Voltar ao hub" aria-label="Voltar ao hub">'+(S.fotoUrl?'<img src="'+esc(S.fotoUrl)+'" alt="">':ini)+'</a>';}
 
@@ -608,7 +608,7 @@ function dock(){
   function b(k,extra){return '<button type="button" data-a="go" data-v="'+k+'" class="'+(atual===k?'on':'')+(extra?' '+extra:'')+'" aria-label="'+NOMES_DOCK[k]+'" title="'+NOMES_DOCK[k]+'"'+(atual===k?' aria-current="page"':'')+'>'+ico(k)+(k==='aprov'&&nAprov>0?'<span class="bd">'+nAprov+'</span>':'')+'<span class="dl">'+DL[k]+'</span></button>';}
   var maisBtn='<button type="button" class="mb'+(emMais||S.mais?' on':'')+'" data-a="mais" aria-label="Mais opções" aria-expanded="'+(!!S.mais)+'"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg><span class="dl">Mais</span></button>';
   var sheet=S.mais?'<div class="more" role="menu" aria-label="Mais opções"><button type="button" role="menuitem" data-a="go" data-v="custos">'+ico('custos')+'Custos e saúde</button><button type="button" role="menuitem" data-a="go" data-v="regras">'+ico('regras')+'Regras e autonomia</button><button type="button" role="menuitem" data-a="hub">'+ico('hub')+'Voltar ao hub</button></div>':'';
-  return sheet+'<nav class="dock" aria-label="Menu rápido"><button type="button" class="dk" data-a="hub" aria-label="Voltar para o hub" title="Voltar para o hub">'+ico('hub')+'</button><div class="av dk" title="'+esc(S.nome)+'">'+(S.nome?esc(S.nome.charAt(0).toUpperCase()):'?')+'</div><div class="sp1 dk" aria-hidden="true"></div>'+
+  return sheet+'<nav class="dock" aria-label="Menu rápido"><button type="button" class="dk" data-a="hub" aria-label="Voltar para o hub" title="Voltar para o hub">'+ico('hub')+'</button><div class="av dk" title="'+esc(S.nome)+'">'+(S.fotoUrl?'<img src="'+esc(S.fotoUrl)+'" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block">':(S.nome?esc(S.nome.charAt(0).toUpperCase()):'?'))+'</div><div class="sp1 dk" aria-hidden="true"></div>'+
     b('home')+'<div class="sp1" aria-hidden="true"></div>'+b('receber')+b('aprov')+b('acomp')+'<div class="sp1" aria-hidden="true"></div>'+b('custos','dk')+b('regras','dk')+maisBtn+'</nav>';
 }
 function toolbar(key,ph){
