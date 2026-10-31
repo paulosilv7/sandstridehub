@@ -15,7 +15,7 @@ const APPS = [
     icone: '<path d="M3 8 12 3l9 5v8l-9 5-9-5V8Zm0 0 9 5 9-5M12 13v8"/>' },
   { id: 'lucro', nome: 'Lucro ao vivo', desc: 'Lucro das vendas em tempo real, por loja e marketplace.', href: 'lucro/',
     icone: '<path d="M3 17l5-5 4 4 8-9M15 7h5v5"/>' },
-  { id: 'contestacao', nome: 'Contestação', desc: 'Respostas a reclamações, cancelamentos e devoluções com ajuda da IA.', breve: true,
+  { id: 'devolucoes', nome: 'Devoluções', desc: 'Reclamações, devoluções e contestações de todos os marketplaces, com a Sandy.', href: 'devolucoes/',
     icone: '<path d="M12 3 4 6v5c0 5 3.400 8.500 8 10 4.600-1.500 8-5 8-10V6l-8-3Zm-3 9 2.500 2.500L15.500 9.500"/>' },
   { id: 'ads', nome: 'Gestor de Ads', desc: 'Gastos e resultados dos anúncios pagos em cada marketplace.', breve: true,
     icone: '<path d="M4 20V10m6 10V4m6 16v-7m5 7H3"/>' },
