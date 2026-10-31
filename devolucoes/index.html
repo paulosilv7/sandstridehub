@@ -559,7 +559,7 @@ function segs(c){return '<span class="segs" aria-hidden="true">'+ST.map(function
 function caso(id){return S.casos.filter(function(c){return c.id===id;})[0]||S.casos[0];}
 function lojasDe(m){var l=[];(m==='todos'?['ml','sp','tt']:[m]).forEach(function(k){LOJAS[k].forEach(function(n){if(l.indexOf(n)===-1)l.push(n);});});return l;}
 var GRUPOS=[
-  ['todos','Todos','Todos os casos lidos dos marketplaces, em qualquer fase.'],
+  ['todos','Todos','Casos em andamento. Os já decididos pelo marketplace ficam na aba Decididos.'],
   ['voce','Para você','Esperam algo de você: aprovar um relato que a Sandy preparou ou resolver um envio incerto.'],
   ['preparo','Novos','Chegaram dos marketplaces e a Sandy ainda não preparou. Por enquanto ela só lê, em modo sombra.'],
   ['enviados','Com o marketplace','Em análise ou enviados: a decisão está com o marketplace.'],
@@ -578,6 +578,7 @@ function aplicar(lista,f){
   return lista.filter(function(c){
     if(f.mk!=='todos'&&c.mk!==f.mk)return false;
     if(f.loja!=='todas'&&c.loja!==f.loja)return false;
+    if(f.grupo==='todos'&&grupoDe(c)==='decididos')return false;
     if(f.grupo&&f.grupo!=='todos'&&grupoDe(c)!==f.grupo)return false;
     if(q){var tx=(c.produto+' '+c.pedido+' '+c.loja+' '+c.problema+' '+(c.protocolo||'')).toLowerCase();if(tx.indexOf(q)===-1)return false;}
     return true;
@@ -737,10 +738,10 @@ function acompStrip(){
 /* ---------- telas ---------- */
 function home(){
   var todos=S.casos,f=S.f.home;
-  var base=aplicar(todos,{q:f.q,mk:f.mk,loja:f.loja,grupo:'todos'});
+  var base=aplicar(todos,{q:f.q,mk:f.mk,loja:f.loja,grupo:''});
   var lista=aplicar(todos,f).sort(function(a,b){return (a.st>=4?1:0)-(b.st>=4?1:0)||a.prazo-b.prazo;});
   var gAtual=f.grupo||'todos';
-  var gt=GRUPOS.map(function(g){var n=g[0]==='todos'?base.length:base.filter(function(c){return grupoDe(c)===g[0];}).length;return '<button type="button" class="gt'+(g[0]==='voce'?' hot':'')+'" data-a="grupo" data-v="'+g[0]+'" aria-pressed="'+(gAtual===g[0])+'"><span>'+g[1]+'</span><b>'+n+'</b></button>';}).join('');
+  var gt=GRUPOS.map(function(g){var n=g[0]==='todos'?base.filter(function(c){return grupoDe(c)!=='decididos';}).length:base.filter(function(c){return grupoDe(c)===g[0];}).length;return '<button type="button" class="gt'+(g[0]==='voce'?' hot':'')+'" data-a="grupo" data-v="'+g[0]+'" aria-pressed="'+(gAtual===g[0])+'"><span>'+g[1]+'</span><b>'+n+'</b></button>';}).join('');
   var gSel=GRUPOS.filter(function(g){return g[0]===gAtual;})[0];
   var rows=lista.map(function(c){var p=prazoInfo(c);
     return '<button type="button" class="caso" data-a="caso" data-v="'+c.id+'"><span class="cs-main">'+mk(c.mk)+'<span class="c1"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span></span><span class="c2">'+esc(c.problema)+(c.mkt?'<span class="sub" style="display:block;margin-top:2px">No marketplace: '+esc(c.mkt)+'</span>':'')+'</span>'+segs(c)+'<span class="cs-tags"><span class="tag '+stCls(c.st)+'">'+c.rot+'</span>'+(c.st<6?'<span class="tag '+p.cls+'">'+p.t+'</span>':'')+'</span><svg class="go" width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>';}).join('')||'<div class="empty">Nenhum caso com esses filtros.</div>';
