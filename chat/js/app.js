@@ -587,7 +587,89 @@ function vistaConfig() {
   h += '<div class="box"><h2>Sua conta</h2><div class="acoes"><a class="bt2" href="../" style="text-decoration:none;display:inline-flex;align-items:center">Voltar para a central</a><button type="button" class="bt2" data-act="sair">Sair</button></div></div>';
   return h;
 }
-const TITULOS = { inbox: 'Chats', rapidas: 'Respostas rápidas', sandy: 'Sandy', config: 'Configurações' };
+
+/* ------------------------------------------------------------------ */
+/* Custos de API (só administradores)                                  */
+/* ------------------------------------------------------------------ */
+const PERIODOS_CUSTO = [['hoje', 'Hoje'], ['7', '7 dias'], ['30', '30 dias'], ['mes', 'Este mês']];
+const ORIGENS_CUSTO = { atendimento: 'Atendimento aos clientes', telegram: 'Conversa no Telegram', simulacao: 'Testes e simulações', audio: 'Transcrição de áudio' };
+const diaBR = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+function inicioPeriodoCusto(p) {
+  const hoje = diaBR(Date.now());
+  if (p === 'mes') return new Date(`${hoje.slice(0, 8)}01T00:00:00-03:00`);
+  const d = new Date(`${hoje}T00:00:00-03:00`);
+  d.setUTCDate(d.getUTCDate() - (p === '7' ? 6 : p === '30' ? 29 : 0));
+  return d;
+}
+async function carregarCustos() {
+  if (!souAdmin()) { S.custos = { semAcesso: true }; return; }
+  const p = S.custosPeriodo || 'mes', ini = inicioPeriodoCusto(p).toISOString();
+  const [cam, mes] = await Promise.all([
+    sb.from('configuracoes').select('valor').eq('chave', 'cambio_usd_brl').maybeSingle(),
+    (async () => {
+      let todas = [], de = 0;
+      for (let i = 0; i < 30; i++) {
+        const r = await sb.from('sandy_uso').select('criado_em, origem, conversa_id, loja_id, marketplace, tokens_entrada, tokens_cache, tokens_saida, custo_usd')
+          .gte('criado_em', ini).order('criado_em', { ascending: true }).range(de, de + 999);
+        if (r.error) return { erro: true, linhas: todas };
+        todas = todas.concat(r.data || []);
+        if ((r.data || []).length < 1000) break;
+        de += 1000;
+      }
+      return { linhas: todas };
+    })(),
+  ]);
+  const cambio = Number(String(cam.data?.valor ?? '5.5').replace(',', '.')) || 5.5;
+  S.custos = { periodo: p, cambio, linhas: mes.linhas, erro: !!mes.erro };
+}
+function vistaCustos() {
+  const k = S.custos;
+  if (!k) return '<p class="mut">Carregando…</p>';
+  if (k.semAcesso) return `<p class="sub">Só administradores veem os custos.</p>`;
+  const brl = (u) => (u * k.cambio).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const brl4 = (u) => (u * k.cambio).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  const usd = (u) => u.toLocaleString('pt-BR', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const num = (n) => Number(n).toLocaleString('pt-BR');
+  const L = k.linhas, total = L.reduce((a, x) => a + Number(x.custo_usd || 0), 0);
+  const chamadas = L.length, tokens = L.reduce((a, x) => a + (x.tokens_entrada || 0) + (x.tokens_saida || 0), 0);
+  const convs = new Set(L.filter((x) => x.conversa_id && x.origem === 'atendimento').map((x) => x.conversa_id)).size;
+  const soAtend = L.filter((x) => x.origem === 'atendimento').reduce((a, x) => a + Number(x.custo_usd || 0), 0);
+  const agrupa = (chave) => {
+    const m = new Map();
+    L.forEach((x) => { const c = chave(x); const o = m.get(c) || { usd: 0, n: 0 }; o.usd += Number(x.custo_usd || 0); o.n += 1; m.set(c, o); });
+    return [...m.entries()].sort((a, b) => b[1].usd - a[1].usd);
+  };
+  const barras = (lista, rotulo) => {
+    const max = Math.max(...lista.map((x) => x[1].usd), 0.000001);
+    return lista.length ? lista.map(([c, o]) => `<div class="lin" style="gap:10px;align-items:center"><div style="flex:0 0 150px;min-width:110px" class="nm" title="${esc(rotulo(c))}">${esc(rotulo(c))}</div><div style="flex:1;min-width:60px;height:10px;border-radius:6px;background:var(--line,rgba(127,127,127,.2));overflow:hidden"><div style="width:${Math.max(2, (o.usd / max) * 100)}%;height:100%;background:var(--brand,#2a6df4);border-radius:6px"></div></div><div style="flex:0 0 150px;text-align:right"><strong>${brl(o.usd)}</strong> <span class="mut">${num(o.n)} chamadas</span></div></div>`).join('')
+      : '<p class="mut" style="margin:0">Sem consumo neste período.</p>';
+  };
+  const nomeLoja = (id) => S.lojas.find((l) => l.id === id)?.nome || 'Sem loja';
+  const porDia = new Map();
+  L.forEach((x) => { const d = diaBR(x.criado_em); porDia.set(d, (porDia.get(d) || 0) + Number(x.custo_usd || 0)); });
+  const dias = [...porDia.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const maxDia = Math.max(...dias.map((d) => d[1]), 0.000001);
+  const fmtDia = (d) => `${d.slice(8)}/${d.slice(5, 7)}`;
+  let proj = '';
+  if (k.periodo === 'mes' && dias.length) {
+    const hoje = new Date(); const diaDoMes = Number(diaBR(hoje).slice(8)), ultimo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+    proj = `<div class="txt">Se continuar neste ritmo, o mês fecha em torno de <strong>${brl((total / diaDoMes) * ultimo)}</strong>.</div>`;
+  }
+  let h = `<p class="sub">Quanto a Sandy gasta com a OpenAI. Valores estimados pelos tokens de cada chamada; o painel da OpenAI é a fonte oficial.</p>${notaHtml()}`;
+  h += `<div class="mks" role="group" aria-label="Período">${PERIODOS_CUSTO.map((x) => `<button type="button" class="pill sm" data-act="custos-periodo" data-v="${x[0]}" aria-pressed="${k.periodo === x[0]}">${x[1]}</button>`).join('')}</div>`;
+  if (k.erro) h += '<p class="erro" role="alert">Não consegui carregar todo o consumo. Os números abaixo podem estar incompletos.</p>';
+  h += `<div class="grade"><div class="box"><span class="eyebrow">Gasto no período</span><h2 style="font-size:1.6rem">${brl(total)}</h2><div class="mut">${usd(total)}</div></div>` +
+    `<div class="box"><span class="eyebrow">Chamadas à IA</span><h2 style="font-size:1.6rem">${num(chamadas)}</h2><div class="mut">${num(tokens)} tokens</div></div>` +
+    `<div class="box"><span class="eyebrow">Custo por conversa atendida</span><h2 style="font-size:1.6rem">${convs ? brl4(soAtend / convs) : '—'}</h2><div class="mut">${num(convs)} conversas</div></div></div>`;
+  h += `<div class="box"><h2>Gasto por dia</h2>${proj}` + (dias.length ? `<div style="display:flex;align-items:flex-end;gap:6px;height:120px;overflow-x:auto;padding-top:6px">${dias.map(([d, u]) => `<div style="flex:1 0 28px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px" title="${fmtDia(d)}: ${brl(u)}"><span class="mut" style="font-size:.68rem">${brl(u).replace('R$', '').trim()}</span><div style="width:100%;max-width:34px;height:${Math.max(3, (u / maxDia) * 78)}px;background:var(--brand,#2a6df4);border-radius:4px 4px 0 0"></div><span class="mut" style="font-size:.68rem">${fmtDia(d)}</span></div>`).join('')}</div>` : '<p class="mut" style="margin:0">Sem consumo neste período.</p>') + '</div>';
+  h += `<div class="box"><h2>Por marketplace</h2>${barras(agrupa((x) => x.marketplace || 'outros'), (c) => MKS[c]?.nome || (c === 'outros' ? 'Telegram / outros' : c))}</div>`;
+  h += `<div class="box"><h2>Por loja</h2>${barras(agrupa((x) => x.loja_id || ''), (c) => (c ? nomeLoja(c) : 'Telegram / sem loja'))}</div>`;
+  h += `<div class="box"><h2>Por tipo de uso</h2>${barras(agrupa((x) => x.origem), (c) => ORIGENS_CUSTO[c] || c)}</div>`;
+  h += `<div class="box"><h2>Cotação do dólar</h2><div class="txt">Usada para converter o custo em reais. Ajuste quando quiser.</div><div class="envio"><input id="cs-cambio" type="text" inputmode="decimal" value="${String(k.cambio).replace('.', ',')}" aria-label="Cotação do dólar em reais" style="max-width:120px"><button type="button" class="btn" data-act="custos-cambio">Salvar</button></div>` +
+    '<p class="mut" style="margin:0">O registro começou quando esta página foi criada: não há histórico de antes disso. A transcrição de áudio do Telegram ainda não entra na conta.</p></div>';
+  return h;
+}
+const TITULOS = { inbox: 'Chats', rapidas: 'Respostas rápidas', sandy: 'Sandy', custos: 'Custos de API', config: 'Configurações' };
 function renderView() {
   const inbox = S.view === 'inbox';
   $('v-inbox').hidden = !inbox; $('vista').hidden = inbox;
@@ -596,7 +678,7 @@ function renderView() {
   document.querySelectorAll('.dock [data-act="view"]').forEach((b) => {
     if (b.getAttribute('data-v') === S.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
-  if (!inbox) $('vista').innerHTML = S.view === 'rapidas' ? vistaRapidas() : S.view === 'sandy' ? vistaSandy() : vistaConfig();
+  if (!inbox) $('vista').innerHTML = S.view === 'rapidas' ? vistaRapidas() : S.view === 'sandy' ? vistaSandy() : S.view === 'custos' ? vistaCustos() : vistaConfig();
 }
 
 /* ------------------------------------------------------------------ */
@@ -652,6 +734,7 @@ const ICONES = {
   inbox: '<path d="M5.5 5h13L21 13v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5l2.5-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 13h5.5l1 2.5h5l1-2.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   sandy: '<path d="M12 3l1.8 4.7L18.5 9.500 13.800 11.300 12 16l-1.800-4.700L5.500 9.500l4.700-1.800L12 3Zm6.500 11 .8 2.200 2.200.8-2.200.8-.8 2.200-.8-2.200-2.200-.8 2.200-.8.8-2.200Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
   rapidas: '<path d="M13 3 5 13h6l-1 8 8-10h-6l1-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+  custos: '<path d="M12 3v18M16.500 7.500C16.500 6 14.500 5 12 5s-4.500 1.200-4.500 3 2 2.500 4.500 3 4.500 1.200 4.500 3.500-2 3.500-4.500 3.500-4.500-1-4.500-2.500" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   config: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="16" cy="6" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="10" cy="12" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="18" r="2" stroke="currentColor" stroke-width="1.8"/>',
 };
 function montarCasca() {
@@ -683,6 +766,7 @@ function montarCasca() {
     <button type="button" class="bk" data-act="view" data-v="inbox" aria-label="Chats" title="Caixa de entrada"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.inbox}</svg><span class="bdg" id="navCount">0</span></button>
     <button type="button" class="bk" data-act="view" data-v="rapidas" aria-label="Respostas rápidas" title="Respostas rápidas"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.rapidas}</svg></button>
     <button type="button" class="bk" data-act="view" data-v="sandy" aria-label="Sandy" title="Sandy"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.sandy}</svg></button>
+    ${souAdmin() ? `<button type="button" class="bk" data-act="view" data-v="custos" aria-label="Custos de API" title="Custos de API"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.custos}</svg></button>` : ''}
     <button type="button" class="bk" data-act="view" data-v="config" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.config}</svg></button>
   </nav>`;
 }
@@ -727,6 +811,7 @@ function ir(v) {
   S.view = v; S.msg = ''; S.editRap = null; S.novaRap = false; S.delRap = null; S.delMembro = null; S.editBase = null; S.novaBase = false; S.delBase = null;
   renderView(); if (v === 'inbox') renderInbox();
   if (v === 'sandy') carregarSandy().then(() => { if (S.view === 'sandy') renderView(); });
+  if (v === 'custos') { S.custos = null; carregarCustos().then(() => { if (S.view === 'custos') renderView(); }); }
 }
 async function escolher(id) {
   S.sel = id; S.draft = ''; S.anexos = []; S.aviso = ''; S.msgs = []; S.tela = 'conversa';
@@ -841,6 +926,13 @@ document.addEventListener('click', async (ev) => {
     case 'apagar-rap':
       if (await guardar(sb.from('respostas_rapidas').delete().eq('id', id), 'Resposta apagada.')) { S.delRap = null; await carregarBase(); }
       renderView(); break;
+    case 'custos-periodo': S.custosPeriodo = v; S.custos = null; renderView(); await carregarCustos(); if (S.view === 'custos') renderView(); break;
+    case 'custos-cambio': {
+      const n = Number(val('cs-cambio').replace(',', '.'));
+      if (!(n > 1 && n < 20)) { S.msg = 'Informe uma cotação válida, por exemplo 5,50.'; renderView(); break; }
+      if (await guardar(sb.from('configuracoes').upsert({ chave: 'cambio_usd_brl', valor: String(n) }, { onConflict: 'chave' }), 'Cotação salva.')) await carregarCustos();
+      renderView(); break;
+    }
     case 'sandy-nova': S.novaBase = true; S.editBase = null; S.msg = ''; renderView(); break;
     case 'sandy-editar': S.editBase = id; S.novaBase = false; S.msg = ''; renderView(); break;
     case 'sandy-cancelar': S.novaBase = false; S.editBase = null; S.delBase = null; renderView(); break;

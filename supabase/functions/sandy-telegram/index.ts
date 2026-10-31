@@ -260,6 +260,9 @@ async function conversarComModelo(texto: string, quem: string, contexto: string,
     });
     const j: any = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(`OpenAI ${r.status}: ${String(j?.error?.message ?? "").slice(0, 200)}`);
+    if (j?.usage) {
+      try { await supabase.rpc("sandy_registrar_uso", { p_origem: "telegram", p_conversa: null, p_modelo: MODELO, p_entrada: j.usage.prompt_tokens ?? 0, p_cache: j.usage.prompt_tokens_details?.cached_tokens ?? 0, p_saida: j.usage.completion_tokens ?? 0 }); } catch (_) { /* ignora */ }
+    }
     const m = j.choices?.[0]?.message;
     if (!m) throw new Error("resposta vazia do modelo");
     msgs.push(m);

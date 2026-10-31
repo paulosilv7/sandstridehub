@@ -226,6 +226,10 @@ async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: st
   });
   const j: any = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(`OpenAI ${r.status}: ${String(j?.error?.message ?? "").slice(0, 200)}`);
+  // Guarda o consumo (tokens e custo) para a página de custos da Central.
+  if (j?.usage) {
+    try { await supabase.rpc("sandy_registrar_uso", { p_origem: ctx.origemUso ?? "atendimento", p_conversa: ctx.conversaId ?? null, p_modelo: MODELO, p_entrada: j.usage.prompt_tokens ?? 0, p_cache: j.usage.prompt_tokens_details?.cached_tokens ?? 0, p_saida: j.usage.completion_tokens ?? 0 }); } catch (_) { /* não atrapalha o atendimento */ }
+  }
   const bruto = j?.choices?.[0]?.message?.content;
   const d = JSON.parse(bruto ?? "{}");
   if (!["responder", "acolher", "escalar"].includes(d.acao)) throw new Error("resposta do modelo fora do formato");
@@ -360,6 +364,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       loja: loja.nome, marketplace: rotulo[loja.marketplace] ?? loja.marketplace,
       primeiroNome: String(conv.cliente_nome ?? "").trim().split(/\s+/)[0] || "cliente",
       produto: conv.produto_titulo, pedido, situacao: conv.situacao, jaRespondeu: !!ultimaLoja, jaAcolheu, temAnexo, conhecimento,
+      conversaId, origemUso: simular ? "simulacao" : "atendimento",
       mensagens: ordem.filter((m: any) => m.texto).map((m: any) => ({ de: m.de, texto: String(m.texto).slice(0, 600), nova: novas.includes(m) })),
     };
     // Cliente só mandou o cartão do produto/pedido, sem escrever nada: pergunta como pode ajudar (sem gastar com o modelo).
