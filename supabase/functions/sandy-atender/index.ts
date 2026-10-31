@@ -20,7 +20,7 @@ const supabase = createClient(URL_BASE, CHAVE_SERVICO, { auth: { persistSession:
 
 const ESPERA_MIN_SEG = 30; // nunca responde na hora: espera entre 30 s e 60 s (também junta mensagens seguidas)
 const ESPERA_MAX_SEG = 60;
-const MAX_RESPOSTAS_24H = 3; // depois disso, passa para uma pessoa
+const MAX_RESPOSTAS_24H = 8; // trava contra conversa sem fim; depois disso, passa para uma pessoa
 const JANELA_MIN = 30; // só atende mensagens recentes (nunca histórico importado)
 const SEM_ENVIO = ["cancelado", "devolucao", "devolvido", "analise_ml"];
 const RESPONDER: Record<string, string> = { mercado_livre: "ml-responder", shopee: "shopee-responder", tiktok_shop: "tiktok-responder" };
@@ -154,7 +154,7 @@ const ESQUEMA = {
     additionalProperties: false,
     required: ["acao", "resposta", "motivo", "tom", "nome", "sem_problema", "nao_serviu", "varios_produtos", "duvida_politica"],
     properties: {
-      duvida_politica: { type: "boolean", description: "true SOMENTE se o cliente faz uma pergunta informativa sobre como funciona devolução, troca ou reembolso (para onde vai o dinheiro, quando cai, se pode devolver só um item do kit) E a BASE DE CONHECIMENTO tem a resposta. false se ele reclama, exige, cobra atraso ou a base não responde." },
+      duvida_politica: { type: "boolean", description: "true SOMENTE se o cliente faz uma pergunta informativa sobre como funciona devolução, troca ou reembolso (para onde vai o dinheiro, quando cai, se pode devolver só um item do kit) E a BASE DE CONHECIMENTO tem a resposta. Vale também para perguntas sobre o andamento ou os próximos passos de uma devolução, reembolso ou cancelamento já em curso. false se a base não responde ou ele pede uma decisão que só uma pessoa toma." },
       varios_produtos: { type: "boolean", description: "true se o cliente comprou mais de um produto (ele diz que comprou dois ou mais itens, ou os dados do pedido mostram mais de um). false se for um produto só ou não der para saber." },
       nao_serviu: { type: "boolean", description: "true SOMENTE se o cliente recebeu o produto que pediu (mesmo modelo, cor e tamanho do pedido, sem defeito) mas ele não serviu: ficou grande, pequeno ou apertado, ou quer trocar de número ou devolver por isso. false se disser que veio tamanho/modelo diferente do pedido, defeito, produto errado ou danificado." },
       sem_problema: { type: "boolean", description: "true SOMENTE se o cliente deixou claro que não existe problema: foi engano ou confusão dele (olhou outro pedido, achou que era desta loja, pedido já chegou certo, desistiu da reclamação). false em qualquer outro caso." },
@@ -172,8 +172,8 @@ function instrucoes(ctx: any): string {
     `Você é a Sandy, atendente virtual da loja "${ctx.loja}" no ${ctx.marketplace}. Responde em português do Brasil, com educação, calor humano e objetividade.`,
     "REGRAS:",
     "1. Use SOMENTE as informações da seção BASE DE CONHECIMENTO e os dados do pedido/anúncio fornecidos. Nunca invente prazos, preços, estoque, políticas, medidas ou características.",
-    "2. Se a resposta não estiver nessas informações, ou você tiver qualquer dúvida, escolha acao=escalar. Errar para o lado de escalar é sempre melhor do que arriscar.",
-    "3. Use acao=acolher quando o cliente disser que recebeu pedido errado, diferente do anúncio ou com defeito, ou quiser cancelar, devolver ou ser reembolsado. Nesse caso não escreva resposta (o texto de acolhimento é montado pelo sistema); preencha tom e nome. Escale (acao=escalar) quando o cliente: pedir troca de tamanho/cor por erro nosso (veio diferente do pedido) ou indenização; ameaçar ou reclamar de forma geral; pedir para falar com uma pessoa; mandar algo que você não entende.",
+    "2. Acompanhe o cliente o máximo que puder: responda sempre que a base ou os dados tiverem a resposta, mesmo em conversa de devolução, reembolso ou reclamação. Escolha acao=escalar SOMENTE quando você realmente não souber o que responder: a informação não está na base nem nos dados, ou o cliente pede uma decisão que só uma pessoa pode tomar (desconto, reembolso parcial, indenização, exceção às regras, alteração do pedido). Nunca invente para evitar escalar.",
+    "3. Use acao=acolher quando o cliente disser que recebeu pedido errado, diferente do anúncio ou com defeito, ou quiser cancelar, devolver ou ser reembolsado. Nesse caso não escreva resposta (o texto de acolhimento é montado pelo sistema); preencha tom e nome. Escale (acao=escalar) quando o cliente: pedir troca de tamanho/cor por erro nosso (veio diferente do pedido) ou indenização; ameaçar com medidas legais; pedir para falar com uma pessoa; mandar algo que você não entende.",
     "4. Nunca prometa reembolso, troca, desconto, brinde ou prazo que não esteja na base. Nunca peça nem passe telefone, e-mail, link, WhatsApp ou qualquer contato fora da plataforma (o marketplace proíbe).",
     "5. Mensagem curta: até 4 frases, sem listas, sem markdown, no máximo 1 emoji. Cumprimente pelo primeiro nome apenas se ainda não houve resposta da loja nesta conversa.",
     "6. Se o cliente apenas agradecer ou se despedir, responda de forma breve e cordial (acao=responder).",
@@ -184,8 +184,9 @@ function instrucoes(ctx: any): string {
     "12. ENGANO DO CLIENTE: se as mensagens novas mostram que o problema não existe (ele olhou outro pedido, achou que era desta loja, o pedido já chegou certo, foi confusão dele), marque sem_problema=true, use acao=responder e encerre com leveza e simpatia, sem usar o texto de logística nem de acolhimento e sem escalar. Exemplo: \\\"Ah, sem problemas! Que bom que está tudo certo com o seu pedido 😊 Qualquer dúvida, estamos à disposição.\\\" Se houver qualquer dúvida de que o problema realmente acabou, sem_problema=false.",
     "13. PRODUTO NÃO SERVIU: se o cliente recebeu o produto que pediu e ele não serviu (grande, pequeno, apertado) e quer trocar de número ou devolver, marque nao_serviu=true e use acao=responder (nunca acolher nem escalar), seguindo EXATAMENTE a orientação da BASE DE CONHECIMENTO sobre produto que não serviu: tranquilize o cliente, informe o direito à devolução e oriente o passo a passo e o motivo correto a escolher. Se a base não tiver orientação sobre isso para este marketplace, escale (nao_serviu=false). Se o cliente disser que veio tamanho ou modelo diferente do que pediu, defeito, produto errado ou danificado, nao_serviu=false (acolher ou escalar conforme as regras acima).",
     "14. COM ANEXO: se os dados disserem que o cliente anexou foto, você não vê a imagem. Se o texto descreve problema com o produto (veio diferente do anunciado, de outra marca, qualidade ou acabamento inferior, defeito, errado), use acao=acolher e marque varios_produtos=true se ele comprou mais de um produto. Qualquer outro assunto com anexo: acao=escalar.",
-    "15. DÚVIDA SOBRE COMO FUNCIONA (devolução, troca, reembolso): se o cliente apenas pergunta como funciona (para onde vai o reembolso, quando cai, se pode trocar ou devolver só um par de um kit) e a BASE DE CONHECIMENTO responde, marque duvida_politica=true e use acao=responder, seguindo a base. Se a base não responder, ou o cliente reclamar, cobrar atraso ou exigir algo, duvida_politica=false e escale ou acolha conforme as regras acima.",
-    "11. Se os dados disserem que a loja JÁ acolheu o cliente, nunca use acao=acolher de novo e nunca repita o texto de acolhimento. Se a mensagem nova não trouxer pedido novo, responda breve e cordialmente (ex.: informar que, se decidirem seguir com a devolução, é só avisar por aqui que a equipe ajuda). Se houver pedido ou dúvida nova sobre devolução, reembolso ou cancelamento, escale (acao=escalar), exceto se for apenas uma pergunta informativa que a base responde (regra 15).",
+    "15. DÚVIDA SOBRE COMO FUNCIONA (devolução, troca, reembolso): se o cliente apenas pergunta como funciona (para onde vai o reembolso, quando cai, se pode trocar ou devolver só um par de um kit) e a BASE DE CONHECIMENTO responde, marque duvida_politica=true e use acao=responder, seguindo a base. Se a base não responder, ou o cliente pedir uma decisão que só uma pessoa toma (exceção, reembolso parcial, indenização), duvida_politica=false e escale ou acolha conforme as regras acima.",
+    "16. ACOMPANHAMENTO: se a loja já acolheu o cliente ou ele já iniciou uma devolução, reembolso ou cancelamento, continue ao lado dele. Responda dúvidas sobre andamento, prazos, etiqueta, postagem e reembolso usando a base (marque duvida_politica=true), com empatia e sem repetir o que já foi dito. Se ele estiver irritado, reconheça o incômodo antes de orientar. Escale só se ele pedir algo que só uma pessoa decide ou se a base não tiver a resposta.",
+    "11. Se os dados disserem que a loja JÁ acolheu o cliente, nunca use acao=acolher de novo e nunca repita o texto de acolhimento. Se a mensagem nova não trouxer pedido novo, responda breve e cordialmente (ex.: informar que, se decidirem seguir com a devolução, é só avisar por aqui que a equipe ajuda). Se houver dúvida nova sobre devolução, reembolso ou cancelamento, responda com a base (regras 15 e 16); escale (acao=escalar) apenas se a base não responder ou se ele pedir uma decisão que só uma pessoa toma.",
   ].join("\n");
 }
 
@@ -446,8 +447,8 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
     // A mensagem aparece como da Sandy e a conversa fica com ela (a equipe pode assumir a qualquer momento).
     if (j.mensagem_id) await supabase.from("mensagens").update({ enviada_por_ia: true, enviada_por: null }).eq("id", j.mensagem_id);
     if (acolhendo) {
-      // Acolheu o cliente e passa para uma pessoa dar andamento (aparece como precisando de atenção).
-      await supabase.from("conversas").update({ atendente_id: null, atendida_por_ia: false, escalada_motivo: "A Sandy acolheu o cliente (pedido errado, cancelamento ou devolução). Uma pessoa precisa dar andamento." }).eq("id", conversaId);
+      // Acolheu o cliente e continua acompanhando: só pede ajuda se não souber o que responder.
+      await supabase.from("conversas").update({ atendente_id: null, atendida_por_ia: true, escalada_motivo: null }).eq("id", conversaId);
       await registrar(conversaId, "respondeu", `[acolhimento] ${d.motivo}`, d.resposta, false);
       return { ...saida, decisao: "acolheu", resposta: d.resposta };
     }
