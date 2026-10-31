@@ -396,8 +396,13 @@ var MKS={mercado_livre:'ml',shopee:'sp',tiktok_shop:'tt'};
 var MKINV={ml:'mercado_livre',sp:'shopee',tt:'tiktok_shop'};
 var ST_MAP={NOVO:2,AGUARDANDO_ANALISE:2,AGUARDANDO_PROVAS:2,PREPARADO:3,RECURSO_DISPONIVEL:3,COMPLEMENTACAO:3,ENVIO_INCERTO:4,ENVIADO:4,EM_ANALISE:5,DECIDIDO:6,CREDITO_PENDENTE:6,CONCILIADO:6,ENCERRADO:6};
 var ROT={NOVO:'Novo',AGUARDANDO_ANALISE:'Aguardando análise',AGUARDANDO_PROVAS:'Aguardando provas',PREPARADO:'Preparado · aguarda você',ENVIO_INCERTO:'Envio incerto',ENVIADO:'Enviado',EM_ANALISE:'Em análise no marketplace',COMPLEMENTACAO:'Pede complementação',RECURSO_DISPONIVEL:'Recurso disponível',DECIDIDO:'Decidido',CREDITO_PENDENTE:'Crédito pendente',CONCILIADO:'Conciliado',ENCERRADO:'Encerrado'};
+var MOTIVOS_TT={"buyer_return_and_refund_item_doesn't_fit":'Não serviu',buyer_return_and_refund_color_or_pattern_not_as_expected:'Cor ou estampa diferente do esperado','buyer_return_and_refund_fabric,_material_or_style_not_as_expected':'Tecido, material ou estilo diferente do esperado',ecom_order_delivered_refund_reason_not_received:'Não recebeu o pedido',ecom_order_delivered_refund_reason_wrong_product:'Produto errado',ecom_order_delivered_refund_and_return_reason_no_need:'Não precisa mais do produto',ecom_order_intrand_refund_reason_cs_fail_delivery:'Falha na entrega',ecom_order_delivered_refund_and_return_reason_missing_product:'Produto faltando',ecom_order_delivered_refund_and_return_reason_not_match_description:'Diferente da descrição',ecom_order_delivered_refund_reason_defective:'Produto com defeito'};
+var EV_TX={sandy_preparou:'Sandy preparou o relato',decisao_usuario:'Decisão sua registrada',lote_ligado:'Fotos ligadas ao caso',lote_recebido:'Lote de fotos recebido',fotos_excluidas:'Fotos excluídas'};
+var ST_MKT={opened:'aberta',closed:'encerrada',pending:'pendente',processing:'em andamento'};
+var ETAPA_MKT={claim:'reclamação',dispute:'mediação do ML',recontact:'recontato'};
+function motivoPt(c){c=String(c||'');if(/^PDD/.test(c))return 'Produto diferente ou com defeito';if(/^PNR/.test(c))return 'Produto não recebido';return MOTIVOS_TT[c]||MOTIVOS_SP[c]||'';}
 var TIPOS_ML={mediations:'Reclamação',returns:'Devolução',change:'Troca',cancel_purchase:'Cancelamento',cancel_sale:'Cancelamento'};
-var MOTIVOS_SP={NOT_RECEIPT:'Não recebeu o pedido',WRONG_ITEM:'Item errado',DIFFERENT_DESCRIPTION:'Diferente do anunciado',DAMAGED_ITEM:'Produto danificado',NONFUNCTIONAL:'Não funciona',MISSING_ITEM:'Item faltando',PHYSICAL_DMG:'Produto danificado'};
+var MOTIVOS_SP={ITEM_NOT_FIT:'Não serviu',ITEM_MISSING:'Item faltando',CHANGE_MIND:'Mudou de ideia',DAMAGED_OTHERS:'Produto danificado',NOT_RECEIPT:'Não recebeu o pedido',WRONG_ITEM:'Item errado',DIFFERENT_DESCRIPTION:'Diferente do anunciado',DAMAGED_ITEM:'Produto danificado',NONFUNCTIONAL:'Não funciona',MISSING_ITEM:'Item faltando',PHYSICAL_DMG:'Produto danificado'};
 var LOJAID={},ANEXOS={},REC={};
 var S={
   tela:'home',prev:'home',humor:'auto',fala:'',pula:false,mais:false,casoId:null,regraMk:'ml',nome:'',papelAdmin:false,
@@ -408,9 +413,8 @@ var S={
 };
 function humanizar(s){s=String(s||'').replace(/[_-]+/g,' ').trim().toLowerCase();return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
 function problemaDe(r,mk){
-  if(mk==='ml'){var b=TIPOS_ML[r.tipo_origem]||'Reclamação';return b+(r.etapa_origem==='dispute'?' · mediação do ML':(r.etapa_origem==='recontact'?' · recontato':''));}
-  if(mk==='sp')return MOTIVOS_SP[r.motivo_original]||humanizar(r.motivo_original)||'Devolução';
-  return humanizar(r.motivo_original)||'Devolução';
+  if(mk==='ml'){var b=TIPOS_ML[r.tipo_origem]||'Reclamação';var mo=motivoPt(r.motivo_original);if(mo)b+=' · '+mo;return b+(r.etapa_origem==='dispute'?' · mediação do ML':(r.etapa_origem==='recontact'?' · recontato':''));}
+  return motivoPt(r.motivo_original)||(mk==='sp'?'Devolução':humanizar(r.motivo_original))||'Devolução';
 }
 function adaptar(r){
   var lj=LOJAID[r.loja_id]||{},mk=MKS[lj.marketplace]||'ml';
@@ -787,7 +791,7 @@ function detalhe(){
   var destino=S.prev&&S.prev!=='caso'?S.prev:'home';
   var dt=function(x){return x?new Date(x).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';};
   var kv=function(a,b){return '<div class="idrow"><span class="a">'+a+'</span><span class="b">'+b+'</span></div>';};
-  var evs=(cx.eventos||[]).map(function(e){var d=e.dados||{};var tx=e.tipo==='leitura_marketplace'?'Leitura do marketplace: '+esc(String(d.status||'—'))+(d.stage?' · etapa '+esc(d.stage):'')+' → '+esc(ROT[d.estado_local]||d.estado_local||''):(e.tipo==='fotos_excluidas'?'Fotos excluídas ('+(d.arquivos||0)+' arquivos)':esc(e.tipo));return '<div class="idrow"><span class="a">'+dt(e.criado_em)+'</span><span class="b">'+tx+'</span></div>';}).join('');
+  var evs=(cx.eventos||[]).map(function(e){var d=e.dados||{};var tx=e.tipo==='leitura_marketplace'?'Leitura do marketplace: '+esc(ST_MKT[d.status]||String(d.status||'—'))+(d.stage?' · etapa '+esc(ETAPA_MKT[d.stage]||d.stage):'')+' → '+esc(ROT[d.estado_local]||d.estado_local||''):(e.tipo==='fotos_excluidas'?'Fotos excluídas ('+(d.arquivos||0)+' arquivos)':esc(EV_TX[e.tipo]||humanizar(e.tipo)));return '<div class="idrow"><span class="a">'+dt(e.criado_em)+'</span><span class="b">'+tx+'</span></div>';}).join('');
   var fotos=(cx.anexos||[]).map(function(a,i){return a.url?'<div class="slot"><img src="'+a.url+'" alt="Foto '+(i+1)+' do caso"></div>':'<div class="slot ok">'+(a.tipo==='video'?'Vídeo':'Arquivo')+'</div>';}).join('');
   return head()+'<div><button type="button" class="pbk" data-a="voltar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Voltar para '+TITULOS[destino]+'</button></div>'+
   '<section class="stage"><div style="min-width:0;flex:1 1 360px"><div class="lbl">'+mk(c.mk)+esc(MK[c.mk].nome+' · '+c.loja)+'</div><div class="tt">'+esc(c.problema)+'</div><div class="sub" style="color:var(--on-dark-muted);margin-top:6px">'+esc(c.pedido+' · solicitação '+c.solicitacao)+'</div></div><div class="sr"><div class="k">Prazo</div><div class="pv">'+(c.st>=6?'Encerrado':(c.semPrazo?'—':(c.prazo<=0?'Vencido':c.prazo+' h')))+'</div></div><div class="steps" role="list" aria-label="Etapas do caso">'+steps+'</div></section>'+
