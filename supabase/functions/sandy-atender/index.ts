@@ -131,12 +131,12 @@ async function fichaDoAnuncio(lojaId: string, marketplace: string, extras: any):
 // ---------------------------------------------------------------------
 // Acolhimento: pedido errado, cancelamento, devolução (texto fixo, aprovado pelo Paulo)
 // ---------------------------------------------------------------------
-function montarAcolhimento(nome: string, tom: string, jaRespondeu: boolean): string {
+function montarAcolhimento(nome: string, tom: string, jaRespondeu: boolean, varios = false): string {
   const nomeOk = /^[A-Za-zÀ-ÿ]{2,20}$/.test(nome) ? nome.charAt(0).toUpperCase() + nome.slice(1).toLowerCase() : "";
   const partes = [
     `${nomeOk && !jaRespondeu ? `Olá, ${nomeOk}! ` : ""}Sentimos muito pela situação.`,
     "Essa não é a experiência que queremos proporcionar aos nossos clientes.",
-    "Você tem direito à devolução gratuita do seu pedido.",
+    varios ? "Você tem direito à devolução gratuita: pode devolver o pedido completo ou apenas o produto que não atendeu à sua expectativa." : "Você tem direito à devolução gratuita do seu pedido.",
     "Nossa equipe vai te acompanhar por aqui nos próximos passos.",
   ];
   if (tom === "calmo") partes.push("Se depois do reembolso você quiser comprar conosco novamente, vamos redobrar a nossa atenção com o seu pedido.");
@@ -152,8 +152,10 @@ const ESQUEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["acao", "resposta", "motivo", "tom", "nome", "sem_problema"],
+    required: ["acao", "resposta", "motivo", "tom", "nome", "sem_problema", "nao_serviu", "varios_produtos"],
     properties: {
+      varios_produtos: { type: "boolean", description: "true se o cliente comprou mais de um produto (ele diz que comprou dois ou mais itens, ou os dados do pedido mostram mais de um). false se for um produto só ou não der para saber." },
+      nao_serviu: { type: "boolean", description: "true SOMENTE se o cliente recebeu o produto que pediu (mesmo modelo, cor e tamanho do pedido, sem defeito) mas ele não serviu: ficou grande, pequeno ou apertado, ou quer trocar de número ou devolver por isso. false se disser que veio tamanho/modelo diferente do pedido, defeito, produto errado ou danificado." },
       sem_problema: { type: "boolean", description: "true SOMENTE se o cliente deixou claro que não existe problema: foi engano ou confusão dele (olhou outro pedido, achou que era desta loja, pedido já chegou certo, desistiu da reclamação). false em qualquer outro caso." },
       acao: { type: "string", enum: ["responder", "acolher", "escalar"] },
       resposta: { type: "string", description: "Texto para o cliente. Vazio se a ação for escalar ou acolher." },
@@ -170,7 +172,7 @@ function instrucoes(ctx: any): string {
     "REGRAS:",
     "1. Use SOMENTE as informações da seção BASE DE CONHECIMENTO e os dados do pedido/anúncio fornecidos. Nunca invente prazos, preços, estoque, políticas, medidas ou características.",
     "2. Se a resposta não estiver nessas informações, ou você tiver qualquer dúvida, escolha acao=escalar. Errar para o lado de escalar é sempre melhor do que arriscar.",
-    "3. Use acao=acolher quando o cliente disser que recebeu pedido errado, diferente do anúncio ou com defeito, ou quiser cancelar, devolver ou ser reembolsado. Nesse caso não escreva resposta (o texto de acolhimento é montado pelo sistema); preencha tom e nome. Escale (acao=escalar) quando o cliente: pedir troca de tamanho/cor ou indenização; ameaçar ou reclamar de forma geral; pedir para falar com uma pessoa; mandar algo que você não entende.",
+    "3. Use acao=acolher quando o cliente disser que recebeu pedido errado, diferente do anúncio ou com defeito, ou quiser cancelar, devolver ou ser reembolsado. Nesse caso não escreva resposta (o texto de acolhimento é montado pelo sistema); preencha tom e nome. Escale (acao=escalar) quando o cliente: pedir troca de tamanho/cor por erro nosso (veio diferente do pedido) ou indenização; ameaçar ou reclamar de forma geral; pedir para falar com uma pessoa; mandar algo que você não entende.",
     "4. Nunca prometa reembolso, troca, desconto, brinde ou prazo que não esteja na base. Nunca peça nem passe telefone, e-mail, link, WhatsApp ou qualquer contato fora da plataforma (o marketplace proíbe).",
     "5. Mensagem curta: até 4 frases, sem listas, sem markdown, no máximo 1 emoji. Cumprimente pelo primeiro nome apenas se ainda não houve resposta da loja nesta conversa.",
     "6. Se o cliente apenas agradecer ou se despedir, responda de forma breve e cordial (acao=responder).",
@@ -179,11 +181,13 @@ function instrucoes(ctx: any): string {
     `9. LOGÍSTICA (atraso, demora, reagendamento da entrega, entrega em endereço diferente, rastreio parado, extravio, "consta entregue e não recebi", transportadora): a logística é SEMPRE responsabilidade do ${ctx.marketplace}, nunca da loja. Use acao=responder (nunca escalar por esse motivo, mesmo com cliente irritado): primeiro mostre que se importa e que sente muito por ele passar por essa situação; depois deixe claro, com educação, que o envio e a entrega ficam com o ${ctx.marketplace} e que a loja não tem controle sobre a rota nem sobre o prazo; oriente a acompanhar o pedido pelo aplicativo do ${ctx.marketplace} e, se precisar, falar com o suporte do próprio ${ctx.marketplace} pelo app. Não prometa prazo e não critique a transportadora nem o marketplace. Se além disso o cliente pedir reembolso, devolução ou cancelamento, use acao=acolher.`,
     "10. Analise SOMENTE as MENSAGENS NOVAS do cliente. Tudo que veio antes (HISTÓRICO ANTERIOR) já foi tratado pela loja: nunca escale por causa de um pedido antigo que a loja já respondeu. Se as mensagens novas apenas agradecem, confirmam, concordam, se despedem ou só informam algo sem pedir nada (ex.: \"tá bom, obrigada\", \"vou ver com minha colega\", \"entendi\"), a conversa está resolvida: responda brevemente com cordialidade (acao=responder), sem repetir o que já foi dito e sem fazer novas perguntas. Escale somente se houver pedido ou dúvida NOVA que você não consiga resolver com a base.",
     "12. ENGANO DO CLIENTE: se as mensagens novas mostram que o problema não existe (ele olhou outro pedido, achou que era desta loja, o pedido já chegou certo, foi confusão dele), marque sem_problema=true, use acao=responder e encerre com leveza e simpatia, sem usar o texto de logística nem de acolhimento e sem escalar. Exemplo: \\\"Ah, sem problemas! Que bom que está tudo certo com o seu pedido 😊 Qualquer dúvida, estamos à disposição.\\\" Se houver qualquer dúvida de que o problema realmente acabou, sem_problema=false.",
+    "13. PRODUTO NÃO SERVIU: se o cliente recebeu o produto que pediu e ele não serviu (grande, pequeno, apertado) e quer trocar de número ou devolver, marque nao_serviu=true e use acao=responder (nunca acolher nem escalar), seguindo EXATAMENTE a orientação da BASE DE CONHECIMENTO sobre produto que não serviu: tranquilize o cliente, informe o direito à devolução e oriente o passo a passo e o motivo correto a escolher. Se a base não tiver orientação sobre isso para este marketplace, escale (nao_serviu=false). Se o cliente disser que veio tamanho ou modelo diferente do que pediu, defeito, produto errado ou danificado, nao_serviu=false (acolher ou escalar conforme as regras acima).",
+    "14. COM ANEXO: se os dados disserem que o cliente anexou foto, você não vê a imagem. Se o texto descreve problema com o produto (veio diferente do anunciado, de outra marca, qualidade ou acabamento inferior, defeito, errado), use acao=acolher e marque varios_produtos=true se ele comprou mais de um produto. Qualquer outro assunto com anexo: acao=escalar.",
     "11. Se os dados disserem que a loja JÁ acolheu o cliente, nunca use acao=acolher de novo e nunca repita o texto de acolhimento. Se a mensagem nova não trouxer pedido novo, responda breve e cordialmente (ex.: informar que, se decidirem seguir com a devolução, é só avisar por aqui que a equipe ajuda). Se houver pedido ou dúvida nova sobre devolução, reembolso ou cancelamento, escale (acao=escalar).",
   ].join("\n");
 }
 
-async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: string; motivo: string; tom: string; nome: string }> {
+async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: string; motivo: string; tom: string; nome: string; sem_problema: boolean; nao_serviu: boolean; varios_produtos: boolean }> {
   if (!OPENAI) throw new Error("OPENAI_API_KEY não cadastrada nos Segredos do Supabase");
   const base = ctx.conhecimento.length
     ? ctx.conhecimento.map((k: any) => `### ${k.titulo}\n${k.texto}`).join("\n\n")
@@ -195,6 +199,7 @@ async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: st
     ctx.ficha ? `FICHA DO ANÚNCIO (dados reais do marketplace): ${JSON.stringify(ctx.ficha)}` : "Sem ficha do anúncio disponível.",
     ctx.situacao ? `Situação: ${ctx.situacao}` : null,
     `A loja já respondeu nesta conversa: ${ctx.jaRespondeu ? "sim" : "não"}`,
+    ctx.temAnexo ? "O cliente anexou foto ou arquivo (você NÃO consegue ver a imagem; baseie-se somente no texto)." : null,
     ctx.jaAcolheu ? "A loja JÁ acolheu este cliente (pedido errado/cancelamento/devolução) e a equipe acompanha o caso." : null,
   ].filter(Boolean).join("\n");
   const linha = (m: any) => `${m.de === "cliente" ? "CLIENTE" : "LOJA"}: ${m.texto}`;
@@ -221,7 +226,7 @@ async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: st
   const bruto = j?.choices?.[0]?.message?.content;
   const d = JSON.parse(bruto ?? "{}");
   if (!["responder", "acolher", "escalar"].includes(d.acao)) throw new Error("resposta do modelo fora do formato");
-  return { acao: d.acao, resposta: String(d.resposta ?? "").trim(), motivo: String(d.motivo ?? "").trim(), tom: d.tom === "irritado" ? "irritado" : "calmo", nome: String(d.nome ?? "").trim(), sem_problema: d.sem_problema === true };
+  return { acao: d.acao, resposta: String(d.resposta ?? "").trim(), motivo: String(d.motivo ?? "").trim(), tom: d.tom === "irritado" ? "irritado" : "calmo", nome: String(d.nome ?? "").trim(), sem_problema: d.sem_problema === true, nao_serviu: d.nao_serviu === true, varios_produtos: d.varios_produtos === true };
 }
 
 // ---------------------------------------------------------------------
@@ -297,9 +302,12 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       const motivo = `Assunto grave (“${grave}”). Uma pessoa precisa responder.`;
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
     }
+    // Foto/arquivo: a Sandy não vê a imagem. Só segue para análise se o cliente também escreveu algo útil (aí só pode acolher; resposta comum vira escalada).
+    const temAnexo = novas.some((m: any) => Array.isArray(m.anexos) && m.anexos.length);
+    const textoUtil = textoNovo.replace(/\[(Produto|Pedido)\][\s\w-]*/gi, "").trim().length >= 15;
     const gatilhoAcolher = lista("sandy_acolher_palavras").find((p) => alvo.includes(p));
     if (!gatilhoAcolher) {
-      if (novas.some((m: any) => Array.isArray(m.anexos) && m.anexos.length)) {
+      if (temAnexo && !textoUtil) {
         const motivo = "Cliente enviou foto ou arquivo. Uma pessoa precisa ver.";
         await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
       }
@@ -348,7 +356,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       ficha,
       loja: loja.nome, marketplace: rotulo[loja.marketplace] ?? loja.marketplace,
       primeiroNome: String(conv.cliente_nome ?? "").trim().split(/\s+/)[0] || "cliente",
-      produto: conv.produto_titulo, pedido, situacao: conv.situacao, jaRespondeu: !!ultimaLoja, jaAcolheu, conhecimento,
+      produto: conv.produto_titulo, pedido, situacao: conv.situacao, jaRespondeu: !!ultimaLoja, jaAcolheu, temAnexo, conhecimento,
       mensagens: ordem.filter((m: any) => m.texto).map((m: any) => ({ de: m.de, texto: String(m.texto).slice(0, 600), nova: novas.includes(m) })),
     };
     // Cliente só mandou o cartão do produto/pedido, sem escrever nada: pergunta como pode ajudar (sem gastar com o modelo).
@@ -382,8 +390,12 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       const motivo = d.motivo || "A Sandy não tem certeza da resposta.";
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
     }
+    if (temAnexo && d.acao === "responder") {
+      const motivo = "Cliente enviou foto ou arquivo. Uma pessoa precisa ver.";
+      await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
+    }
     // Palavra de pedido errado/cancelamento/devolução: nunca vai como resposta comum.
-    if (gatilhoAcolher && !jaAcolheu && d.acao === "responder" && !d.sem_problema) {
+    if (gatilhoAcolher && !jaAcolheu && d.acao === "responder" && !d.sem_problema && !d.nao_serviu) {
       const motivo = `Assunto de pedido errado/cancelamento/devolução (“${gatilhoAcolher}”). Uma pessoa precisa responder.`;
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
     }
@@ -398,7 +410,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       const caixaAlta = letras.length >= 15 && letras.replace(/[^A-ZÀ-Ý]/g, "").length / letras.length > 0.6;
       const raiva = /absurd|pessim|vergonha|ridicul|inadmiss|lixo|palhacada|horrivel|nunca mais|exijo|cansad|ja pedi|toda hora|!{2,}/.test(alvo);
       if (caixaAlta || raiva) d.tom = "irritado";
-      d.resposta = montarAcolhimento(d.nome, d.tom, ctx.jaRespondeu);
+      d.resposta = montarAcolhimento(d.nome, d.tom, ctx.jaRespondeu, d.varios_produtos === true);
     }
     const problema = textoSeguro(d.resposta);
     if (problema) {
