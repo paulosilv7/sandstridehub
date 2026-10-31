@@ -398,7 +398,7 @@ var ST_MAP={NOVO:2,AGUARDANDO_ANALISE:2,AGUARDANDO_PROVAS:2,PREPARADO:3,RECURSO_
 var ROT={NOVO:'Novo',AGUARDANDO_ANALISE:'Aguardando análise',AGUARDANDO_PROVAS:'Aguardando provas',PREPARADO:'Preparado · aguarda você',ENVIO_INCERTO:'Envio incerto',ENVIADO:'Enviado',EM_ANALISE:'Em análise no marketplace',COMPLEMENTACAO:'Pede complementação',RECURSO_DISPONIVEL:'Recurso disponível',DECIDIDO:'Decidido',CREDITO_PENDENTE:'Crédito pendente',CONCILIADO:'Conciliado',ENCERRADO:'Encerrado'};
 var TIPOS_ML={mediations:'Reclamação',returns:'Devolução',change:'Troca',cancel_purchase:'Cancelamento',cancel_sale:'Cancelamento'};
 var MOTIVOS_SP={NOT_RECEIPT:'Não recebeu o pedido',WRONG_ITEM:'Item errado',DIFFERENT_DESCRIPTION:'Diferente do anunciado',DAMAGED_ITEM:'Produto danificado',NONFUNCTIONAL:'Não funciona',MISSING_ITEM:'Item faltando',PHYSICAL_DMG:'Produto danificado'};
-var LOJAID={},ANEXOS={};
+var LOJAID={},ANEXOS={},REC={};
 var S={
   tela:'home',prev:'home',humor:'auto',fala:'',pula:false,mais:false,casoId:null,regraMk:'ml',nome:'',papelAdmin:false,
   f:{home:{q:'',mk:'todos',loja:'todas',grupo:'todos'},aprov:{q:'',mk:'todos',loja:'todas'},acomp:{q:'',mk:'todos',loja:'todas'}},
@@ -416,8 +416,10 @@ function adaptar(r){
   var lj=LOJAID[r.loja_id]||{},mk=MKS[lj.marketplace]||'ml';
   var st=ST_MAP[r.status]!=null?ST_MAP[r.status]:2;
   var ph=r.prazo_em?Math.round((new Date(r.prazo_em).getTime()-Date.now())/3600000):null;
-  return {id:r.id,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
-    problema:problemaDe(r,mk),status:r.status,rot:ROT[r.status]||r.status,st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
+  var rec=REC[r.id]||null,decidir=rec==='nao_contestar'&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1;
+  if(decidir)st=3;
+  return {id:r.id,rec:rec,decidir:decidir,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
+    problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(ROT[r.status]||r.status),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
     protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
 function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-01';}
@@ -431,7 +433,8 @@ async function carregar(){
     SB.from('devol_economia').select('*,devol_casos(loja_id,pedido,solicitacao_id)').order('criado_em',{ascending:false}),
     SB.from('sandy_uso').select('origem,custo_usd,criado_em').like('origem','devolucao%').gte('criado_em',inicioMes()),
     SB.from('configuracoes').select('valor').eq('chave','cambio_usd_brl').maybeSingle(),
-    SB.from('devol_modelos').select('id,titulo,versao,ativo').order('titulo')
+    SB.from('devol_modelos').select('id,titulo,versao,ativo').order('titulo'),
+    SB.from('devol_relatos').select('caso_id,recomendacao,criado_em').order('criado_em',{ascending:false}).limit(1000)
   ]);
   var falha=q.filter(function(x){return x.error;})[0];
   if(falha)throw new Error(falha.error.message);
@@ -439,6 +442,7 @@ async function carregar(){
   (q[0].data||[]).forEach(function(l){LOJAID[l.id]=l;var k=MKS[l.marketplace];if(k&&LOJAS[k].indexOf(l.apelido)===-1)LOJAS[k].push(l.apelido);});
   Object.keys(LOJAS).forEach(function(k){LOJAS[k].sort();});
   ANEXOS={};(q[2].data||[]).forEach(function(a){ANEXOS[a.caso_id]=(ANEXOS[a.caso_id]||0)+1;});
+  REC={};(q[9].data||[]).forEach(function(x){if(!REC[x.caso_id])REC[x.caso_id]=x.recomendacao;});
   S.casos=(q[1].data||[]).map(adaptar);
   S.cfg={};(q[3].data||[]).forEach(function(c){S.cfg[c.chave]=c.valor;});
   S.regras=q[4].data||[];
@@ -558,6 +562,7 @@ var GRUPOS=[
 ];
 function grupoDe(c){
   var s=c.status;
+  if(c.decidir)return 'voce';
   if(['PREPARADO','RECURSO_DISPONIVEL','COMPLEMENTACAO','AGUARDANDO_PROVAS','ENVIO_INCERTO'].indexOf(s)>-1)return 'voce';
   if(['NOVO','AGUARDANDO_ANALISE'].indexOf(s)>-1)return 'preparo';
   if(['ENVIADO','EM_ANALISE'].indexOf(s)>-1)return 'enviados';
@@ -807,6 +812,7 @@ function relatoHtml(r){
     (r.relato?'<div class="box"><div class="kk">Relato para o marketplace</div><div class="vl" style="white-space:pre-wrap;font-weight:400">'+esc(r.relato)+'</div></div>':'')+
     (r.pedido_financeiro?'<div class="box az"><div class="kk">Pedido financeiro</div><div class="vl" style="font-weight:400">'+esc(r.pedido_financeiro)+'</div></div>':'')+
     (pv?'<div><div class="kk" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Provas sugeridas</div><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">'+pv+'</ul></div>':'')+al+
+    (r.recomendacao==='nao_contestar'&&caso(S.casoId)&&caso(S.casoId).decidir?'<div class="row" style="gap:10px"><button type="button" class="btn" data-a="concordar" data-v="'+S.casoId+'">Concordo, não contestar</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+S.casoId+'">Contestar mesmo assim</button></div><p class="sub" style="font-size:12.5px">Concordando, o caso é encerrado sem contestação e nada é enviado ao marketplace. Contestando mesmo assim, a Sandy prepara o relato com alertas para você aprovar.</p>':'')+
     (r.recomendacao==='contestar'?'<button type="button" class="btn lg off" disabled>Aprovar e enviar (envio desligado)</button><p class="sub" style="font-size:12.5px">O envio aos marketplaces está desligado. Quando for ligado, a aprovação grava a intenção, confere o histórico oficial e só então envia, sem duplicar.</p>':'');
 }
 function custos(){
@@ -847,7 +853,7 @@ function regras(){
 
 function aprov(){
   var l=aplicar(S.casos.filter(function(c){return c.st===3;}),S.f.aprov);
-  var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button><button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">Aprovar</button></div></section>';}).join('');
+  var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(c.decidir?'<button type="button" class="btn" data-a="concordar" data-v="'+c.id+'">Concordo, não contestar</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':'<button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">Aprovar</button>')+'</div></section>';}).join('');
   var vazio=S.casos.filter(function(c){return c.st===3;}).length===0?'Nada aguardando a sua aprovação agora.':'Nenhum caso com esses filtros.';
   return head()+'<section class="card tight">'+toolbar('aprov','Buscar por produto ou pedido')+'</section><p class="sub" style="margin:0 6px">Casos que a Sandy preparou e que só saem com o seu aprovado. Hoje ela só lê, em modo sombra: quando preparar um relato, ele aparece aqui.</p>'+(linhas||'<div class="empty">'+vazio+'</div>');
 }
@@ -889,6 +895,18 @@ function lerHash(){
   if(S.tela!==r){S.tela=r;render(false,true);}
 }
 function aprovar(){toast('Modo sombra: a Sandy ainda não envia contestações.');}
+async function decidirCaso(id,acao){
+  if(S.decidindo)return;S.decidindo=true;
+  try{
+    var r=await SB.rpc('devol_decidir',{p_caso:id,p_acao:acao});
+    if(r.error)throw new Error(r.error.message);
+    toast(acao==='concordar_nao_contestar'?'Caso encerrado sem contestação. Nada foi enviado.':'Certo. A Sandy vai preparar a contestação em instantes.');
+    await carregar();
+    if(S.tela==='caso')await carregarCaso(id);
+    render(true,false);
+  }catch(e){toast('Não consegui registrar: '+((e&&e.message)||'erro'));}
+  finally{S.decidindo=false;}
+}
 document.addEventListener('click',function(e){
   if(S.mais&&!e.target.closest('.more,[data-a=mais]')&&!e.target.closest('[data-a]')){S.mais=false;render(true,false);return;}
   var t=e.target.closest('[data-a]');if(!t||t.type==='checkbox')return;
@@ -904,6 +922,8 @@ document.addEventListener('click',function(e){
   else if(a==='grupo'){S.f.home.grupo=v;render(true,false);}
   else if(a==='mais'){S.mais=!S.mais;render(true,false);}
       else if(a==='aprovar'){aprovar();}
+  else if(a==='concordar'){decidirCaso(v,'concordar_nao_contestar');}
+  else if(a==='forcar'){decidirCaso(v,'contestar_mesmo_assim');}
   else if(a==='chip'){var ch=S.lote.chips,i=ch.indexOf(v);if(i===-1)ch.push(v);else ch.splice(i,1);render(true,false);}
   else if(a==='abrir'){var inp=document.getElementById(v);if(inp)inp.click();}
   else if(a==='rmFoto'){var rm=S.lote.fotos.splice(+v,1)[0];try{URL.revokeObjectURL(rm.url);}catch(x){}render(true,false);}
