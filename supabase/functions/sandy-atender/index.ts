@@ -176,6 +176,8 @@ function instrucoes(ctx: any): string {
     "7. Responda a pergunta que o cliente fez agora, sem repetir o que já foi dito antes.",
     "8. Se existir FICHA DO ANÚNCIO nos dados, ela é a fonte para descrição, material, gênero, tamanhos e cores. Só confirme um tamanho ou cor se ele aparecer em variacoes_tamanho_cor com disponivel=sim (ou, em anúncio sem variações, se for o do título e disponivel=sim). Se não aparecer, estiver indisponível, ou não houver ficha, escale. Nunca informe quantidade em estoque.",
     `9. LOGÍSTICA (atraso, demora, reagendamento da entrega, entrega em endereço diferente, rastreio parado, extravio, "consta entregue e não recebi", transportadora): a logística é SEMPRE responsabilidade do ${ctx.marketplace}, nunca da loja. Use acao=responder (nunca escalar por esse motivo, mesmo com cliente irritado): primeiro mostre que se importa e que sente muito por ele passar por essa situação; depois deixe claro, com educação, que o envio e a entrega ficam com o ${ctx.marketplace} e que a loja não tem controle sobre a rota nem sobre o prazo; oriente a acompanhar o pedido pelo aplicativo do ${ctx.marketplace} e, se precisar, falar com o suporte do próprio ${ctx.marketplace} pelo app. Não prometa prazo e não critique a transportadora nem o marketplace. Se além disso o cliente pedir reembolso, devolução ou cancelamento, use acao=acolher.`,
+    "10. Analise SOMENTE as MENSAGENS NOVAS do cliente. Tudo que veio antes (HISTÓRICO ANTERIOR) já foi tratado pela loja: nunca escale por causa de um pedido antigo que a loja já respondeu. Se as mensagens novas apenas agradecem, confirmam, concordam, se despedem ou só informam algo sem pedir nada (ex.: \"tá bom, obrigada\", \"vou ver com minha colega\", \"entendi\"), a conversa está resolvida: responda brevemente com cordialidade (acao=responder), sem repetir o que já foi dito e sem fazer novas perguntas. Escale somente se houver pedido ou dúvida NOVA que você não consiga resolver com a base.",
+    "11. Se os dados disserem que a loja JÁ acolheu o cliente, nunca use acao=acolher de novo e nunca repita o texto de acolhimento. Se a mensagem nova não trouxer pedido novo, responda breve e cordialmente (ex.: informar que, se decidirem seguir com a devolução, é só avisar por aqui que a equipe ajuda). Se houver pedido ou dúvida nova sobre devolução, reembolso ou cancelamento, escale (acao=escalar).",
   ].join("\n");
 }
 
@@ -191,8 +193,12 @@ async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: st
     ctx.ficha ? `FICHA DO ANÚNCIO (dados reais do marketplace): ${JSON.stringify(ctx.ficha)}` : "Sem ficha do anúncio disponível.",
     ctx.situacao ? `Situação: ${ctx.situacao}` : null,
     `A loja já respondeu nesta conversa: ${ctx.jaRespondeu ? "sim" : "não"}`,
+    ctx.jaAcolheu ? "A loja JÁ acolheu este cliente (pedido errado/cancelamento/devolução) e a equipe acompanha o caso." : null,
   ].filter(Boolean).join("\n");
-  const historico = ctx.mensagens.map((m: any) => `${m.de === "cliente" ? "CLIENTE" : "LOJA"}: ${m.texto}`).join("\n");
+  const linha = (m: any) => `${m.de === "cliente" ? "CLIENTE" : "LOJA"}: ${m.texto}`;
+  const antigas = ctx.mensagens.filter((m: any) => !m.nova).map(linha).join("\n") || "(nenhuma)";
+  const novasTxt = ctx.mensagens.filter((m: any) => m.nova).map(linha).join("\n") || "(nenhuma)";
+  const historico = `HISTÓRICO ANTERIOR (já foi tratado; a loja já respondeu o que era pedido até aqui):\n${antigas}\n\nMENSAGENS NOVAS DO CLIENTE (analise SOMENTE estas, no contexto do histórico):\n${novasTxt}`;
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI}` },
@@ -204,7 +210,7 @@ async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: st
       response_format: { type: "json_schema", json_schema: ESQUEMA },
       messages: [
         { role: "system", content: instrucoes(ctx) },
-        { role: "user", content: `BASE DE CONHECIMENTO:\n${base}\n\nDADOS:\n${dados}\n\nCONVERSA (mais recente por último):\n${historico}\n\nDecida agora.` },
+        { role: "user", content: `BASE DE CONHECIMENTO:\n${base}\n\nDADOS:\n${dados}\n\nCONVERSA:\n${historico}\n\nDecida agora.` },
       ],
     }),
   });
@@ -240,7 +246,7 @@ function textoSeguro(t: string): string | null {
 async function atender(conversaId: string, simular: boolean, textoTeste?: string): Promise<any> {
   const saida: any = { conversa: conversaId, simular };
 
-  const { data: cfg } = await supabase.from("configuracoes").select("chave, valor").in("chave", ["sandy_ativa", "sandy_escalar_palavras", "sandy_graves_palavras", "sandy_acolher_palavras"]);
+  const { data: cfg } = await supabase.from("configuracoes").select("chave, valor").in("chave", ["sandy_ativa", "sandy_escalar_palavras", "sandy_graves_palavras", "sandy_acolher_palavras", "sandy_usuario_id"]);
   const c = Object.fromEntries((cfg ?? []).map((x: any) => [x.chave, x.valor]));
   const { data: conv } = await supabase.from("conversas")
     .select("id, loja_id, tipo, cliente_nome, produto_titulo, dados_extras, situacao, bloqueada, atendente_id, ultima_mensagem_em, ultima_mensagem_de, sandy_trava_em, lojas(nome, marketplace, sandy_ativa)")
@@ -251,7 +257,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
   if (!simular) {
     if (c.sandy_ativa !== "true") return { ...saida, resultado: "Sandy desligada" };
     if (!loja?.sandy_ativa) return { ...saida, resultado: "Sandy desligada nesta loja" };
-    if (conv.atendente_id) return { ...saida, resultado: "uma pessoa está atendendo" };
+    if (conv.atendente_id && conv.atendente_id !== c.sandy_usuario_id) return { ...saida, resultado: "uma pessoa está atendendo" };
     if (conv.bloqueada) return { ...saida, resultado: "conversa bloqueada" };
     if (conv.situacao && SEM_ENVIO.includes(conv.situacao)) return { ...saida, resultado: "marketplace não aceita mensagens" };
     if (conv.ultima_mensagem_de !== "cliente") return { ...saida, resultado: "a última mensagem não é do cliente" };
@@ -274,7 +280,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
     // Teste: avalia uma frase avulsa de cliente como se fosse a única mensagem da conversa.
     if (simular && textoTeste) {
       novas = [{ de: "cliente", texto: textoTeste, anexos: [], enviada_em: new Date().toISOString() }];
-      ordem = [...novas]; ultimaLoja = undefined;
+      ordem = [...novas];
     }
     if (!novas.length) return { ...saida, resultado: "sem mensagem nova do cliente" };
 
@@ -303,18 +309,30 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
         await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
       }
     }
-    // Já acolheu este cliente nas últimas 24 h: o caso está com a equipe, a Sandy não continua.
+    // Já acolheu este cliente nas últimas 24 h? Então a equipe acompanha o caso: a Sandy só responde cordialmente ao que não pedir nada novo.
     const { count: acolhimentos } = await supabase.from("sandy_registros").select("id", { count: "exact", head: true })
       .eq("conversa_id", conversaId).eq("decisao", "respondeu").like("motivo", "[acolhimento]%").gt("criado_em", new Date(Date.now() - 24 * 3600_000).toISOString());
-    if ((acolhimentos ?? 0) > 0) {
-      const motivo = "A Sandy já acolheu o cliente (pedido errado/cancelamento/devolução). Uma pessoa precisa dar andamento.";
-      await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
-    }
-    const { count } = await supabase.from("sandy_registros").select("id", { count: "exact", head: true })
+    const jaAcolheu = (acolhimentos ?? 0) > 0;
+    const { data: recentes } = await supabase.from("sandy_registros").select("motivo")
       .eq("conversa_id", conversaId).eq("decisao", "respondeu").gt("criado_em", new Date(Date.now() - 24 * 3600_000).toISOString());
-    if ((count ?? 0) >= MAX_RESPOSTAS_24H) {
+    const count = (recentes ?? []).filter((r: any) => !String(r.motivo ?? "").startsWith("[encerramento]")).length;
+    if (count >= MAX_RESPOSTAS_24H) {
       const motivo = "A Sandy já respondeu várias vezes hoje nesta conversa. Uma pessoa deve continuar.";
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
+    }
+
+    // Cliente só agradeceu ou confirmou ("ok", "obrigada", "tá bom"): encerra com cordialidade, sem chamar a equipe.
+    const PALAVRAS_FIM = new Set("ok okay blz beleza certo certinho show top otimo otima perfeito combinado entendi entendido ta bom boa tudo bem de nada valeu vlw obrigado obrigada obrigadao obrigadinha obrigadinho muito brigado brigada grato grata gratidao agradeco agradecida fico no aguardo ate mais abraco abracos deus abencoe e eu que por sim isso mesmo fechado positivo tranquilo td joia legal massa disponha dia tarde noite".split(" "));
+    const palavras = alvo.replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean);
+    const soAgradece = !!ultimaLoja && !gatilhoAcolher && !/\?/.test(textoNovo) && palavras.length > 0 && palavras.length <= 8
+      && palavras.every((w) => PALAVRAS_FIM.has(w)) && !novas.some((m: any) => Array.isArray(m.anexos) && m.anexos.length);
+    if (soAgradece && /qualquer duvida|a disposicao|e so chamar/.test(norm(String(ultimaLoja?.texto ?? "")))) {
+      // A loja já se despediu: não responde de novo, só tira a conversa das pendentes.
+      if (!simular) {
+        await supabase.from("conversas").update({ aguardando_resposta: false, escalada_motivo: null }).eq("id", conversaId);
+        await registrar(conversaId, "encerrou", "[encerramento] Cliente só agradeceu; conversa encerrada sem nova resposta.", null, false);
+      }
+      return { ...saida, decisao: "encerrou", motivo: "cliente só agradeceu e a loja já tinha se despedido" };
     }
 
     // 2. Modelo
@@ -328,8 +346,8 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       ficha,
       loja: loja.nome, marketplace: rotulo[loja.marketplace] ?? loja.marketplace,
       primeiroNome: String(conv.cliente_nome ?? "").trim().split(/\s+/)[0] || "cliente",
-      produto: conv.produto_titulo, pedido, situacao: conv.situacao, jaRespondeu: !!ultimaLoja, conhecimento,
-      mensagens: ordem.filter((m: any) => m.texto).map((m: any) => ({ de: m.de, texto: String(m.texto).slice(0, 600) })),
+      produto: conv.produto_titulo, pedido, situacao: conv.situacao, jaRespondeu: !!ultimaLoja, jaAcolheu, conhecimento,
+      mensagens: ordem.filter((m: any) => m.texto).map((m: any) => ({ de: m.de, texto: String(m.texto).slice(0, 600), nova: novas.includes(m) })),
     };
     // Cliente só mandou o cartão do produto/pedido, sem escrever nada: pergunta como pode ajudar (sem gastar com o modelo).
     const soCartao = novas.every((m: any) => /^(Produto|Pedido) enviado\b/i.test(String(m.texto ?? "").trim()) && !(Array.isArray(m.anexos) && m.anexos.length));
@@ -342,6 +360,9 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       d = { acao: "responder", tom: "calmo", nome,
         resposta: `Olá${nome ? `, ${nome}` : ""}! Tudo bem? 😊 Vi que você nos enviou este produto. Você tem alguma dúvida sobre ele? Me conta como posso te ajudar!`,
         motivo: "Cliente enviou só o cartão do produto, sem mensagem; a Sandy perguntou como pode ajudar." };
+    } else if (soAgradece) {
+      d = { acao: "responder", tom: "calmo", nome: "", resposta: "Por nada! Qualquer dúvida, é só chamar por aqui 😊",
+        motivo: "[encerramento] Cliente agradeceu ou confirmou; a Sandy encerrou com cordialidade." };
     } else try { d = await perguntarAoModelo(ctx); }
     catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -357,8 +378,12 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
     }
     // Palavra de pedido errado/cancelamento/devolução: nunca vai como resposta comum.
-    if (gatilhoAcolher && d.acao === "responder") {
+    if (gatilhoAcolher && !jaAcolheu && d.acao === "responder") {
       const motivo = `Assunto de pedido errado/cancelamento/devolução (“${gatilhoAcolher}”). Uma pessoa precisa responder.`;
+      await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
+    }
+    if (jaAcolheu && d.acao === "acolher") {
+      const motivo = "Cliente voltou a falar do pedido/devolução depois do acolhimento. Uma pessoa precisa dar andamento.";
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
     }
     const acolhendo = d.acao === "acolher";
@@ -379,11 +404,13 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
 
     // 3. Confere de novo antes de enviar: alguém pode ter assumido nesse meio tempo.
     const { data: agora } = await supabase.from("conversas").select("atendente_id, ultima_mensagem_de, ultima_mensagem_em").eq("id", conversaId).maybeSingle();
-    if (agora?.atendente_id || agora?.ultima_mensagem_de !== "cliente" || agora?.ultima_mensagem_em !== conv.ultima_mensagem_em) {
+    if ((agora?.atendente_id && agora.atendente_id !== c.sandy_usuario_id) || agora?.ultima_mensagem_de !== "cliente" || agora?.ultima_mensagem_em !== conv.ultima_mensagem_em) {
       return { ...saida, resultado: "a conversa mudou durante a análise; não enviei" };
     }
 
     // 4. Envio pelo mesmo caminho da equipe
+    // As funções de envio recusam conversas marcadas como "atendida pela Sandy"; libera só para este envio (depois volta a marcar).
+    await supabase.from("conversas").update({ atendida_por_ia: false }).eq("id", conversaId);
     const jwt = await jwtSandy();
     const r = await fetch(`${URL_BASE}/functions/v1/${RESPONDER[loja.marketplace]}`, {
       method: "POST",
@@ -418,6 +445,7 @@ async function executar(conversaId: string, simular: boolean, esperar: boolean, 
     if (esperar) await dormir((ESPERA_MIN_SEG + Math.random() * (ESPERA_MAX_SEG - ESPERA_MIN_SEG)) * 1000);
     const r = await atender(conversaId, simular, textoTeste);
     if (textoTeste) r.pergunta = textoTeste;
+    if (!simular && r.resultado) await diag("sandy-pulou", `${conversaId}: ${r.resultado}`);
     if (simular || r.decisao === "erro") await diag(simular ? "sandy-simulacao" : "sandy-atender", JSON.stringify(r));
     return r;
   } catch (e) {

@@ -175,6 +175,8 @@ async function responderCliente(a: any) {
   if (!c) return { erro: "conversa não encontrada" };
   const l: any = Array.isArray(c.lojas) ? c.lojas[0] : c.lojas;
   if (c.bloqueada || (c.situacao && SEM_ENVIO.includes(c.situacao))) return { erro: "o marketplace não aceita mensagens nesta conversa" };
+  // Pedido explícito da equipe: libera a conversa para o envio (as funções de envio recusam conversa "atendida pela Sandy" ou de outra pessoa).
+  await supabase.from("conversas").update({ atendente_id: null, atendida_por_ia: false }).eq("id", id);
   const r = await fetch(`${URL_BASE}/functions/v1/${RESPONDER[l.marketplace]}`, {
     method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${await jwtSandy()}`, apikey: CHAVE_SERVICO },
     body: JSON.stringify({ conversa_id: id, texto }),
@@ -182,7 +184,8 @@ async function responderCliente(a: any) {
   const j: any = await r.json().catch(() => ({}));
   if (!r.ok || j.ok === false) return { erro: `não consegui enviar: ${String(j.erro ?? r.status).slice(0, 200)}` };
   if (j.mensagem_id) await supabase.from("mensagens").update({ enviada_por_ia: true, enviada_por: null }).eq("id", j.mensagem_id);
-  await supabase.from("conversas").update({ escalada_motivo: null }).eq("id", id);
+  // A conversa fica com a Sandy (ela continua acompanhando as respostas do cliente).
+  await supabase.from("conversas").update({ escalada_motivo: null, atendente_id: null, atendida_por_ia: true }).eq("id", id);
   await supabase.from("sandy_registros").insert({ conversa_id: id, decisao: "respondeu", motivo: "Enviado a pedido da equipe pelo Telegram", resposta: texto, modelo: "equipe" });
   return { enviado: true, cliente: c.cliente_nome };
 }
