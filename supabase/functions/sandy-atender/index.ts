@@ -152,8 +152,9 @@ const ESQUEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["acao", "resposta", "motivo", "tom", "nome", "sem_problema", "nao_serviu", "varios_produtos"],
+    required: ["acao", "resposta", "motivo", "tom", "nome", "sem_problema", "nao_serviu", "varios_produtos", "duvida_politica"],
     properties: {
+      duvida_politica: { type: "boolean", description: "true SOMENTE se o cliente faz uma pergunta informativa sobre como funciona devolução, troca ou reembolso (para onde vai o dinheiro, quando cai, se pode devolver só um item do kit) E a BASE DE CONHECIMENTO tem a resposta. false se ele reclama, exige, cobra atraso ou a base não responde." },
       varios_produtos: { type: "boolean", description: "true se o cliente comprou mais de um produto (ele diz que comprou dois ou mais itens, ou os dados do pedido mostram mais de um). false se for um produto só ou não der para saber." },
       nao_serviu: { type: "boolean", description: "true SOMENTE se o cliente recebeu o produto que pediu (mesmo modelo, cor e tamanho do pedido, sem defeito) mas ele não serviu: ficou grande, pequeno ou apertado, ou quer trocar de número ou devolver por isso. false se disser que veio tamanho/modelo diferente do pedido, defeito, produto errado ou danificado." },
       sem_problema: { type: "boolean", description: "true SOMENTE se o cliente deixou claro que não existe problema: foi engano ou confusão dele (olhou outro pedido, achou que era desta loja, pedido já chegou certo, desistiu da reclamação). false em qualquer outro caso." },
@@ -183,11 +184,12 @@ function instrucoes(ctx: any): string {
     "12. ENGANO DO CLIENTE: se as mensagens novas mostram que o problema não existe (ele olhou outro pedido, achou que era desta loja, o pedido já chegou certo, foi confusão dele), marque sem_problema=true, use acao=responder e encerre com leveza e simpatia, sem usar o texto de logística nem de acolhimento e sem escalar. Exemplo: \\\"Ah, sem problemas! Que bom que está tudo certo com o seu pedido 😊 Qualquer dúvida, estamos à disposição.\\\" Se houver qualquer dúvida de que o problema realmente acabou, sem_problema=false.",
     "13. PRODUTO NÃO SERVIU: se o cliente recebeu o produto que pediu e ele não serviu (grande, pequeno, apertado) e quer trocar de número ou devolver, marque nao_serviu=true e use acao=responder (nunca acolher nem escalar), seguindo EXATAMENTE a orientação da BASE DE CONHECIMENTO sobre produto que não serviu: tranquilize o cliente, informe o direito à devolução e oriente o passo a passo e o motivo correto a escolher. Se a base não tiver orientação sobre isso para este marketplace, escale (nao_serviu=false). Se o cliente disser que veio tamanho ou modelo diferente do que pediu, defeito, produto errado ou danificado, nao_serviu=false (acolher ou escalar conforme as regras acima).",
     "14. COM ANEXO: se os dados disserem que o cliente anexou foto, você não vê a imagem. Se o texto descreve problema com o produto (veio diferente do anunciado, de outra marca, qualidade ou acabamento inferior, defeito, errado), use acao=acolher e marque varios_produtos=true se ele comprou mais de um produto. Qualquer outro assunto com anexo: acao=escalar.",
-    "11. Se os dados disserem que a loja JÁ acolheu o cliente, nunca use acao=acolher de novo e nunca repita o texto de acolhimento. Se a mensagem nova não trouxer pedido novo, responda breve e cordialmente (ex.: informar que, se decidirem seguir com a devolução, é só avisar por aqui que a equipe ajuda). Se houver pedido ou dúvida nova sobre devolução, reembolso ou cancelamento, escale (acao=escalar).",
+    "15. DÚVIDA SOBRE COMO FUNCIONA (devolução, troca, reembolso): se o cliente apenas pergunta como funciona (para onde vai o reembolso, quando cai, se pode trocar ou devolver só um par de um kit) e a BASE DE CONHECIMENTO responde, marque duvida_politica=true e use acao=responder, seguindo a base. Se a base não responder, ou o cliente reclamar, cobrar atraso ou exigir algo, duvida_politica=false e escale ou acolha conforme as regras acima.",
+    "11. Se os dados disserem que a loja JÁ acolheu o cliente, nunca use acao=acolher de novo e nunca repita o texto de acolhimento. Se a mensagem nova não trouxer pedido novo, responda breve e cordialmente (ex.: informar que, se decidirem seguir com a devolução, é só avisar por aqui que a equipe ajuda). Se houver pedido ou dúvida nova sobre devolução, reembolso ou cancelamento, escale (acao=escalar), exceto se for apenas uma pergunta informativa que a base responde (regra 15).",
   ].join("\n");
 }
 
-async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: string; motivo: string; tom: string; nome: string; sem_problema: boolean; nao_serviu: boolean; varios_produtos: boolean }> {
+async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: string; motivo: string; tom: string; nome: string; sem_problema: boolean; nao_serviu: boolean; varios_produtos: boolean; duvida_politica: boolean }> {
   if (!OPENAI) throw new Error("OPENAI_API_KEY não cadastrada nos Segredos do Supabase");
   const base = ctx.conhecimento.length
     ? ctx.conhecimento.map((k: any) => `### ${k.titulo}\n${k.texto}`).join("\n\n")
@@ -226,7 +228,7 @@ async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: st
   const bruto = j?.choices?.[0]?.message?.content;
   const d = JSON.parse(bruto ?? "{}");
   if (!["responder", "acolher", "escalar"].includes(d.acao)) throw new Error("resposta do modelo fora do formato");
-  return { acao: d.acao, resposta: String(d.resposta ?? "").trim(), motivo: String(d.motivo ?? "").trim(), tom: d.tom === "irritado" ? "irritado" : "calmo", nome: String(d.nome ?? "").trim(), sem_problema: d.sem_problema === true, nao_serviu: d.nao_serviu === true, varios_produtos: d.varios_produtos === true };
+  return { acao: d.acao, resposta: String(d.resposta ?? "").trim(), motivo: String(d.motivo ?? "").trim(), tom: d.tom === "irritado" ? "irritado" : "calmo", nome: String(d.nome ?? "").trim(), sem_problema: d.sem_problema === true, nao_serviu: d.nao_serviu === true, varios_produtos: d.varios_produtos === true, duvida_politica: d.duvida_politica === true };
 }
 
 // ---------------------------------------------------------------------
@@ -395,7 +397,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
     }
     // Palavra de pedido errado/cancelamento/devolução: nunca vai como resposta comum.
-    if (gatilhoAcolher && !jaAcolheu && d.acao === "responder" && !d.sem_problema && !d.nao_serviu) {
+    if (gatilhoAcolher && !jaAcolheu && d.acao === "responder" && !d.sem_problema && !d.nao_serviu && !d.duvida_politica) {
       const motivo = `Assunto de pedido errado/cancelamento/devolução (“${gatilhoAcolher}”). Uma pessoa precisa responder.`;
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
     }
