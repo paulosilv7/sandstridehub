@@ -285,7 +285,8 @@ function metricas() {
   return {
     pend: cs.filter((c) => c.aguardando && !c.bloqueada).length,
     paradas: cs.filter(parada).length,
-    rec: cs.filter((c) => c.tags.includes('Reembolso') || c.tags.includes('Defeito') || (c.escalada && !c.atendenteId)).length,
+    // Só conta reclamação que ainda está em aberto (cliente esperando resposta); a tag fica na conversa depois de resolvida.
+    rec: cs.filter((c) => c.aguardando && !c.bloqueada && (c.tags.includes('Reembolso') || c.tags.includes('Defeito') || (c.escalada && !c.atendenteId))).length,
     total: S.hoje,
   };
 }
