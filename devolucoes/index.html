@@ -38,6 +38,7 @@ h1,h2,h3,p{margin:0}
 .head h1{font-size:26px;font-weight:400;letter-spacing:-.7px}
 .hlogo{height:24px;width:auto;display:block}
 .hsep{width:1px;height:26px;background:#CFCFCB}
+.meuav{margin-left:auto;width:38px;height:38px;border-radius:50%;background:#1A1A1A;color:#fff;display:grid;place-items:center;font-weight:600;font-size:16px;overflow:hidden;text-decoration:none;flex:none}.meuav img{width:100%;height:100%;object-fit:cover;display:block}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:500;padding:4px 10px;border-radius:12px;background:var(--chip);color:var(--ink);white-space:nowrap}
 .pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.good{background:var(--good-bg);color:var(--good)}.pill.bad{background:var(--bad-bg);color:var(--bad)}.pill.info{background:var(--info-bg);color:var(--info)}
 .pbk{height:40px;border-radius:20px;background:var(--card);padding:0 18px 0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:500;font-size:14px}
@@ -424,7 +425,7 @@ function adaptar(r){
   if(decidir)st=3;
   return {id:r.id,rec:rec,decidir:decidir,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
     problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(ROT[r.status]||r.status),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
-    protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
+    mkt:r.situacao_mkt||'',protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
 function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-01';}
 async function carregar(){
@@ -594,8 +595,10 @@ function toast(m){var t=document.getElementById('toast');t.textContent=m;t.hidde
 
 /* ---------- peças comuns ---------- */
 function head(){
-  return '<header class="head"><img class="hlogo" alt="Sandstride" src="'+LOGO+'"><span class="hsep" aria-hidden="true"></span><h1>'+TITULOS[S.tela]+'</h1></header>';
+  return '<header class="head"><img class="hlogo" alt="Sandstride" src="'+LOGO+'"><span class="hsep" aria-hidden="true"></span><h1>'+TITULOS[S.tela]+'</h1>'+avatarHtml()+'</header>';
 }
+function avatarHtml(){var ini=esc(String(S.nome||'?').trim().charAt(0).toUpperCase());return '<a class="meuav" href="../" title="Voltar ao hub" aria-label="Voltar ao hub">'+(S.fotoUrl?'<img src="'+esc(S.fotoUrl)+'" alt="">':ini)+'</a>';}
+
 function ico(k,s){return '<svg width="'+(s||19)+'" height="'+(s||19)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+ICONES[k]+'"/></svg>';}
 function dock(){
   var nAprov=S.casos.filter(function(c){return c.st===3;}).length;
@@ -740,7 +743,7 @@ function home(){
   var gt=GRUPOS.map(function(g){var n=g[0]==='todos'?base.length:base.filter(function(c){return grupoDe(c)===g[0];}).length;return '<button type="button" class="gt'+(g[0]==='voce'?' hot':'')+'" data-a="grupo" data-v="'+g[0]+'" aria-pressed="'+(gAtual===g[0])+'"><span>'+g[1]+'</span><b>'+n+'</b></button>';}).join('');
   var gSel=GRUPOS.filter(function(g){return g[0]===gAtual;})[0];
   var rows=lista.map(function(c){var p=prazoInfo(c);
-    return '<button type="button" class="caso" data-a="caso" data-v="'+c.id+'"><span class="cs-main">'+mk(c.mk)+'<span class="c1"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span></span><span class="c2">'+esc(c.problema)+'</span>'+segs(c)+'<span class="cs-tags"><span class="tag '+stCls(c.st)+'">'+c.rot+'</span>'+(c.st<6?'<span class="tag '+p.cls+'">'+p.t+'</span>':'')+'</span><svg class="go" width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>';}).join('')||'<div class="empty">Nenhum caso com esses filtros.</div>';
+    return '<button type="button" class="caso" data-a="caso" data-v="'+c.id+'"><span class="cs-main">'+mk(c.mk)+'<span class="c1"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span></span><span class="c2">'+esc(c.problema)+(c.mkt?'<span class="sub" style="display:block;margin-top:2px">No marketplace: '+esc(c.mkt)+'</span>':'')+'</span>'+segs(c)+'<span class="cs-tags"><span class="tag '+stCls(c.st)+'">'+c.rot+'</span>'+(c.st<6?'<span class="tag '+p.cls+'">'+p.t+'</span>':'')+'</span><svg class="go" width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>';}).join('')||'<div class="empty">Nenhum caso com esses filtros.</div>';
   var lojasDef=[['ml','Mercado Livre'],['sp','Shopee'],['tt','TikTok Shop']];
   var lojas=lojasDef.map(function(l){var cs=todos.filter(function(c){return c.mk===l[0];});var a=cs.filter(function(c){return c.st<=3;}).sort(function(x,y){return x.prazo-y.prazo;});var cr=cs.filter(function(c){return c.st===6;}).reduce(function(t,c){return t+(c.credito||0);},0);
     return '<div class="lrow"><span class="nm">'+mk(l[0])+l[1]+'</span><span class="r" data-l="Abertos">'+a.length+'</span><span class="r" data-l="Prazo">'+(a[0]?a[0].prazo+' h':'—')+'</span><span class="r" data-l="Enviados">'+cs.filter(function(c){return c.st>=4;}).length+'</span><span class="r good" data-l="Créditos">'+(cr?brl(cr):'—')+'</span></div>';}).join('');
@@ -795,6 +798,7 @@ function detalhe(){
   '<section class="stage"><div style="min-width:0;flex:1 1 360px"><div class="lbl">'+mk(c.mk)+esc(MK[c.mk].nome+' · '+c.loja)+'</div><div class="tt">'+esc(c.problema)+'</div><div class="sub" style="color:var(--on-dark-muted);margin-top:6px">'+esc(c.pedido+' · solicitação '+c.solicitacao)+'</div></div><div class="sr"><div class="k">Prazo</div><div class="pv">'+(c.st>=6?'Encerrado':(c.semPrazo?'—':(c.prazo<=0?'Vencido':c.prazo+' h')))+'</div></div><div class="steps" role="list" aria-label="Etapas do caso">'+steps+'</div></section>'+
   '<div class="cols"><div style="flex:1 1 440px">'+
     '<section class="card" style="gap:10px"><h2 class="sech">Situação no marketplace</h2>'+
+      (c.mkt?kv('Resposta do marketplace','<b>'+esc(c.mkt)+'</b>'):'')+
       kv('Situação','<span class="tag '+stCls(c.st)+'">'+esc(c.rot)+'</span>'+(c.st<6?' <span class="tag '+p.cls+'">'+p.t+'</span>':''))+
       kv('Tipo',esc(c.problema))+kv('Motivo informado',esc(MOTIVOS_SP[r.motivo_original]||r.motivo_original||'—'))+kv('Protocolo',esc(r.protocolo||'—'))+
       kv('Em risco',r.valor_em_risco>0?brl(+r.valor_em_risco):'Não informado')+kv('Revertido / conciliado',brl(+r.valor_revertido||0)+' / '+brl(+r.valor_conciliado||0))+
@@ -966,10 +970,11 @@ async function iniciar(){
   try{
     var s=await SB.auth.getSession(),user=s.data&&s.data.session&&s.data.session.user;
     if(!user){location.replace('../?next='+encodeURIComponent(location.pathname));return;}
-    var eq=await SB.from('equipe').select('papel,nome').eq('usuario_id',user.id).maybeSingle();
+    var eq=await SB.from('equipe').select('papel,nome,foto_path').eq('usuario_id',user.id).maybeSingle();
     var ac=await SB.rpc('tem_acesso',{p_app:'devolucoes'});
     if(!ac.data){app.innerHTML=semAcessoHtml();return;}
     S.papelAdmin=!!eq.data&&eq.data.papel==='admin';
+    S.fotoUrl='';try{if(eq.data&&eq.data.foto_path)S.fotoUrl=SB.storage.from('avatares').getPublicUrl(eq.data.foto_path).data.publicUrl||'';}catch(x){}
     S.nome=String((eq.data&&eq.data.nome)||'').trim().split(/\s+/)[0]||'';
     await carregar();
     lerHash();render(false,true);
