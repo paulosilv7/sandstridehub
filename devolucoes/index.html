@@ -842,7 +842,7 @@ function relatoHtml(r){
 function custos(){
   var e=ecoCalc(),admin=S.papelAdmin;
   var tg=function(chave,nome,desc,somenteLeitura){var on=S.cfg[chave]==='true';return '<div class="setrow"><span><b>'+nome+'</b><small>'+desc+'</small></span>'+(somenteLeitura?'<span class="tag '+(on?'warn':'mute')+'">'+(on?'Ligado':'Desligado')+'</span>':'<button type="button" class="sw'+(on?' on':'')+'" data-a="chave" data-v="'+chave+'" role="switch" aria-checked="'+on+'" aria-label="'+nome+'"'+(admin?'':' disabled')+'><i></i></button>')+'</div>';};
-  var ch=tg('kill_switch','Interruptor geral (parar tudo)','Quando ligado, as leituras e a limpeza de fotos param',false)+tg('modo_sombra','Modo sombra','A Sandy só prepara, sem enviar nada',true)+tg('envio_real','Envio real aos marketplaces','Desligado: nada sai deste sistema',true);
+  var ch=tg('kill_switch','Interruptor geral (parar tudo)','Quando ligado, as leituras e a limpeza de fotos param',false)+tg('modo_sombra','Modo sombra','A Sandy só prepara, sem enviar nada',true)+tg('envio_real','Envio real aos marketplaces','Desligado: nada sai deste sistema',true)+tg('resposta_ml_ativa','Responder reclamações do Mercado Livre','Liga os botões de reembolso e devolução na tela Responder. Desligado: responda pelo painel do ML',false);
   var cnx=['ml','sp','tt'].map(function(m){var n=S.casos.filter(function(c){return c.mk===m;}).length;var ult=S.cfg[{ml:'ultima_leitura_ml',sp:'ultima_leitura_shopee',tt:'ultima_leitura_tiktok'}[m]];var min=ult?Math.max(0,Math.round((Date.now()-new Date(ult).getTime())/60000)):null;return '<div class="cnx">'+mk(m)+'<span class="nm">'+MK[m].nome+' · '+n+' casos lidos</span><small>'+(min===null?'sem leitura':'há '+(min<60?min+' min':Math.round(min/60)+' h'))+'</small><span class="tag '+(min!==null&&min<45?'good':'warn')+'">'+(min!==null&&min<45?'Lendo':'Atrasada')+'</span></div>';}).join('');
   var arm=S.cfg.armazenamento_uso_pct,limp=null;try{limp=JSON.parse(S.cfg.ultima_limpeza_fotos||'null');}catch(x){}
   var hoje=new Date().toISOString().slice(0,10),gHoje=S.uso.filter(function(u){return u.dia===hoje;}).reduce(function(s,u){return s+(+u.custo_brl||0);},0);
@@ -898,8 +898,49 @@ function responder(){
   var cards=l.map(function(c){var p=prazoInfo(c);
     var acoes=c.acoes.map(function(a){return '<span class="tag info">'+esc(NOMEA[a]||humanizar(a))+'</span>';}).join(' ');
     var msg=c.msg?'<div class="box"><div class="kk">Mensagem do Mercado Livre'+(c.msg.anexos?' · '+c.msg.anexos+(c.msg.anexos===1?' anexo':' anexos'):'')+'</div><div class="vl" style="font-weight:400;line-height:1.5;max-height:280px;overflow:auto">'+fmt(c.msg.texto)+'</div></div>':'<p class="sub" style="font-size:13.5px">A mensagem do Mercado Livre ainda não foi lida. Ela aparece em até 15 minutos.</p>';
-    return '<section class="card" style="gap:12px"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span><span class="tag '+p.cls+'" style="margin-left:auto">'+p.t+'</span></div><div class="row" style="gap:6px;flex-wrap:wrap"><span class="sub" style="font-size:12.5px">O que o ML permite fazer:</span>'+acoes+'</div>'+msg+'<div class="row" style="gap:10px"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button></div></section>';}).join('');
-  return head()+'<p class="sub" style="margin:0 6px">Reclamações do Mercado Livre em que a loja precisa responder até um prazo. Por enquanto a resposta é dada no painel do Mercado Livre: aqui você vê o prazo, o que o ML permite e o texto dele.</p>'+(cards||'<div class="empty">Nenhuma reclamação do Mercado Livre esperando resposta da loja.</div>');
+    return '<section class="card" style="gap:12px"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span><span class="tag '+p.cls+'" style="margin-left:auto">'+p.t+'</span></div><div class="row" style="gap:6px;flex-wrap:wrap"><span class="sub" style="font-size:12.5px">O que o ML permite fazer:</span>'+acoes+'</div>'+msg+agirHtml(c)+'<div class="row" style="gap:10px"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button></div></section>';}).join('');
+  return head()+'<p class="sub" style="margin:0 6px">Reclamações do Mercado Livre em que a loja precisa responder até um prazo. Aqui você vê o prazo, o que o ML permite e o texto dele. Quando a chave de resposta estiver ligada em Custos, os botões de reembolso e devolução aparecem nos casos em que o ML os permite. Nos demais, responda pelo painel do Mercado Livre.</p>'+(cards||'<div class="empty">Nenhuma reclamação do Mercado Livre esperando resposta da loja.</div>');
+}
+
+function agirHtml(c){
+  var t=c.acoes,b='';
+  if(t.indexOf('refund')>-1)b+='<button type="button" class="btn ghost" data-a="mlAgir" data-v="'+c.id+'|refund">Reembolso total</button>';
+  if(t.indexOf('allow_return')>-1)b+='<button type="button" class="btn ghost" data-a="mlAgir" data-v="'+c.id+'|allow_return">Aceitar devolução</button>';
+  if(t.indexOf('allow_partial_refund')>-1){
+    var of=S.ofertas&&S.ofertas[c.id];
+    if(of&&of.length)b+=of.map(function(o){return '<button type="button" class="chipb" data-a="mlAgir" data-v="'+c.id+'|partial_refund|'+o.percentage+'">'+o.percentage+'% · '+brl(o.amount)+'</button>';}).join('');
+    else b+='<button type="button" class="btn ghost" data-a="mlOfertas" data-v="'+c.id+'">Reembolso parcial…</button>';
+  }
+  if(!b)return '';
+  var on=S.cfg.resposta_ml_ativa==='true';
+  return '<div class="box az"><div class="kk">Responder pelo sistema'+(on?'':' (desligado em Custos)')+'</div><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">'+b+'</div><p class="sub" style="font-size:12.5px;margin-top:8px">Cada botão pede a sua confirmação antes de enviar ao Mercado Livre. O reembolso parcial só oferece os percentuais que o próprio ML permite.</p></div>';
+}
+async function mlOfertas(id){
+  try{
+    var r=await SB.functions.invoke('devol-ml-agir',{body:{modo:'ofertas',caso_id:id}});
+    var d=r.data||{};if(r.error||!d.ok)throw new Error(d.mensagem||(r.error&&r.error.message)||'erro');
+    S.ofertas=S.ofertas||{};S.ofertas[id]=d.ofertas||[];
+    if(!S.ofertas[id].length)toast('O Mercado Livre não ofereceu percentuais para este caso.');
+    render(true,false);
+  }catch(e){toast('Não consegui buscar as ofertas: '+((e&&e.message)||'erro'));}
+}
+async function mlAgir(v){
+  var p=String(v).split('|'),id=p[0],acao=p[1],pct=p[2]?Number(p[2]):null;
+  if(S.cfg.resposta_ml_ativa!=='true'){toast('Responder pelo sistema está desligado. Peça a um administrador para ligar em Custos, ou responda pelo painel do ML.');return;}
+  if(S.agindo)return;
+  var c=caso(id),nome=c?c.pedido:'';
+  var msg={refund:'Devolver 100% do valor ao comprador do pedido '+nome+'? Isso encerra a reclamação e não dá para desfazer.',allow_return:'Aceitar a devolução do pedido '+nome+'? O comprador devolve o produto e a loja devolve 100% do valor. O Mercado Livre pode cobrar o frete de devolução da loja.',partial_refund:'Oferecer '+pct+'% de reembolso parcial no pedido '+nome+'? O comprador fica com o produto. Se ele aceitar, o caso fecha.'}[acao];
+  if(!window.confirm(msg))return;
+  S.agindo=true;
+  try{
+    var r=await SB.functions.invoke('devol-ml-agir',{body:{modo:'agir',caso_id:id,acao:acao,percentual:pct,confirmado:true}});
+    var d=r.data||{};
+    if(r.error&&!d.mensagem)throw new Error(r.error.message||'erro');
+    toast(d.mensagem||(d.ok?'Enviado.':'Não foi possível enviar.'));
+    if(S.ofertas)delete S.ofertas[id];
+    await carregar();render(true,false);
+  }catch(e){toast('Não consegui enviar: '+((e&&e.message)||'erro'));}
+  finally{S.agindo=false;}
 }
 
 /* ---------- render e eventos ---------- */
@@ -958,6 +999,8 @@ document.addEventListener('click',function(e){
   else if(a==='mais'){S.mais=!S.mais;render(true,false);}
       else if(a==='aprovar'){aprovar();}
   else if(a==='fotosCaso'){var cc=caso(v);if(cc){S.lote.pedido=String(cc.raw.pedido||cc.raw.solicitacao_id||'');ir('receber');}}
+  else if(a==='mlOfertas'){mlOfertas(v);}
+  else if(a==='mlAgir'){mlAgir(v);}
   else if(a==='concordar'){decidirCaso(v,'concordar_nao_contestar');}
   else if(a==='forcar'){decidirCaso(v,'contestar_mesmo_assim');}
   else if(a==='chip'){var ch=S.lote.chips,i=ch.indexOf(v);if(i===-1)ch.push(v);else ch.splice(i,1);render(true,false);}
