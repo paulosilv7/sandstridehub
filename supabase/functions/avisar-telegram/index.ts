@@ -67,13 +67,14 @@ async function avisar(registroId: number) {
   if (!chat) return;
   const { data: r } = await supabase.from("sandy_registros").select("id, conversa_id, decisao, motivo, resposta").eq("id", registroId).maybeSingle();
   if (!r) return;
-  const acolheu = r.decisao === "respondeu" && String(r.motivo ?? "").startsWith("[acolhimento]");
-  if (!acolheu && !["escalou", "erro"].includes(r.decisao)) return;
+  // Só avisa quando a Sandy precisa de ajuda (escalou ou erro). O que ela resolveu sozinha não gera aviso.
+  const acolheu = false;
+  if (!["escalou", "erro"].includes(r.decisao)) return;
   // Um aviso só por necessidade: se a equipe já foi avisada desta conversa e ninguém da loja respondeu depois, não repete.
   const { data: antes } = await supabase.from("sandy_registros").select("id, criado_em, decisao, motivo")
     .eq("conversa_id", r.conversa_id).lt("id", r.id).gt("criado_em", new Date(Date.now() - 24 * 3600_000).toISOString())
     .order("id", { ascending: false }).limit(10);
-  const avisoAnterior = (antes ?? []).find((x: any) => x.decisao === "escalou" || x.decisao === "erro" || String(x.motivo ?? "").startsWith("[acolhimento]"));
+  const avisoAnterior = (antes ?? []).find((x: any) => x.decisao === "escalou" || x.decisao === "erro");
   if (avisoAnterior) {
     const { count } = await supabase.from("mensagens").select("id", { count: "exact", head: true })
       .eq("conversa_id", r.conversa_id).eq("de", "loja").gt("enviada_em", avisoAnterior.criado_em);
