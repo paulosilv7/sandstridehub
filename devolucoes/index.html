@@ -744,7 +744,7 @@ function home(){
   var gt=GRUPOS.map(function(g){var n=g[0]==='todos'?base.filter(function(c){return grupoDe(c)!=='decididos';}).length:base.filter(function(c){return grupoDe(c)===g[0];}).length;return '<button type="button" class="gt'+(g[0]==='voce'?' hot':'')+'" data-a="grupo" data-v="'+g[0]+'" aria-pressed="'+(gAtual===g[0])+'"><span>'+g[1]+'</span><b>'+n+'</b></button>';}).join('');
   var gSel=GRUPOS.filter(function(g){return g[0]===gAtual;})[0];
   var rows=lista.map(function(c){var p=prazoInfo(c);
-    return '<button type="button" class="caso" data-a="caso" data-v="'+c.id+'"><span class="cs-main">'+mk(c.mk)+'<span class="c1"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span></span><span class="c2">'+esc(c.problema)+(c.mkt?'<span class="sub" style="display:block;margin-top:2px">No marketplace: '+esc(c.mkt)+'</span>':'')+'</span>'+segs(c)+'<span class="cs-tags"><span class="tag '+stCls(c.st)+'">'+c.rot+'</span>'+(c.st<6?'<span class="tag '+p.cls+'">'+p.t+'</span>':'')+'</span><svg class="go" width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>';}).join('')||'<div class="empty">Nenhum caso com esses filtros.</div>';
+    return '<button type="button" class="caso" data-a="caso" data-v="'+c.id+'"><span class="cs-main">'+mk(c.mk)+'<span class="c1"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span></span><span class="c2">'+esc(c.problema)+(c.mkt?'<span class="sub" style="display:block;margin-top:2px">No marketplace: '+esc(c.mkt)+'</span>':'')+'</span>'+'<span class="cs-tags"><span class="tag '+stCls(c.st)+'">'+c.rot+'</span>'+(c.st<6?'<span class="tag '+p.cls+'">'+p.t+'</span>':'')+'</span><svg class="go" width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>';}).join('')||'<div class="empty">Nenhum caso com esses filtros.</div>';
   var lojasDef=[['ml','Mercado Livre'],['sp','Shopee'],['tt','TikTok Shop']];
   var lojas=lojasDef.map(function(l){var cs=todos.filter(function(c){return c.mk===l[0];});var a=cs.filter(function(c){return c.st<=3;}).sort(function(x,y){return x.prazo-y.prazo;});var cr=cs.filter(function(c){return c.st===6;}).reduce(function(t,c){return t+(c.credito||0);},0);
     return '<div class="lrow"><span class="nm">'+mk(l[0])+l[1]+'</span><span class="r" data-l="Abertos">'+a.length+'</span><span class="r" data-l="Prazo">'+(a[0]?a[0].prazo+' h':'—')+'</span><span class="r" data-l="Enviados">'+cs.filter(function(c){return c.st>=4;}).length+'</span><span class="r good" data-l="Créditos">'+(cr?brl(cr):'—')+'</span></div>';}).join('');
@@ -767,7 +767,7 @@ function receber(){
   for(var j=L.fotos.length;j<4;j++)slots+='<div class="slot vz">livre</div>';
   var chips=['Completo','Completo e sem sujeira','Sem correntinhas','Sujo','Danificado','Modelo diferente','Outro'].map(function(l){return '<button type="button" class="chipb" data-a="chip" data-v="'+l+'" aria-pressed="'+(L.chips.indexOf(l)!==-1)+'">'+l+'</button>';}).join('');
   var podeEnv=L.fotos.length>0&&!L.enviando;
-  var passos=[['Recebido','O lote entra na fila com o texto exato que você escreveu.'],['Arquivado','Cada arquivo é guardado com tamanho e SHA-256 registrados.'],['Identificado','Por enquanto é manual: informe o pedido ou o rastreio. A leitura automática da etiqueta vem na próxima etapa.'],['Preparado','A Sandy prepara o relato em modo sombra e deixa para a sua aprovação.'],['Enviado','Desligado: nada sai deste sistema ainda.']].map(function(p,i){var cls=L.enviado&&i<2?'ok':'';return '<div class="passo"><span class="n '+cls+'">'+(i+1)+'</span><span><b>'+p[0]+'</b><small>'+p[1]+'</small></span></div>';}).join('');
+  var passos=[['Você envia as fotos','Tire as fotos do produto e da etiqueta e envie o lote.'],['A Sandy analisa','Ela lê a etiqueta, liga ao pedido certo e prepara o relato em 1 ou 2 minutos.'],['Você confere','O caso aparece em Para você. Nada é enviado ao marketplace sem você.']].map(function(p,i){var cls=L.enviado&&i<1?'ok':'';return '<div class="passo"><span class="n '+cls+'">'+(i+1)+'</span><span><b>'+p[0]+'</b><small>'+p[1]+'</small></span></div>';}).join('');
   var dica=L.enviando?'Enviando e arquivando…':(L.enviado?'Lote recebido e arquivado.':(L.fotos.length===0?'Adicione pelo menos uma foto para enviar.':'Sem descrição, a condição fica pendente e eu pergunto depois.'));
   var rec=S.lotes.map(function(l){var n=(l.devol_anexos&&l.devol_anexos[0]&&l.devol_anexos[0].count)||0;return '<div class="idrow"><span class="a">'+new Date(l.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span><span class="b">'+esc(l.descricao_equipe||'(sem descrição)')+(l.pedido_lido?' · pedido '+esc(l.pedido_lido):'')+'</span><span class="tag">'+n+(n===1?' arquivo':' arquivos')+'</span><span class="tag '+(l.identificacao==='identificado'?'good':'warn')+'">'+(l.identificacao==='identificado'?'Identificado':'A identificar')+'</span><span class="tag '+(l.analise==='concluida'?'info':(l.analise==='erro'?'bad':'mute'))+'">'+({pendente:'Sandy vai ler',processando:'Sandy lendo…',concluida:'Sandy leu',erro:'Erro na leitura'}[l.analise]||'')+'</span></div>';}).join('');
   return head()+'<div class="cols"><section class="card" style="flex:2 1 460px;gap:22px" aria-label="Novo lote">'+
@@ -796,7 +796,7 @@ function detalhe(){
   var evs=(cx.eventos||[]).map(function(e){var d=e.dados||{};var tx=e.tipo==='leitura_marketplace'?'Leitura do marketplace: '+esc(ST_MKT[d.status]||String(d.status||'—'))+(d.stage?' · etapa '+esc(ETAPA_MKT[d.stage]||d.stage):'')+' → '+esc(ROT[d.estado_local]||d.estado_local||''):(e.tipo==='fotos_excluidas'?'Fotos excluídas ('+(d.arquivos||0)+' arquivos)':esc(EV_TX[e.tipo]||humanizar(e.tipo)));return '<div class="idrow"><span class="a">'+dt(e.criado_em)+'</span><span class="b">'+tx+'</span></div>';}).join('');
   var fotos=(cx.anexos||[]).map(function(a,i){return a.url?'<div class="slot"><img src="'+a.url+'" alt="Foto '+(i+1)+' do caso"></div>':'<div class="slot ok">'+(a.tipo==='video'?'Vídeo':'Arquivo')+'</div>';}).join('');
   return head()+'<div><button type="button" class="pbk" data-a="voltar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Voltar para '+TITULOS[destino]+'</button></div>'+
-  '<section class="stage"><div style="min-width:0;flex:1 1 360px"><div class="lbl">'+mk(c.mk)+esc(MK[c.mk].nome+' · '+c.loja)+'</div><div class="tt">'+esc(c.problema)+'</div><div class="sub" style="color:var(--on-dark-muted);margin-top:6px">'+esc(c.pedido+' · solicitação '+c.solicitacao)+'</div></div><div class="sr"><div class="k">Prazo</div><div class="pv">'+(c.st>=6?'Encerrado':(c.semPrazo?'—':(c.prazo<=0?'Vencido':c.prazo+' h')))+'</div></div><div class="steps" role="list" aria-label="Etapas do caso">'+steps+'</div></section>'+
+  '<section class="stage"><div style="min-width:0;flex:1 1 360px"><div class="lbl">'+mk(c.mk)+esc(MK[c.mk].nome+' · '+c.loja)+'</div><div class="tt">'+esc(c.problema)+'</div><div class="sub" style="color:var(--on-dark-muted);margin-top:6px">'+esc(c.pedido+' · solicitação '+c.solicitacao)+'</div></div><div class="sr"><div class="k">Prazo</div><div class="pv">'+(c.st>=6?'Encerrado':(c.semPrazo?'—':(c.prazo<=0?'Vencido':c.prazo+' h')))+'</div></div>'+proxPasso(c)+'</section>'+
   '<div class="cols"><div style="flex:1 1 440px">'+
     '<section class="card" style="gap:10px"><h2 class="sech">Situação no marketplace</h2>'+
       (c.mkt?kv('Resposta do marketplace','<b>'+esc(c.mkt)+'</b>'):'')+
@@ -810,6 +810,16 @@ function detalhe(){
     '<section class="card" style="gap:10px"><h2 class="sech">Relato da Sandy</h2>'+relatoHtml(cx.relato)+'</section></div></div>';
 }
 
+function proxPasso(c){
+  var ini=['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(c.status)>-1,txt,btn='';
+  if(c.decidir)txt='A Sandy sugere <b>não contestar</b>. Veja o relato abaixo e decida.';
+  else if(c.status==='PREPARADO')txt='A Sandy preparou o relato. Confira abaixo.';
+  else if(ini&&c.fotos>0)txt='Fotos recebidas. A Sandy está analisando.';
+  else if(ini){txt='O sistema já reconheceu esta devolução. <b>Falta só tirar as fotos</b> quando o produto chegar ao galpão.';btn='<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar fotos deste pedido</button>';}
+  else if(c.st<6)txt='Com o marketplace. Por enquanto é só aguardar.'+(c.semPrazo?'':' Há um prazo para a loja: confira também no painel do marketplace.');
+  else txt='Decidido pelo marketplace'+(c.mkt?': '+esc(c.mkt):'')+'.';
+  return '<div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;margin-top:4px"><div style="flex:1 1 280px;font-size:16px;line-height:1.4">'+txt+'</div>'+btn+'</div>';
+}
 function relatoHtml(r){
   if(!r)return '<p class="sub" style="font-size:13.5px">Ainda sem relato. Quando um lote de fotos for ligado a este caso, a Sandy lê, analisa e deixa o relato aqui para você aprovar. Modo sombra: nada é enviado ao marketplace.</p>';
   var rec={contestar:['Contestar','good'],nao_contestar:['Não contestar','warn'],pedir_informacao:['Falta informação','info']}[r.recomendacao]||['',''];
@@ -929,6 +939,7 @@ document.addEventListener('click',function(e){
   else if(a==='grupo'){S.f.home.grupo=v;render(true,false);}
   else if(a==='mais'){S.mais=!S.mais;render(true,false);}
       else if(a==='aprovar'){aprovar();}
+  else if(a==='fotosCaso'){var cc=caso(v);if(cc){S.lote.pedido=String(cc.raw.pedido||cc.raw.solicitacao_id||'');ir('receber');}}
   else if(a==='concordar'){decidirCaso(v,'concordar_nao_contestar');}
   else if(a==='forcar'){decidirCaso(v,'contestar_mesmo_assim');}
   else if(a==='chip'){var ch=S.lote.chips,i=ch.indexOf(v);if(i===-1)ch.push(v);else ch.splice(i,1);render(true,false);}
