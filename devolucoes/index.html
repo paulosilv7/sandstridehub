@@ -380,18 +380,19 @@ var LOGO='/img/sandstride-escuro.png';
 var MK={ml:{nome:'Mercado Livre',sigla:'ML',bg:'#FFE600',fg:'#1A1A1A'},sp:{nome:'Shopee',sigla:'SP',bg:'#C2381B',fg:'#FFFFFF'},tt:{nome:'TikTok Shop',sigla:'TT',bg:'#111111',fg:'#FFFFFF'}};
 var LOJAS={ml:['SANDSTRIDE','SANDSTRIDEII','SANDSTRIDEIII'],sp:['Sandstride','Sandstride II','Achou&Levou','Creation Heaven'],tt:['Sandstride','Sandstride III']};
 var ST=['Recebido','Arquivado','Identificado','Preparado','Enviado','Confirmado','Decidido'];
-var ROTAS={home:'fila',receber:'receber',aprov:'aprovacoes',acomp:'acompanhamento',custos:'custos',regras:'regras'};
-var TITULOS={home:'Devoluções',receber:'Receber lote',caso:'Detalhe do caso',aprov:'Aprovações',acomp:'Acompanhamento',custos:'Custos e saúde',regras:'Regras e autonomia'};
+var ROTAS={home:'fila',receber:'receber',aprov:'aprovacoes',resp:'responder',acomp:'acompanhamento',custos:'custos',regras:'regras'};
+var TITULOS={home:'Devoluções',receber:'Receber lote',caso:'Detalhe do caso',aprov:'Aprovações',resp:'Responder ao marketplace',acomp:'Acompanhamento',custos:'Custos e saúde',regras:'Regras e autonomia'};
 var ICONES={
   hub:'M3 11.5 12 4l9 7.5M5.5 10v9.5h13V10M10 19.5v-5h4v5',
   home:'M5 6h14M5 12h14M5 18h9',
   receber:'M4 8h3l2-3h6l2 3h3v11H4V8Zm8 9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',
+  resp:'M4 5h16v11H9l-5 4V5Z',
   aprov:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm-4-9 3 3 5-6',
   acomp:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13v5l3 2',
   custos:'M5 19V9m7 10V5m7 14v-7',
   regras:'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12'
 };
-var NOMES_DOCK={home:'Devoluções',receber:'Receber lote',aprov:'Aprovações',acomp:'Acompanhamento',custos:'Custos e saúde',regras:'Regras e autonomia'};
+var NOMES_DOCK={home:'Devoluções',receber:'Receber lote',resp:'Responder',aprov:'Aprovações',acomp:'Acompanhamento',custos:'Custos e saúde',regras:'Regras e autonomia'};
 var GASTO_IA_MES=0;
 var MKS={mercado_livre:'ml',shopee:'sp',tiktok_shop:'tt'};
 var MKINV={ml:'mercado_livre',sp:'shopee',tt:'tiktok_shop'};
@@ -404,7 +405,7 @@ var ETAPA_MKT={claim:'reclamação',dispute:'mediação do ML',recontact:'recont
 function motivoPt(c){c=String(c||'');if(/^PDD/.test(c))return 'Produto diferente ou com defeito';if(/^PNR/.test(c))return 'Produto não recebido';return MOTIVOS_TT[c]||MOTIVOS_SP[c]||'';}
 var TIPOS_ML={mediations:'Reclamação',returns:'Devolução',change:'Troca',cancel_purchase:'Cancelamento',cancel_sale:'Cancelamento'};
 var MOTIVOS_SP={ITEM_NOT_FIT:'Não serviu',ITEM_MISSING:'Item faltando',CHANGE_MIND:'Mudou de ideia',DAMAGED_OTHERS:'Produto danificado',NOT_RECEIPT:'Não recebeu o pedido',WRONG_ITEM:'Item errado',DIFFERENT_DESCRIPTION:'Diferente do anunciado',DAMAGED_ITEM:'Produto danificado',NONFUNCTIONAL:'Não funciona',MISSING_ITEM:'Item faltando',PHYSICAL_DMG:'Produto danificado'};
-var LOJAID={},ANEXOS={},REC={};
+var LOJAID={},ANEXOS={},REC={},MSG={};
 var S={
   tela:'home',prev:'home',humor:'auto',fala:'',pula:false,mais:false,casoId:null,regraMk:'ml',nome:'',papelAdmin:false,
   f:{home:{q:'',mk:'todos',loja:'todas',grupo:'todos'},aprov:{q:'',mk:'todos',loja:'todas'},acomp:{q:'',mk:'todos',loja:'todas'}},
@@ -425,7 +426,7 @@ function adaptar(r){
   if(decidir)st=3;
   var expirado=!decidir&&mk==='sp'&&r.tipo_origem==='ACCEPTED'&&ph!==null&&ph<0&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1;
   if(expirado)ph=null;
-  return {id:r.id,rec:rec,decidir:decidir,expirado:expirado,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
+  return {id:r.id,msg:MSG[r.id]||null,acoes:r.acoes_loja||[],rec:rec,decidir:decidir,expirado:expirado,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
     problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(expirado?'Prazo da loja encerrado':(ROT[r.status]||r.status)),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
     mkt:r.situacao_mkt||'',protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
@@ -441,7 +442,8 @@ async function carregar(){
     SB.from('sandy_uso').select('origem,custo_usd,criado_em').like('origem','devolucao%').gte('criado_em',inicioMes()),
     SB.from('configuracoes').select('valor').eq('chave','cambio_usd_brl').maybeSingle(),
     SB.from('devol_modelos').select('id,titulo,versao,ativo').order('titulo'),
-    SB.from('devol_relatos').select('caso_id,recomendacao,criado_em').order('criado_em',{ascending:false}).limit(1000)
+    SB.from('devol_relatos').select('caso_id,recomendacao,criado_em').order('criado_em',{ascending:false}).limit(1000),
+    SB.from('devol_mensagens').select('caso_id,texto,anexos,enviado_em').order('enviado_em',{ascending:false}).limit(300)
   ]);
   var falha=q.filter(function(x){return x.error;})[0];
   if(falha)throw new Error(falha.error.message);
@@ -450,6 +452,7 @@ async function carregar(){
   Object.keys(LOJAS).forEach(function(k){LOJAS[k].sort();});
   ANEXOS={};(q[2].data||[]).forEach(function(a){ANEXOS[a.caso_id]=(ANEXOS[a.caso_id]||0)+1;});
   REC={};(q[9].data||[]).forEach(function(x){if(!REC[x.caso_id])REC[x.caso_id]=x.recomendacao;});
+  MSG={};(q[10].data||[]).forEach(function(x){if(!MSG[x.caso_id])MSG[x.caso_id]=x;});
   S.casos=(q[1].data||[]).map(adaptar);
   S.cfg={};(q[3].data||[]).forEach(function(c){S.cfg[c.chave]=c.valor;});
   S.regras=q[4].data||[];
@@ -606,14 +609,14 @@ function avatarHtml(){var ini=esc(String(S.nome||'?').trim().charAt(0).toUpperCa
 function ico(k,s){return '<svg width="'+(s||19)+'" height="'+(s||19)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+ICONES[k]+'"/></svg>';}
 function dock(){
   var nAprov=S.casos.filter(function(c){return c.st===3;}).length;
-  var atual=S.tela==='caso'?(S.prev==='aprov'||S.prev==='acomp'?S.prev:'home'):S.tela;
+  var atual=S.tela==='caso'?(S.prev==='aprov'||S.prev==='resp'||S.prev==='acomp'?S.prev:'home'):S.tela;
   var emMais=(S.tela==='custos'||S.tela==='regras');
-  var DL={home:'Início',receber:'Receber',aprov:'Aprovar',acomp:'Acompanhar',custos:'Custos',regras:'Regras'};
+  var DL={home:'Início',receber:'Receber',aprov:'Aprovar',resp:'Responder',acomp:'Acompanhar',custos:'Custos',regras:'Regras'};
   function b(k,extra){return '<button type="button" data-a="go" data-v="'+k+'" class="'+(atual===k?'on':'')+(extra?' '+extra:'')+'" aria-label="'+NOMES_DOCK[k]+'" title="'+NOMES_DOCK[k]+'"'+(atual===k?' aria-current="page"':'')+'>'+ico(k)+(k==='aprov'&&nAprov>0?'<span class="bd">'+nAprov+'</span>':'')+'<span class="dl">'+DL[k]+'</span></button>';}
   var maisBtn='<button type="button" class="mb'+(emMais||S.mais?' on':'')+'" data-a="mais" aria-label="Mais opções" aria-expanded="'+(!!S.mais)+'"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg><span class="dl">Mais</span></button>';
   var sheet=S.mais?'<div class="more" role="menu" aria-label="Mais opções"><button type="button" role="menuitem" data-a="go" data-v="custos">'+ico('custos')+'Custos e saúde</button><button type="button" role="menuitem" data-a="go" data-v="regras">'+ico('regras')+'Regras e autonomia</button><button type="button" role="menuitem" data-a="hub">'+ico('hub')+'Voltar ao hub</button></div>':'';
   return sheet+'<nav class="dock" aria-label="Menu rápido"><button type="button" class="dk" data-a="hub" aria-label="Voltar para o hub" title="Voltar para o hub">'+ico('hub')+'</button><div class="av dk" title="'+esc(S.nome)+'">'+(S.fotoUrl?'<img src="'+esc(S.fotoUrl)+'" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block">':(S.nome?esc(S.nome.charAt(0).toUpperCase()):'?'))+'</div><div class="sp1 dk" aria-hidden="true"></div>'+
-    b('home')+'<div class="sp1" aria-hidden="true"></div>'+b('receber')+b('aprov')+b('acomp')+'<div class="sp1" aria-hidden="true"></div>'+b('custos','dk')+b('regras','dk')+maisBtn+'</nav>';
+    b('home')+'<div class="sp1" aria-hidden="true"></div>'+b('receber')+b('resp')+b('aprov')+b('acomp')+'<div class="sp1" aria-hidden="true"></div>'+b('custos','dk')+b('regras','dk')+maisBtn+'</nav>';
 }
 function toolbar(key,ph){
   var f=S.f[key];
@@ -888,12 +891,23 @@ function acomp(){
 }
 
 
+function responder(){
+  var l=S.casos.filter(function(c){return c.mk==='ml'&&c.acoes.length>0&&!c.semPrazo&&c.st<6;}).sort(function(a,b){return a.prazo-b.prazo;});
+  var NOMEA={send_message_to_mediator:'Responder ao Mercado Livre (mediador)',allow_partial_refund:'Oferecer reembolso parcial',refund:'Fazer o reembolso total',allow_return:'Aceitar a devolução',add_shipping_evidence:'Enviar prova de envio',send_attachments:'Enviar anexos',send_tracking_number:'Enviar o código de rastreio',open_dispute:'Abrir disputa (pedir a mediação do ML)',send_message_to_complainant:'Enviar mensagem ao comprador',return_review_fail:'Informar problema na devolução recebida'};
+  var fmt=function(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');};
+  var cards=l.map(function(c){var p=prazoInfo(c);
+    var acoes=c.acoes.map(function(a){return '<span class="tag info">'+esc(NOMEA[a]||humanizar(a))+'</span>';}).join(' ');
+    var msg=c.msg?'<div class="box"><div class="kk">Mensagem do Mercado Livre'+(c.msg.anexos?' · '+c.msg.anexos+(c.msg.anexos===1?' anexo':' anexos'):'')+'</div><div class="vl" style="font-weight:400;line-height:1.5;max-height:280px;overflow:auto">'+fmt(c.msg.texto)+'</div></div>':'<p class="sub" style="font-size:13.5px">A mensagem do Mercado Livre ainda não foi lida. Ela aparece em até 15 minutos.</p>';
+    return '<section class="card" style="gap:12px"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span><span class="tag '+p.cls+'" style="margin-left:auto">'+p.t+'</span></div><div class="row" style="gap:6px;flex-wrap:wrap"><span class="sub" style="font-size:12.5px">O que o ML permite fazer:</span>'+acoes+'</div>'+msg+'<div class="row" style="gap:10px"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button></div></section>';}).join('');
+  return head()+'<p class="sub" style="margin:0 6px">Reclamações do Mercado Livre em que a loja precisa responder até um prazo. Por enquanto a resposta é dada no painel do Mercado Livre: aqui você vê o prazo, o que o ML permite e o texto dele.</p>'+(cards||'<div class="empty">Nenhuma reclamação do Mercado Livre esperando resposta da loja.</div>');
+}
+
 /* ---------- render e eventos ---------- */
 var app=document.getElementById('app');
 function render(keep,enter){
   var y=window.scrollY,ae=document.activeElement,id=ae&&ae.id,ss=null,se=null,gl=null,g0=document.querySelector('.gtabs');if(g0)gl=g0.scrollLeft;
   if(id&&ae.selectionStart!=null&&ae.type!=='file'){try{ss=ae.selectionStart;se=ae.selectionEnd;}catch(e){}}
-  var corpo={home:home,receber:receber,caso:detalhe,aprov:aprov,acomp:acomp,custos:custos,regras:regras}[S.tela]();
+  var corpo={home:home,receber:receber,caso:detalhe,resp:responder,aprov:aprov,acomp:acomp,custos:custos,regras:regras}[S.tela]();
   app.innerHTML='<main class="main'+(enter?' enter':'')+'">'+corpo+'</main>'+dock();
   window.scrollTo(0,keep?y:0);
   var g1=document.querySelector('.gtabs');
