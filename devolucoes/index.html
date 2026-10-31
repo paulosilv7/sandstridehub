@@ -750,8 +750,6 @@ function home(){
   '<section class="card" aria-label="Casos"><div class="chead"><h2 class="sech">Casos</h2><span class="pill">'+lista.length+(lista.length===1?' caso':' casos')+'</span><span class="sub">Ordenados pelo menor prazo</span></div>'+
   '<div class="gtabs" role="group" aria-label="Filtrar casos por situação">'+gt+'</div><p class="ghint"><b>'+gSel[1]+':</b> '+gSel[2]+'</p>'+
   toolbar('home','Buscar por produto ou pedido')+'<div class="lista">'+rows+'</div></section>'+
-  '<section class="mid2"><div class="card wide tight"><h2 class="sech" style="margin-bottom:6px">Marketplaces</h2><div class="lrow h"><span>Marketplace</span><span class="r" style="text-align:right">Abertos</span><span class="r" style="text-align:right">Prazo mais curto</span><span class="r" style="text-align:right">Com o marketplace</span><span class="r" style="text-align:right">Créditos</span></div><div class="fill">'+lojas+'</div></div>'+
-  '<div class="card tight flat"><h2 class="sech" style="margin-bottom:6px">Por tipo de problema</h2><div class="stack">'+comp.map(function(g){return '<span style="flex:'+g.v+' 1 0;background:'+g.cor+'"></span>';}).join('')+'</div><div class="fill">'+comp.map(function(g){return '<div class="crow"><span class="sw" style="background:'+g.cor+'"></span><span class="nm">'+esc(g.n)+'</span><span class="vv">'+g.v+'</span></div>';}).join('')+'</div></div></section>'+
   '<p class="foot">Modo sombra: a Sandy lê os marketplaces e prepara, mas nada é enviado, respondido ou contestado. Os dados vêm direto dos marketplaces e atualizam sozinhos a cada minuto.</p>';
 }
 
