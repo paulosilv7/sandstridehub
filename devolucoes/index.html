@@ -909,7 +909,7 @@ function acomp(){
 
 
 function responder(){
-  var l=S.casos.filter(function(c){return c.mk==='ml'&&c.acoes.length>0&&!c.semPrazo&&c.st<6;}).sort(function(a,b){return a.prazo-b.prazo;});
+  var l=S.casos.filter(function(c){return c.mk==='ml'&&c.st<6&&((c.acoes.length>0&&!c.semPrazo)||(c.thread||[]).some(function(m){return m.origem==='loja';}));}).sort(function(a,b){return a.prazo-b.prazo;});
   S.ofTent=S.ofTent||{};
   var fmt=function(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');};
   var cards=l.map(function(c,ix){var p=prazoInfo(c);
@@ -918,7 +918,7 @@ function responder(){
     var pedePct=!respondeu&&med&&!ops.length&&/porcentagem|percentual/i.test(ult);
     if(pedePct&&!(S.ofertas&&S.ofertas[c.id])&&!S.ofTent[c.id]){S.ofTent[c.id]=1;setTimeout(function(){mlOfertas(c.id,true);},0);}
     var tit=/^Pedido /.test(c.produto);
-    var top='<div class="rc-top">'+mkFull(c.mk)+'<span class="tag '+p.cls+'" style="margin-left:auto">'+p.t+'</span></div><div class="rc-t"><b>'+esc(tit?c.loja:c.produto)+'</b><span class="sub">Pedido '+esc(c.pedido.replace('#',''))+'</span><span class="sub">Reclamação '+esc(c.solicitacao)+(tit?'':' · '+esc(c.loja))+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
+    var top='<div class="rc-top">'+mkFull(c.mk)+'<span class="tag '+(c.semPrazo?'info':p.cls)+'" style="margin-left:auto">'+(c.semPrazo?(c.acoes.length?'Sem prazo':'Aguardando o comprador'):p.t)+'</span></div><div class="rc-t"><b>'+esc(tit?c.loja:c.produto)+'</b><span class="sub">Pedido '+esc(c.pedido.replace('#',''))+'</span><span class="sub">Reclamação '+esc(c.solicitacao)+(tit?'':' · '+esc(c.loja))+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
     var th=(c.thread||[]);
     var msgH=th.length?'<div class="rc-chat">'+th.slice().reverse().map(function(m){var meu=m.origem==='loja';return '<div class="rc-bl'+(meu?' eu':'')+'"><div class="rc-w">'+(meu?'Você':'Mercado Livre')+' · '+new Date(m.enviado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+(m.anexos?' · '+m.anexos+(m.anexos===1?' anexo':' anexos'):'')+'</div>'+fmt(m.texto)+'</div>';}).join('')+'</div>':'<p class="sub" style="font-size:13px">A mensagem do Mercado Livre ainda não foi lida (até 15 minutos).</p>';
     var face=function(k){return '<span class="rc-face">'+ritaSvg('feliz','r'+ix+k)+'</span>';};
