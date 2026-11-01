@@ -443,7 +443,7 @@ function adaptar(r){
   if(expirado)ph=null;
   return {id:r.id,env:ENV[r.id]||null,msg:MSG[r.id]||null,thread:THR[r.id]||[],sug:SUG[r.id]||null,acoes:r.acoes_loja||[],rec:rec,decidir:decidir,expirado:expirado,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
     problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(expirado?'Prazo da loja encerrado':(ROT[r.status]||r.status)),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
-    mkt:r.situacao_mkt||'',desfecho:r.desfecho||null,reemb:r.valor_reembolsado==null?null:+r.valor_reembolsado,vped:+(r.valor_pedido||r.valor_em_risco)||0,cob:r.cobertura_ml===true,protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
+    mkt:r.situacao_mkt||'',desfecho:r.desfecho||null,reemb:r.valor_reembolsado==null?null:+r.valor_reembolsado,vped:+(r.valor_pedido||r.valor_em_risco)||0,cob:r.cobertura_ml===true,custoFrete:r.custo_frete==null?null:+r.custo_frete,freteLido:r.frete_lido===true,protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
 function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-01';}
 async function carregar(){
@@ -623,20 +623,27 @@ function finDesfecho(c){
   return c.st>=6?null:'em_andamento';
 }
 function finCalc(){
-  var frete=parseFloat(String(S.cfg.custo_frete_devolucao_brl||'').replace(',','.')),temFrete=isFinite(frete)&&frete>0;
-  var f={frete:temFrete?frete:null,parcialN:0,parcial:0,parcialSem:0,devN:0,devCobN:0,custoN:0,semDevN:0,cancN:0,ganhouN:0,abertos:0,evitado:0,semLido:0,porMk:{ml:{dev:0,custo:0,parc:0},sp:{dev:0,custo:0,parc:0},tt:{dev:0,custo:0,parc:0}}};
+  var cfg=parseFloat(String(S.cfg.custo_frete_devolucao_brl||'').replace(',','.')),temCfg=isFinite(cfg)&&cfg>0;
+  var f={cfg:temCfg?cfg:null,parcialN:0,parcial:0,parcialSem:0,devN:0,semDevN:0,cancN:0,ganhouN:0,abertos:0,evitado:0,semLido:0,freteReal:0,freteN:0,semFrete:0,freteEst:0,porMk:{ml:{dev:0,custo:0,parc:0},sp:{dev:0,custo:0,parc:0},tt:{dev:0,custo:0,parc:0}}};
   S.casos.forEach(function(c){
     var d=finDesfecho(c),v=(c.reemb>0?c.reemb:c.vped)||0,m=f.porMk[c.mk];
     if(d===null){f.semLido++;return;}
     if(d==='em_andamento'){f.abertos++;return;}
     if(d==='ganhamos'){f.ganhouN++;f.evitado+=v;return;}
     if(d==='cancelado'){f.cancN++;return;}
+    if(c.freteLido&&c.custoFrete>0){f.freteReal+=c.custoFrete;f.freteN++;m.custo+=c.custoFrete;}
     if(d==='reembolsado_parcial'){f.parcialN++;if(c.reemb>0){f.parcial+=c.reemb;m.parc+=c.reemb;}else f.parcialSem++;return;}
-    if(d==='devolvido_com_produto'){f.devN++;m.dev++;if(c.cob)f.devCobN++;else{f.custoN++;m.custo++;}return;}
+    if(d==='devolvido_com_produto'){f.devN++;m.dev++;if(!c.freteLido){f.semFrete++;}return;}
     f.semDevN++;
   });
-  f.fretePart=temFrete?f.custoN*frete:0;
-  f.custo=(temFrete||f.parcialN>0)?f.fretePart+f.parcial:null;
+  f.medio=f.freteN>0?f.freteReal/f.freteN:null;
+  var base=temCfg?cfg:(f.medio||0);
+  f.base=base;
+  S.casos.forEach(function(c){
+    var d=finDesfecho(c);
+    if(d==='devolvido_com_produto'&&!c.freteLido&&base>0){f.freteEst+=base;f.porMk[c.mk].custo+=base;}
+  });
+  f.custo=(f.freteN>0||f.freteEst>0||f.parcialN>0)?f.freteReal+f.freteEst+f.parcial:null;
   return f;
 }
 var TIPOS_ECO=['Frete de devolução evitado','Ressarcimento do produto','Reembolso indevido barrado'];
@@ -898,10 +905,10 @@ function custos(){
   var ETAPAS=[['devolucao_etiqueta','1. Ler a etiqueta'],['devolucao_estado','2. Analisar o estado'],['devolucao_relato','3. Redigir a contestação'],['devolucao_decisao','4. Ler a decisão']];
   var et=ETAPAS.map(function(x){var v=S.uso.filter(function(u){return u.etapa===x[0];}).reduce(function(s,u){return s+(+u.custo_brl||0);},0);return '<div class="meter"><div class="l"><span>'+x[1]+'</span><span>'+brl(v)+'</span></div><div class="bar"><span style="width:'+(GASTO_IA_MES>0?Math.round(v/GASTO_IA_MES*100):0)+'%"></span></div></div>';}).join('');
   var fn=finCalc(),fv=S.freteMed==null?(S.cfg.custo_frete_devolucao_brl||''):S.freteMed;
-  var fmk=['ml','sp','tt'].map(function(m){var x=fn.porMk[m];return '<div class="fx-row">'+mk(m)+'<span class="fx-nm">'+MK[m].nome+'</span><span class="fx-n">'+x.dev+(x.dev===1?' devolução':' devoluções')+'</span><span class="fx-val">'+((fn.frete===null&&!x.parc)?'—':brl((fn.frete===null?0:x.custo*fn.frete)+x.parc))+'</span></div>';}).join('');
-  var fin='<section class="card"><h2 class="sech">Custo com devoluções</h2><p class="sub">Últimos 45 dias. Conta o frete das devoluções em que o produto volta para a loja e o dinheiro devolvido nos reembolsos parciais (o cliente ficou com o produto). O valor do produto não entra: ele já está no custo do fornecedor.</p>'+
-    '<div class="fx-hero bad"><span class="fx-k">Custo estimado com devoluções</span><span class="fx-v">'+(fn.custo===null?'—':brl(fn.custo))+'</span><span class="fx-s">'+(fn.custo===null?'Informe o custo médio do frete lá embaixo para calcular.':'Reembolsos parciais '+brl(fn.parcial)+' + frete '+(fn.frete===null?'(informe o custo do frete)':fn.custoN+' × '+brl(fn.frete)))+'</span></div>'+
-    '<div class="fx-grid"><div class="fx-box"><span class="fx-k">Com produto de volta</span><span class="fx-b">'+fn.devN+'</span><span class="fx-s">devoluções físicas</span></div>'+
+  var fmk=['ml','sp','tt'].map(function(m){var x=fn.porMk[m];return '<div class="fx-row">'+mk(m)+'<span class="fx-nm">'+MK[m].nome+'</span><span class="fx-n">'+x.dev+(x.dev===1?' devolução':' devoluções')+'</span><span class="fx-val">'+((!x.custo&&!x.parc)?'—':brl(x.custo+x.parc))+'</span></div>';}).join('');
+  var fin='<section class="card"><h2 class="sech">Custo com devoluções</h2><p class="sub">Últimos 45 dias. Conta o frete real de cada devolução (valor lido do marketplace) e o dinheiro devolvido nos reembolsos parciais, quando o cliente fica com o produto. O valor do produto não entra: ele já está no custo do fornecedor.</p>'+
+    '<div class="fx-hero bad"><span class="fx-k">Custo com devoluções</span><span class="fx-v">'+(fn.custo===null?'—':brl(fn.custo))+'</span><span class="fx-s">'+(fn.custo===null?'Ainda sem frete lido nem reembolso parcial.':'Frete real '+brl(fn.freteReal)+' ('+fn.freteN+(fn.freteN===1?' devolução':' devoluções')+')'+(fn.freteEst>0?' + frete estimado '+brl(fn.freteEst)+' ('+fn.semFrete+' sem valor lido)':'')+' + reembolsos parciais '+brl(fn.parcial))+'</span></div>'+
+    '<div class="fx-grid"><div class="fx-box"><span class="fx-k">Frete médio real</span><span class="fx-b">'+(fn.medio===null?'—':brl(fn.medio))+'</span><span class="fx-s">por devolução, lido do marketplace</span></div>'+
     '<div class="fx-box"><span class="fx-k">Reembolsos parciais</span><span class="fx-b">'+fn.parcialN+'</span><span class="fx-s">'+brl(fn.parcial)+' devolvidos'+(fn.parcialSem?' ('+fn.parcialSem+' ainda sem valor)':'')+'</span></div>'+
     '<div class="fx-box"><span class="fx-k">Em aberto</span><span class="fx-b">'+fn.abertos+'</span><span class="fx-s">ainda sem decisão</span></div></div>'+
     '<div class="fx-panel"><h3 class="fx-h">Por marketplace</h3>'+fmk+'</div>'+
@@ -911,8 +918,8 @@ function custos(){
     '<div class="fx-row"><span class="fx-dot" style="background:var(--warn)"></span><span class="fx-nm">Reembolsado sem devolução do produto</span><span class="fx-val">'+fn.semDevN+'</span></div>'+
     '<div class="fx-row"><span class="fx-dot" style="background:var(--muted)"></span><span class="fx-nm">Venda cancelada</span><span class="fx-val">'+fn.cancN+'</span></div>'+
     '<div class="fx-row"><span class="fx-dot" style="background:var(--good)"></span><span class="fx-nm">Loja ganhou</span><span class="fx-val">'+fn.ganhouN+'</span></div></div>'+
-    (admin?'<div class="fx-panel soft"><h3 class="fx-h">Custo médio do frete de uma devolução</h3><div class="row" style="gap:10px;align-items:center;flex-wrap:nowrap"><label class="field" style="flex:1 1 auto;min-width:0"><input id="frete-med" type="text" inputmode="decimal" data-in="frete-med" value="'+esc(fv)+'" placeholder="Ex.: 18,50" autocomplete="off" aria-label="Custo médio do frete em reais"></label><button type="button" class="btn" data-a="salvarFrete">Salvar</button></div></div>':'')+
-    '<p class="sub" style="font-size:12.5px">Quando o Mercado Livre marca "cobertura aplicada", considero que ele arcou com o custo. Confirme no extrato antes de usar este número em decisões grandes.'+(fn.semLido?' '+fn.semLido+(fn.semLido===1?' caso antigo ainda sem desfecho lido.':' casos antigos ainda sem desfecho lido.'):'')+'</p></section>';
+    (admin?'<div class="fx-panel soft"><h3 class="fx-h">Frete estimado para devoluções sem valor lido (R$)</h3><div class="row" style="gap:10px;align-items:center;flex-wrap:nowrap"><label class="field" style="flex:1 1 auto;min-width:0"><input id="frete-med" type="text" inputmode="decimal" data-in="frete-med" value="'+esc(fv)+'" placeholder="Ex.: 18,50" autocomplete="off" aria-label="Custo médio do frete em reais"></label><button type="button" class="btn" data-a="salvarFrete">Salvar</button></div></div>':'')+
+    '<p class="sub" style="font-size:12.5px">O frete do Mercado Livre vem do custo cobrado da loja em cada envio de devolução, já descontadas as compensações que o ML informar. Confira com o extrato antes de decisões grandes. Onde o marketplace não informa o frete (Shopee e TikTok), uso o valor abaixo ou, se vazio, a média real do ML.'+(fn.semLido?' '+fn.semLido+(fn.semLido===1?' caso antigo ainda sem desfecho lido.':' casos antigos ainda sem desfecho lido.'):'')+'</p></section>';
   var eco=S.eco.length?
     '<div class="eco"><div class="tl"><div class="t" style="grid-column:1 / -1"><div class="k" style="color:var(--muted)">Economia total</div><div class="v good" style="font-size:40px">'+brl(e.tot)+'</div><div class="s">'+e.ganhas+(e.ganhas===1?' caso ganho':' casos ganhos')+'</div></div>'+
     '<div class="t"><div class="k" style="color:var(--muted)">Já conferido no extrato</div><div class="v">'+brl(e.conf)+'</div></div><div class="t"><div class="k" style="color:var(--muted)">A conciliar</div><div class="v">'+brl(e.aconc)+'</div></div></div>'+
