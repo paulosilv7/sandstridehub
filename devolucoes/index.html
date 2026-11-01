@@ -910,7 +910,8 @@ function responder(){
   var fmt=function(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');};
   var cards=l.map(function(c,ix){var p=prazoInfo(c);
     var sug=c.sug,med=c.acoes.indexOf('send_message_to_mediator')>-1,ult=c.msg?c.msg.texto:'',ops=opcoesML(ult);
-    var pedePct=med&&!ops.length&&/porcentagem|percentual/i.test(ult);
+    var respondeu=(c.thread||[]).some(function(m){return m.origem==='loja';});
+    var pedePct=!respondeu&&med&&!ops.length&&/porcentagem|percentual/i.test(ult);
     if(pedePct&&!(S.ofertas&&S.ofertas[c.id])&&!S.ofTent[c.id]){S.ofTent[c.id]=1;setTimeout(function(){mlOfertas(c.id,true);},0);}
     var tit=/^Pedido /.test(c.produto);
     var top='<div class="rc-top">'+mkFull(c.mk)+'<span class="tag '+p.cls+'" style="margin-left:auto">'+p.t+'</span></div><div class="rc-t"><b>'+esc(tit?c.loja:c.produto)+'</b><span class="sub">Pedido '+esc(c.pedido.replace('#',''))+'</span><span class="sub">Reclamação '+esc(c.solicitacao)+(tit?'':' · '+esc(c.loja))+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
@@ -918,12 +919,13 @@ function responder(){
     var msgH=th.length?'<div class="rc-chat">'+th.slice().reverse().map(function(m){var meu=m.origem==='loja';return '<div class="rc-bl'+(meu?' eu':'')+'"><div class="rc-w">'+(meu?'Você':'Mercado Livre')+' · '+new Date(m.enviado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+(m.anexos?' · '+m.anexos+(m.anexos===1?' anexo':' anexos'):'')+'</div>'+fmt(m.texto)+'</div>';}).join('')+'</div>':'<p class="sub" style="font-size:13px">A mensagem do Mercado Livre ainda não foi lida (até 15 minutos).</p>';
     var face=function(k){return '<span class="rc-face">'+ritaSvg('feliz','r'+ix+k)+'</span>';};
     var sugH='';
-    if(sug&&sug.motivo){
+    if(respondeu){sugH='';}
+    else if(sug&&sug.motivo){
       var cmp=(sug.comparacao||[]).map(function(x){return '<div>'+(pedePct?x.opcao+'%':'Opção '+x.opcao)+': <b>'+(x.custo_brl!=null?brl(x.custo_brl):'custo a calcular')+'</b></div>';}).join('');
       sugH='<div class="rc-sb">'+face('a')+'<span class="rc-sy" tabindex="0">Sandy<span class="rc-tip">'+(sug.situacao?'<span><b>Situação</b><br>'+esc(sug.situacao)+'</span>':'')+'<span><b>Sugestão</b><br>'+esc(sug.motivo)+'</span>'+(cmp?'<span class="rc-tc">'+cmp+'</span>':'')+(sug.alerta?'<span class="rc-ta">Atenção: '+esc(sug.alerta)+'</span>':'')+'</span></span><span class="sub">'+(sug.recomendada?(pedePct?'sugere '+sug.recomendada+'%':'sugere a opção '+sug.recomendada):'analisou este caso')+'</span></div>';
     }else if(c.msg){sugH='<div class="rc-sb">'+face('a')+'<span class="sub">A Sandy está analisando as opções (até 15 minutos).</span></div>';}
     var bt='';
-    if(med&&ops.length){
+    if(!respondeu&&med&&ops.length){
       bt=ops.map(function(o){var rec=sug&&sug.recomendada===o.n;return '<button type="button" class="rc-op'+(rec?' rec':'')+'" data-a="mlAgir" data-v="'+c.id+'|mediador_opcao|'+o.n+'"><b>'+o.n+'</b><span>'+esc(o.titulo)+'</span>'+(rec?face('b'):'')+'</button>';}).join('');
     }
     if(pedePct){
@@ -931,7 +933,7 @@ function responder(){
       if(lista&&sug&&sug.pct_ml&&!lista.some(function(o){return o.p===Number(sug.pct_ml);}))lista.unshift({p:Number(sug.pct_ml),v:sug.valor_pedido?Number(sug.valor_pedido)*Number(sug.pct_ml)/100:null,ml:true});
       bt+=lista&&lista.length?'<div class="rc-pcts">'+lista.map(function(o){var rec=sug&&sug.recomendada===o.p;return '<button type="button" class="chipb'+(rec?' rec':'')+'" data-a="mlAgir" data-v="'+c.id+'|mediador_pct|'+o.p+'">'+o.p+'%'+(o.v!=null?' · '+brl(o.v):'')+(o.ml?' · ML':'')+(rec?' ★':'')+'</button>';}).join('')+'</div>':'<p class="sub" style="font-size:13px">Buscando as porcentagens que o Mercado Livre permite…</p>';
     }
-    bt+=agirHtml(c);
+    if(!respondeu)bt+=agirHtml(c);
     var form=med?'<form class="rc-f" data-id="'+c.id+'"><input name="t" type="text" maxlength="400" autocomplete="off" placeholder="Responder ao mediador com texto"><button type="submit" class="btn sm">Enviar</button></form>':'';
     return '<section class="card rc">'+top+msgH+sugH+(bt?'<div class="rc-ops">'+bt+'</div>':'')+form+'<div class="row" style="gap:10px"><button type="button" class="btn ghost sm" data-a="caso" data-v="'+c.id+'">Ver caso</button></div></section>';}).join('');
   return head()+'<p class="sub" style="margin:0 6px">Reclamações do Mercado Livre em que a loja precisa responder até um prazo, da mais urgente para a menos. Cada envio pede a sua confirmação.</p>'+(cards?'<div class="rgrid">'+cards+'</div>':'<div class="empty">Nenhuma reclamação do Mercado Livre esperando resposta da loja.</div>');
