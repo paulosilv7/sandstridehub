@@ -45,6 +45,7 @@ h1,h2,h3,p{margin:0}
 .rc{gap:10px;padding:16px;overflow:visible}
 .rc-top{display:flex;align-items:center;gap:10px}.rc-t{display:flex;flex-direction:column;min-width:0}.rc-t b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-t .sub{font-size:12.5px;letter-spacing:0;white-space:nowrap;line-height:1.4}.rc-p{font-size:13.5px;color:var(--muted)}
 .rc-m{background:var(--chip);border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.5;max-height:250px;overflow:auto}.rc-m .kk{margin-bottom:6px}
+.rc-b{padding:8px 0;border-top:1px solid #DADAD6}.rc-b:first-of-type{border-top:0}.rc-b.eu{background:#E4E9FA;border-radius:10px;padding:8px 10px;margin:6px 0}.rc-w{font-size:11.5px;color:var(--muted);margin-bottom:3px}.rc-pcts{display:flex;flex-wrap:wrap;gap:6px}.rc-pcts .chipb.rec{border-color:#4A63C4;background:#F4F6FD}.rc-f{display:flex;gap:8px}.rc-f input{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:9px 12px;font:inherit;font-size:14px;background:#fff}
 .rc-sb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}.rc-face{width:30px;height:30px;flex:none;display:inline-block}.rc-face svg{width:100%;height:100%;display:block}
 .rc-sy{position:relative;font-weight:600;border-bottom:1px dotted #4A63C4;cursor:help;outline:none}.rc-tip{display:none;position:absolute;left:0;top:calc(100% + 8px);z-index:30;width:min(320px,78vw);background:#1A1A1A;color:#fff;padding:12px 14px;border-radius:14px;font-weight:400;font-size:13.5px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.25)}.rc-sy:hover .rc-tip,.rc-sy:focus .rc-tip{display:flex;flex-direction:column;gap:8px}.rc-tc{display:flex;flex-direction:column;gap:2px;font-size:12.5px;opacity:.9}.rc-ta{font-size:12.5px;color:#FFD9A0}
 .rc-ops{display:flex;flex-direction:column;gap:6px}.rc-op{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer}.rc-op b{width:22px;height:22px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:12px;flex:none}.rc-op span:not(.rc-face){flex:1}.rc-op .rc-face{width:26px;height:26px}.rc-op.rec{border-color:#4A63C4;background:#F4F6FD}
@@ -414,7 +415,7 @@ var ETAPA_MKT={claim:'reclamação',dispute:'mediação do ML',recontact:'recont
 function motivoPt(c){c=String(c||'');if(/^PDD/.test(c))return 'Produto diferente ou com defeito';if(/^PNR/.test(c))return 'Produto não recebido';return MOTIVOS_TT[c]||MOTIVOS_SP[c]||'';}
 var TIPOS_ML={mediations:'Reclamação',returns:'Devolução',change:'Troca',cancel_purchase:'Cancelamento',cancel_sale:'Cancelamento'};
 var MOTIVOS_SP={ITEM_NOT_FIT:'Não serviu',ITEM_MISSING:'Item faltando',CHANGE_MIND:'Mudou de ideia',DAMAGED_OTHERS:'Produto danificado',NOT_RECEIPT:'Não recebeu o pedido',WRONG_ITEM:'Item errado',DIFFERENT_DESCRIPTION:'Diferente do anunciado',DAMAGED_ITEM:'Produto danificado',NONFUNCTIONAL:'Não funciona',MISSING_ITEM:'Item faltando',PHYSICAL_DMG:'Produto danificado'};
-var LOJAID={},ANEXOS={},REC={},MSG={},SUG={};
+var LOJAID={},ANEXOS={},REC={},MSG={},SUG={},THR={};
 var S={
   tela:'home',prev:'home',humor:'auto',fala:'',pula:false,mais:false,casoId:null,regraMk:'ml',nome:'',papelAdmin:false,
   f:{home:{q:'',mk:'todos',loja:'todas',grupo:'todos'},aprov:{q:'',mk:'todos',loja:'todas'},acomp:{q:'',mk:'todos',loja:'todas'}},
@@ -435,7 +436,7 @@ function adaptar(r){
   if(decidir)st=3;
   var expirado=!decidir&&mk==='sp'&&r.tipo_origem==='ACCEPTED'&&ph!==null&&ph<0&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1;
   if(expirado)ph=null;
-  return {id:r.id,msg:MSG[r.id]||null,sug:SUG[r.id]||null,acoes:r.acoes_loja||[],rec:rec,decidir:decidir,expirado:expirado,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
+  return {id:r.id,msg:MSG[r.id]||null,thread:THR[r.id]||[],sug:SUG[r.id]||null,acoes:r.acoes_loja||[],rec:rec,decidir:decidir,expirado:expirado,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
     problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(expirado?'Prazo da loja encerrado':(ROT[r.status]||r.status)),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
     mkt:r.situacao_mkt||'',protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
@@ -452,7 +453,7 @@ async function carregar(){
     SB.from('configuracoes').select('valor').eq('chave','cambio_usd_brl').maybeSingle(),
     SB.from('devol_modelos').select('id,titulo,versao,ativo').order('titulo'),
     SB.from('devol_relatos').select('caso_id,recomendacao,criado_em').order('criado_em',{ascending:false}).limit(1000),
-    SB.from('devol_mensagens').select('caso_id,texto,anexos,enviado_em').order('enviado_em',{ascending:false}).limit(300),
+    SB.from('devol_mensagens').select('caso_id,origem,texto,anexos,enviado_em').order('enviado_em',{ascending:false}).limit(600),
     SB.from('devol_sugestoes').select('caso_id,recomendada,motivo,comparacao,alerta')
   ]);
   var falha=q.filter(function(x){return x.error;})[0];
@@ -462,7 +463,7 @@ async function carregar(){
   Object.keys(LOJAS).forEach(function(k){LOJAS[k].sort();});
   ANEXOS={};(q[2].data||[]).forEach(function(a){ANEXOS[a.caso_id]=(ANEXOS[a.caso_id]||0)+1;});
   REC={};(q[9].data||[]).forEach(function(x){if(!REC[x.caso_id])REC[x.caso_id]=x.recomendacao;});
-  MSG={};(q[10].data||[]).forEach(function(x){if(!MSG[x.caso_id])MSG[x.caso_id]=x;});
+  MSG={};THR={};(q[10].data||[]).forEach(function(x){if(x.origem==='mediador'&&!MSG[x.caso_id])MSG[x.caso_id]=x;(THR[x.caso_id]=THR[x.caso_id]||[]);if(THR[x.caso_id].length<6)THR[x.caso_id].push(x);});
   SUG={};(q[11].data||[]).forEach(function(x){SUG[x.caso_id]=x;});
   S.casos=(q[1].data||[]).map(adaptar);
   S.cfg={};(q[3].data||[]).forEach(function(c){S.cfg[c.chave]=c.valor;});
@@ -474,7 +475,7 @@ async function carregar(){
   S.modelos=q[8].data||[];
   S.erro='';S.carregando=false;
 }
-async function carregarSilencioso(){try{await carregar();render(true,false);}catch(e){}}
+async function carregarSilencioso(){var ae=document.activeElement;if(ae&&ae.closest&&ae.closest('.rc-f'))return;var rf=document.querySelector('.rc-f input');if(rf&&rf.value)return;try{await carregar();render(true,false);}catch(e){}}
 async function carregarCaso(id){
   S.cx={id:id,carregando:true,eventos:[],anexos:[]};
   try{
@@ -905,25 +906,34 @@ function acomp(){
 
 function responder(){
   var l=S.casos.filter(function(c){return c.mk==='ml'&&c.acoes.length>0&&!c.semPrazo&&c.st<6;}).sort(function(a,b){return a.prazo-b.prazo;});
+  S.ofTent=S.ofTent||{};
   var fmt=function(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');};
   var cards=l.map(function(c,ix){var p=prazoInfo(c);
-    var sug=c.sug,ops=opcoesML(c.msg?c.msg.texto:''),med=c.acoes.indexOf('send_message_to_mediator')>-1;
+    var sug=c.sug,med=c.acoes.indexOf('send_message_to_mediator')>-1,ult=c.msg?c.msg.texto:'',ops=opcoesML(ult);
+    var pedePct=med&&!ops.length&&/porcentagem|percentual/i.test(ult);
+    if(pedePct&&!(S.ofertas&&S.ofertas[c.id])&&!S.ofTent[c.id]){S.ofTent[c.id]=1;setTimeout(function(){mlOfertas(c.id,true);},0);}
     var tit=/^Pedido /.test(c.produto);
     var top='<div class="rc-top">'+mkFull(c.mk)+'<span class="tag '+p.cls+'" style="margin-left:auto">'+p.t+'</span></div><div class="rc-t"><b>'+esc(tit?c.loja:c.produto)+'</b><span class="sub">Pedido '+esc(c.pedido.replace('#',''))+'</span><span class="sub">Reclamação '+esc(c.solicitacao)+(tit?'':' · '+esc(c.loja))+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
-    var msgH=c.msg?'<div class="rc-m"><div class="kk">Mensagem do Mercado Livre'+(c.msg.anexos?' · '+c.msg.anexos+(c.msg.anexos===1?' anexo':' anexos'):'')+'</div>'+fmt(c.msg.texto)+'</div>':'<p class="sub" style="font-size:13px">A mensagem do Mercado Livre ainda não foi lida (até 15 minutos).</p>';
+    var th=(c.thread||[]);
+    var msgH=th.length?'<div class="rc-m"><div class="kk">Conversa com o Mercado Livre · mais recente primeiro</div>'+th.map(function(m,i){var meu=m.origem==='loja';return '<div class="rc-b'+(meu?' eu':'')+'"><div class="rc-w">'+(meu?'Você (loja)':'Mercado Livre')+' · '+new Date(m.enviado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+(m.anexos?' · '+m.anexos+(m.anexos===1?' anexo':' anexos'):'')+'</div>'+(i===0||meu||th.length<3?fmt(m.texto):'<details class="rc-d"><summary>Ver mensagem anterior</summary>'+fmt(m.texto)+'</details>')+'</div>';}).join('')+'</div>':'<p class="sub" style="font-size:13px">A mensagem do Mercado Livre ainda não foi lida (até 15 minutos).</p>';
     var face=function(k){return '<span class="rc-face">'+ritaSvg('feliz','r'+ix+k)+'</span>';};
     var sugH='';
     if(sug&&sug.motivo){
-      var cmp=(sug.comparacao||[]).map(function(x){return '<div>Opção '+x.opcao+': <b>'+(x.custo_brl!=null?brl(x.custo_brl):'custo a calcular')+'</b></div>';}).join('');
-      sugH='<div class="rc-sb">'+face('a')+'<span class="rc-sy" tabindex="0">Sandy<span class="rc-tip"><span>'+esc(sug.motivo)+'</span>'+(cmp?'<span class="rc-tc">'+cmp+'</span>':'')+(sug.alerta?'<span class="rc-ta">Atenção: '+esc(sug.alerta)+'</span>':'')+'</span></span><span class="sub">'+(sug.recomendada?'sugere a opção '+sug.recomendada:'analisou este caso')+'</span></div>';
+      var cmp=(sug.comparacao||[]).map(function(x){return '<div>'+(pedePct?x.opcao+'%':'Opção '+x.opcao)+': <b>'+(x.custo_brl!=null?brl(x.custo_brl):'custo a calcular')+'</b></div>';}).join('');
+      sugH='<div class="rc-sb">'+face('a')+'<span class="rc-sy" tabindex="0">Sandy<span class="rc-tip"><span>'+esc(sug.motivo)+'</span>'+(cmp?'<span class="rc-tc">'+cmp+'</span>':'')+(sug.alerta?'<span class="rc-ta">Atenção: '+esc(sug.alerta)+'</span>':'')+'</span></span><span class="sub">'+(sug.recomendada?(pedePct?'sugere '+sug.recomendada+'%':'sugere a opção '+sug.recomendada):'analisou este caso')+'</span></div>';
     }else if(c.msg){sugH='<div class="rc-sb">'+face('a')+'<span class="sub">A Sandy está analisando as opções (até 15 minutos).</span></div>';}
     var bt='';
     if(med&&ops.length){
       bt=ops.map(function(o){var rec=sug&&sug.recomendada===o.n;return '<button type="button" class="rc-op'+(rec?' rec':'')+'" data-a="mlAgir" data-v="'+c.id+'|mediador_opcao|'+o.n+'"><b>'+o.n+'</b><span>'+esc(o.titulo)+'</span>'+(rec?face('b'):'')+'</button>';}).join('');
     }
+    if(pedePct){
+      var of=S.ofertas&&S.ofertas[c.id];
+      bt+=of&&of.length?'<div class="rc-pcts">'+of.map(function(o){var rec=sug&&sug.recomendada===Number(o.percentage);return '<button type="button" class="chipb'+(rec?' rec':'')+'" data-a="mlAgir" data-v="'+c.id+'|mediador_pct|'+o.percentage+'">'+o.percentage+'% · '+brl(o.amount)+(rec?' ★':'')+'</button>';}).join('')+'</div>':'<p class="sub" style="font-size:13px">Buscando as porcentagens que o Mercado Livre permite…</p>';
+    }
     bt+=agirHtml(c);
-    return '<section class="card rc">'+top+msgH+sugH+(bt?'<div class="rc-ops">'+bt+'</div>':'')+'<div class="row" style="gap:10px"><button type="button" class="btn ghost sm" data-a="caso" data-v="'+c.id+'">Ver caso</button></div></section>';}).join('');
-  return head()+'<p class="sub" style="margin:0 6px">Reclamações do Mercado Livre em que a loja precisa responder até um prazo, da mais urgente para a menos. Cada botão pede a sua confirmação antes de enviar.</p>'+(cards?'<div class="rgrid">'+cards+'</div>':'<div class="empty">Nenhuma reclamação do Mercado Livre esperando resposta da loja.</div>');
+    var form=med?'<form class="rc-f" data-id="'+c.id+'"><input name="t" type="text" maxlength="400" autocomplete="off" placeholder="Responder ao mediador com texto"><button type="submit" class="btn sm">Enviar</button></form>':'';
+    return '<section class="card rc">'+top+msgH+sugH+(bt?'<div class="rc-ops">'+bt+'</div>':'')+form+'<div class="row" style="gap:10px"><button type="button" class="btn ghost sm" data-a="caso" data-v="'+c.id+'">Ver caso</button></div></section>';}).join('');
+  return head()+'<p class="sub" style="margin:0 6px">Reclamações do Mercado Livre em que a loja precisa responder até um prazo, da mais urgente para a menos. Cada envio pede a sua confirmação.</p>'+(cards?'<div class="rgrid">'+cards+'</div>':'<div class="empty">Nenhuma reclamação do Mercado Livre esperando resposta da loja.</div>');
 }
 function opcoesML(t){var r=[];String(t||'').split('\n').forEach(function(l){var m=l.match(/^\s*(\d+)\.\s*\*\*(.+?)\*\*\s*[—\-:]\s*(.+)$/);if(m)r.push({n:+m[1],titulo:m[2].trim(),desc:m[3]});});return r;}
 function agirHtml(c){
@@ -937,33 +947,46 @@ function agirHtml(c){
   }
   return b;
 }
-async function mlOfertas(id){
+async function mlOfertas(id,quieto){
   try{
     var r=await SB.functions.invoke('devol-ml-agir',{body:{modo:'ofertas',caso_id:id}});
     var d=r.data||{};if(r.error||!d.ok)throw new Error(d.mensagem||(r.error&&r.error.message)||'erro');
     S.ofertas=S.ofertas||{};S.ofertas[id]=d.ofertas||[];
-    if(!S.ofertas[id].length)toast('O Mercado Livre não ofereceu percentuais para este caso.');
+    if(!S.ofertas[id].length&&!quieto)toast('O Mercado Livre não ofereceu percentuais para este caso.');
     render(true,false);
-  }catch(e){toast('Não consegui buscar as ofertas: '+((e&&e.message)||'erro'));}
+  }catch(e){if(!quieto)toast('Não consegui buscar as ofertas: '+((e&&e.message)||'erro'));}
 }
-async function mlAgir(v){
-  var p=String(v).split('|'),id=p[0],acao=p[1],n=p[2]?Number(p[2]):null;
+async function enviarAoML(id,corpo,fim){
   if(S.agindo)return;
-  var c=caso(id),nome=c?c.pedido:'',tit='';
-  if(acao==='mediador_opcao'&&c&&c.msg){var o=opcoesML(c.msg.texto).filter(function(x){return x.n===n;})[0];tit=o?o.titulo:'';}
-  var msg={refund:'Devolver 100% do valor ao comprador do pedido '+nome+'? Isso encerra a reclamação e não dá para desfazer.',allow_return:'Aceitar a devolução do pedido '+nome+'? O comprador devolve o produto e a loja devolve 100% do valor. O Mercado Livre pode cobrar o frete de devolução da loja.',partial_refund:'Oferecer '+n+'% de reembolso parcial no pedido '+nome+'? O comprador fica com o produto. Se ele aceitar, o caso fecha.',mediador_opcao:'Enviar ao mediador do Mercado Livre, no pedido '+nome+', a escolha: opção '+n+' — '+tit+'? Isso responde ao assistente do ML e não dá para desfazer.'}[acao];
-  if(!window.confirm(msg))return;
   S.agindo=true;
   try{
-    var r=await SB.functions.invoke('devol-ml-agir',{body:{modo:'agir',caso_id:id,acao:acao,percentual:acao==='partial_refund'?n:null,opcao:acao==='mediador_opcao'?n:null,confirmado:true}});
+    var r=await SB.functions.invoke('devol-ml-agir',{body:Object.assign({modo:'agir',caso_id:id,confirmado:true},corpo)});
     var d=r.data||{};
     if(r.error&&!d.mensagem)throw new Error(r.error.message||'erro');
     toast(d.mensagem||(d.ok?'Enviado.':'Não foi possível enviar.'));
+    if(d.ok&&fim)fim();
     if(S.ofertas)delete S.ofertas[id];
+    if(S.ofTent)delete S.ofTent[id];
     await carregar();render(true,false);
   }catch(e){toast('Não consegui enviar: '+((e&&e.message)||'erro'));}
   finally{S.agindo=false;}
 }
+async function mlAgir(v){
+  var p=String(v).split('|'),id=p[0],acao=p[1],n=p[2]?Number(p[2]):null;
+  var c=caso(id),nome=c?c.pedido:'',tit='';
+  if(acao==='mediador_opcao'&&c&&c.msg){var o=opcoesML(c.msg.texto).filter(function(x){return x.n===n;})[0];tit=o?o.titulo:'';}
+  var msg={refund:'Devolver 100% do valor ao comprador do pedido '+nome+'? Isso encerra a reclamação e não dá para desfazer.',allow_return:'Aceitar a devolução do pedido '+nome+'? O comprador devolve o produto e a loja devolve 100% do valor. O Mercado Livre pode cobrar o frete de devolução da loja.',partial_refund:'Oferecer '+n+'% de reembolso parcial no pedido '+nome+'? O comprador fica com o produto. Se ele aceitar, o caso fecha.',mediador_opcao:'Enviar ao mediador do Mercado Livre, no pedido '+nome+', a escolha: opção '+n+' — '+tit+'? Isso responde ao assistente do ML e não dá para desfazer.',mediador_pct:'Dizer ao mediador do Mercado Livre, no pedido '+nome+', que a loja quer oferecer '+n+'% de reembolso parcial? Isso responde ao assistente do ML e não dá para desfazer.'}[acao];
+  if(!window.confirm(msg))return;
+  await enviarAoML(id,{acao:acao,percentual:(acao==='partial_refund'||acao==='mediador_pct')?n:null,opcao:acao==='mediador_opcao'?n:null});
+}
+document.addEventListener('submit',function(e){
+  var f=e.target.closest&&e.target.closest('.rc-f');if(!f)return;
+  e.preventDefault();
+  var id=f.getAttribute('data-id'),t=String(f.elements.t.value||'').trim();
+  if(!t)return;
+  if(!window.confirm('Enviar ao mediador do Mercado Livre este texto?\n\n"'+t+'"'))return;
+  enviarAoML(id,{acao:'mediador_texto',texto:t},function(){f.reset();});
+});
 
 /* ---------- render e eventos ---------- */
 var app=document.getElementById('app');
