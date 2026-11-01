@@ -40,6 +40,7 @@ h1,h2,h3,p{margin:0}
 .hsep{width:1px;height:26px;background:#CFCFCB}
 .meuav{margin-left:auto;width:38px;height:38px;border-radius:50%;background:#1A1A1A;color:#fff;display:grid;place-items:center;font-weight:600;font-size:16px;overflow:hidden;text-decoration:none;flex:none}.meuav img{width:100%;height:100%;object-fit:cover;display:block}
 .mkimg{padding:0 11px!important;min-width:0!important}
+.mkic{width:36px;height:36px;border-radius:10px;object-fit:cover;display:block;flex:none}.mkic.lg{width:44px;height:44px;border-radius:12px}
 .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(max(330px,calc((100% - 28px)/3)),1fr));gap:14px;align-items:start}
 .rc{gap:10px;padding:16px;overflow:visible}
 .rc-top{display:flex;align-items:center;gap:10px}.rc-t{display:flex;flex-direction:column;min-width:0}.rc-t b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-t .sub{font-size:12.5px;letter-spacing:0;white-space:nowrap;line-height:1.4}.rc-p{font-size:13.5px;color:var(--muted)}
@@ -558,7 +559,8 @@ function semAcessoHtml(){return '<main class="main"><header class="head"><img cl
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function brl(n){return 'R$ '+n.toFixed(2).replace('.',',');}
 function num(s){var n=parseFloat(String(s).replace(/\./g,'').replace(',','.'));return isNaN(n)?0:n;}
-function mk(k,big){var LG={ml:['/chat/img/mercadolivre.png','#FFE600',16],sp:['/chat/img/shopee.png','#EE4D2D',14],tt:['/chat/img/tiktokshop.png','#111111',11]}[k];if(LG)return '<span class="mk mkimg'+(big?' lg':'')+'" style="background:'+LG[1]+'"><img src="'+LG[0]+'" alt="'+esc(MK[k].nome)+'" style="height:'+(big?Math.round(LG[2]*1.2):LG[2])+'px;width:auto;display:block"></span>';return '<span class="mk'+(big?' lg':'')+'" style="background:'+MK[k].bg+';color:'+MK[k].fg+'">'+MK[k].sigla+'</span>';}
+function mkFull(k){var LG={ml:['/chat/img/mercadolivre.png','#FFE600',16],sp:['/chat/img/shopee.png','#EE4D2D',14],tt:['/chat/img/tiktokshop.png','#111111',11]}[k];return '<span class="mk mkimg" style="background:'+LG[1]+'"><img src="'+LG[0]+'" alt="'+esc(MK[k].nome)+'" style="height:'+LG[2]+'px;width:auto;display:block"></span>';}
+function mk(k,big){var IC={ml:'/img/marketplaces/mercadolivre-icone.png',sp:'/img/marketplaces/shopee-icone.jpg',tt:'/img/marketplaces/tiktokshop-icone.png'}[k];if(IC)return '<img class="mkic'+(big?' lg':'')+'" src="'+IC+'" alt="'+esc(MK[k].nome)+'" title="'+esc(MK[k].nome)+'">';return '<span class="mk'+(big?' lg':'')+'" style="background:'+MK[k].bg+';color:'+MK[k].fg+'">'+MK[k].sigla+'</span>';}
 function classe(c){return (c.st===3||c.pergunta)?'voce':(c.st===6?'concluido':'andamento');}
 function prazoInfo(c){
   if(c.st>=6)return {t:'Encerrado',cls:'mute'};
@@ -907,7 +909,7 @@ function responder(){
   var cards=l.map(function(c,ix){var p=prazoInfo(c);
     var sug=c.sug,ops=opcoesML(c.msg?c.msg.texto:''),med=c.acoes.indexOf('send_message_to_mediator')>-1;
     var tit=/^Pedido /.test(c.produto);
-    var top='<div class="rc-top">'+mk(c.mk)+'<span class="tag '+p.cls+'" style="margin-left:auto">'+p.t+'</span></div><div class="rc-t"><b>'+esc(tit?c.loja:c.produto)+'</b><span class="sub">Pedido '+esc(c.pedido.replace('#',''))+'</span><span class="sub">Reclamação '+esc(c.solicitacao)+(tit?'':' · '+esc(c.loja))+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
+    var top='<div class="rc-top">'+mkFull(c.mk)+'<span class="tag '+p.cls+'" style="margin-left:auto">'+p.t+'</span></div><div class="rc-t"><b>'+esc(tit?c.loja:c.produto)+'</b><span class="sub">Pedido '+esc(c.pedido.replace('#',''))+'</span><span class="sub">Reclamação '+esc(c.solicitacao)+(tit?'':' · '+esc(c.loja))+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
     var msgH=c.msg?'<div class="rc-m"><div class="kk">Mensagem do Mercado Livre'+(c.msg.anexos?' · '+c.msg.anexos+(c.msg.anexos===1?' anexo':' anexos'):'')+'</div>'+fmt(c.msg.texto)+'</div>':'<p class="sub" style="font-size:13px">A mensagem do Mercado Livre ainda não foi lida (até 15 minutos).</p>';
     var face=function(k){return '<span class="rc-face">'+ritaSvg('feliz','r'+ix+k)+'</span>';};
     var sugH='';
