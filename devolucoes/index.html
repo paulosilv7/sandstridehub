@@ -48,6 +48,7 @@ h1,h2,h3,p{margin:0}
 .mdl{position:fixed;inset:0;background:rgba(20,20,20,.55);display:grid;place-items:center;z-index:200;padding:16px;animation:mdlin .15s ease}@keyframes mdlin{from{opacity:0}to{opacity:1}}.mdl-c{background:#fff;border-radius:28px;padding:24px;max-width:440px;width:100%;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}.mdl-c h3{font-size:20px;font-weight:500;letter-spacing:-.4px;margin:0}.mdl-c p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.45}.mdl-c blockquote{margin:0;background:var(--chip);border-radius:14px;padding:12px 14px;font-size:14.5px;line-height:1.45}.mdl-a{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
 .rc-ok{display:flex;gap:10px;align-items:flex-start;background:#E3F4EA;color:#1E6B3F;border-radius:14px;padding:11px 14px;font-size:13.5px;line-height:1.4}.rc-up{margin-left:6px;border:0;background:transparent;color:#1E6B3F;font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0}
 .rc-ok b{width:20px;height:20px;border-radius:50%;background:#2E9D5B;color:#fff;display:grid;place-items:center;font-size:12px;flex:none}
+.rc.espera{background:#E1E1DD;opacity:.82}.rc.espera .rc-bl{background:#F0F0ED}.rc.espera .rc-bl.eu{background:#DADFEE}.rc.espera .rc-chat{background:#D6D6D2}
 .rc-chat{display:flex;flex-direction:column;gap:8px;background:var(--chip);border-radius:14px;padding:12px;max-height:300px;overflow:auto}.rc-bl{align-self:flex-start;max-width:92%;background:#fff;border-radius:14px 14px 14px 4px;padding:9px 12px;font-size:13.5px;line-height:1.5}.rc-bl.eu{align-self:flex-end;background:#DDE5FB;border-radius:14px 14px 4px 14px}.rc-w{font-size:11.5px;color:var(--muted);margin-bottom:3px}.rc-pcts{display:flex;flex-wrap:wrap;gap:6px}.rc-pcts .chipb.rec{border-color:#4A63C4;background:#F4F6FD}.rc-f{display:flex;gap:8px}.rc-f input{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:9px 12px;font:inherit;font-size:14px;background:#fff}
 .rc-sb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}.rc-face{width:30px;height:30px;flex:none;display:inline-block}.rc-face svg{width:100%;height:100%;display:block}
 .rc-sy{position:relative;font-weight:600;border-bottom:1px dotted #4A63C4;cursor:help;outline:none}.rc-tip{display:none;position:absolute;left:0;top:calc(100% + 8px);z-index:30;width:min(320px,78vw);background:#1A1A1A;color:#fff;padding:12px 14px;border-radius:14px;font-weight:400;font-size:13.5px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.25)}.rc-sy:hover .rc-tip,.rc-sy:focus .rc-tip{display:flex;flex-direction:column;gap:8px}.rc-tc{display:flex;flex-direction:column;gap:2px;font-size:12.5px;opacity:.9}.rc-ta{font-size:12.5px;color:#FFD9A0}
@@ -909,18 +910,18 @@ function acomp(){
 
 
 function responder(){
-  var l=S.casos.filter(function(c){return c.mk==='ml'&&c.st<6&&((c.acoes.length>0&&!c.semPrazo)||(c.thread||[]).some(function(m){return m.origem==='loja';}));}).sort(function(a,b){return a.prazo-b.prazo;});
+  var l=S.casos.filter(function(c){return c.mk==='ml'&&c.st<6&&((c.acoes.length>0&&!c.semPrazo)||(c.thread||[]).some(function(m){return m.origem==='loja';}));}).sort(function(a,b){var ea=esperaRetorno(a)?1:0,eb=esperaRetorno(b)?1:0;return ea-eb||(ea?String(b.atualizado).localeCompare(String(a.atualizado)):a.prazo-b.prazo);});
   S.ofTent=S.ofTent||{};
-  var fmt=function(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');};
+  var fmt=function(t){return esc(limpaMsg(t)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');};
   var cards=l.map(function(c,ix){var p=prazoInfo(c);
     var sug=c.sug,med=c.acoes.indexOf('send_message_to_mediator')>-1,ult=c.msg?c.msg.texto:'',ops=opcoesML(ult);
     var respondeu=(c.thread||[]).some(function(m){return m.origem==='loja';});
     var pedePct=!respondeu&&med&&!ops.length&&/porcentagem|percentual/i.test(ult);
     if(pedePct&&!(S.ofertas&&S.ofertas[c.id])&&!S.ofTent[c.id]){S.ofTent[c.id]=1;setTimeout(function(){mlOfertas(c.id,true);},0);}
     var tit=/^Pedido /.test(c.produto);
-    var top='<div class="rc-top">'+mkFull(c.mk)+'<span class="tag '+(c.semPrazo?'info':p.cls)+'" style="margin-left:auto">'+(c.semPrazo?(c.acoes.length?'Sem prazo':'Aguardando o comprador'):p.t)+'</span></div><div class="rc-t"><b>'+esc(tit?c.loja:c.produto)+'</b><span class="sub">Pedido '+esc(c.pedido.replace('#',''))+'</span><span class="sub">Reclamação '+esc(c.solicitacao)+(tit?'':' · '+esc(c.loja))+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
+    var top='<div class="rc-top">'+mkFull(c.mk)+'<span class="tag '+(esperaRetorno(c)?'mute':p.cls)+'" style="margin-left:auto">'+(esperaRetorno(c)?'Aguardando retorno':p.t)+'</span></div><div class="rc-t"><b>'+esc(tit?c.loja:c.produto)+'</b><span class="sub">Pedido '+esc(c.pedido.replace('#',''))+'</span><span class="sub">Reclamação '+esc(c.solicitacao)+(tit?'':' · '+esc(c.loja))+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
     var th=(c.thread||[]);
-    var msgH=th.length?'<div class="rc-chat">'+th.slice().reverse().map(function(m){var meu=m.origem==='loja';return '<div class="rc-bl'+(meu?' eu':'')+'"><div class="rc-w">'+(meu?'Você':'Mercado Livre')+' · '+new Date(m.enviado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+(m.anexos?' · '+m.anexos+(m.anexos===1?' anexo':' anexos'):'')+'</div>'+fmt(m.texto)+'</div>';}).join('')+'</div>':'<p class="sub" style="font-size:13px">A mensagem do Mercado Livre ainda não foi lida (até 15 minutos).</p>';
+    var msgH=th.length?'<div class="rc-chat">'+th.slice().reverse().map(function(m){var meu=m.origem==='loja';return '<div class="rc-bl'+(meu?' eu':'')+'"><div class="rc-w">'+(meu?'Você':(m.origem==='comprador'?'Comprador':'Mercado Livre'))+' · '+new Date(m.enviado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+(m.anexos?' · '+m.anexos+(m.anexos===1?' anexo':' anexos'):'')+'</div>'+fmt(m.texto)+'</div>';}).join('')+'</div>':'<p class="sub" style="font-size:13px">A mensagem do Mercado Livre ainda não foi lida (até 15 minutos).</p>';
     var face=function(k){return '<span class="rc-face">'+ritaSvg('feliz','r'+ix+k)+'</span>';};
     var sugH='';
     if(respondeu){sugH='';}
@@ -938,8 +939,9 @@ function responder(){
       bt+=lista&&lista.length?'<div class="rc-pcts">'+lista.map(function(o){var rec=sug&&sug.recomendada===o.p;return '<button type="button" class="chipb'+(rec?' rec':'')+'" data-a="mlAgir" data-v="'+c.id+'|mediador_pct|'+o.p+'">'+o.p+'%'+(o.v!=null?' · '+brl(o.v):'')+(o.ml?' · ML':'')+(rec?' ★':'')+'</button>';}).join('')+'</div>':'<p class="sub" style="font-size:13px">Buscando as porcentagens que o Mercado Livre permite…</p>';
     }
     if(!respondeu)bt+=agirHtml(c);
-    var form=med?'<form class="rc-f" data-id="'+c.id+'"><input name="t" type="text" maxlength="400" autocomplete="off" placeholder="Responder ao mediador com texto"><button type="submit" class="btn sm">Enviar</button></form>':'';
-    return '<section class="card rc">'+top+avisoEnvio(c)+msgH+sugH+(bt?'<div class="rc-ops">'+bt+'</div>':'')+form+'<div class="row" style="gap:10px"><button type="button" class="btn ghost sm" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(med?'<button type="button" class="btn ghost sm" data-a="mlAtualizar" data-v="'+c.id+'">Atualizar conversa</button>':'')+'</div></section>';}).join('');
+    var comp=c.acoes.indexOf('send_message_to_complainant')>-1&&!med;
+    var form=(med||comp)?'<form class="rc-f" data-id="'+c.id+'" data-para="'+(comp?'comprador':'mediador')+'"><input name="t" type="text" maxlength="400" autocomplete="off" placeholder="'+(comp?'Responder ao comprador com texto':'Responder ao mediador com texto')+'"><button type="submit" class="btn sm">Enviar</button></form>':'';
+    return '<section class="card rc'+(esperaRetorno(c)?' espera':'')+'">'+top+avisoEnvio(c)+msgH+sugH+(bt?'<div class="rc-ops">'+bt+'</div>':'')+form+'<div class="row" style="gap:10px"><button type="button" class="btn ghost sm" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+((med||comp)?'<button type="button" class="btn ghost sm" data-a="mlAtualizar" data-v="'+c.id+'">Atualizar conversa</button>':'')+'</div></section>';}).join('');
   return head()+'<p class="sub" style="margin:0 6px">Reclamações do Mercado Livre em que a loja precisa responder até um prazo, da mais urgente para a menos. Cada envio pede a sua confirmação.</p>'+(cards?'<div class="rgrid">'+cards+'</div>':'<div class="empty">Nenhuma reclamação do Mercado Livre esperando resposta da loja.</div>');
 }
 function opcoesML(t){var r=[];String(t||'').split('\n').forEach(function(l){var m=l.match(/^\s*(\d+)\.\s*\*\*(.+?)\*\*\s*[—\-:]\s*(.+)$/);if(m)r.push({n:+m[1],titulo:m[2].trim(),desc:m[3]});});return r;}
@@ -969,7 +971,7 @@ async function enviarAoML(id,corpo,fim){
   try{
     var r=await SB.functions.invoke('devol-ml-agir',{body:Object.assign({modo:'agir',caso_id:id,confirmado:true},corpo)});
     var d=r.data||{};
-    if(r.error&&!d.mensagem)throw new Error(r.error.message||'erro');
+    if(r.error&&!d.mensagem){d=await corpoErro(r.error);if(!d.mensagem)throw new Error(r.error.message||'erro');}
     toast(d.mensagem||(d.ok?'Enviado.':'Não foi possível enviar.'));
     if(d.ok&&fim)fim();
     if(S.ofertas)delete S.ofertas[id];
@@ -998,7 +1000,8 @@ document.addEventListener('submit',function(e){
   var id=f.getAttribute('data-id'),t=String(f.elements.t.value||'').trim();
   if(!t)return;
   var cc=caso(id);
-  confirmar({titulo:'Enviar ao mediador do Mercado Livre?',texto:'Pedido '+(cc?cc.pedido:'')+'. A mensagem não pode ser editada depois de enviada.',citacao:t,ok:'Enviar'}).then(function(ok){if(ok)enviarAoML(id,{acao:'mediador_texto',texto:t},function(){f.reset();});});
+  var paraC=f.getAttribute('data-para')==='comprador';
+  confirmar({titulo:paraC?'Enviar ao comprador?':'Enviar ao mediador do Mercado Livre?',texto:'Pedido '+(cc?cc.pedido:'')+'. A mensagem não pode ser editada depois de enviada.',citacao:t,ok:'Enviar'}).then(function(ok){if(ok)enviarAoML(id,{acao:paraC?'comprador_texto':'mediador_texto',texto:t},function(){f.reset();});});
 });
 
 function confirmar(o){return new Promise(function(res){
@@ -1031,6 +1034,16 @@ setInterval(function(){
   var pend=S.casos.filter(function(c){return c.env&&(!c.msg||new Date(c.msg.enviado_em)<=new Date(c.env.criado_em));}).slice(0,3);
   pend.forEach(function(c){mlAtualizar(c.id,true);});
 },20000);
+
+async function corpoErro(err){try{if(err&&err.context&&typeof err.context.json==='function')return await err.context.json();}catch(e){}return {};}
+function esperaRetorno(c){return c.semPrazo||!c.acoes.length;}
+function limpaMsg(t){
+  t=String(t||'');
+  if(!/<[a-z][\s\S]*>/i.test(t))return t;
+  t=t.replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|section|li|h\d|tr)>/gi,'\n').replace(/<[^>]+>/g,'');
+  try{t=new DOMParser().parseFromString('<!doctype html><body>'+t,'text/html').body.textContent||t;}catch(e){}
+  return t.replace(/\u00a0/g,' ').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
 
 /* ---------- render e eventos ---------- */
 var app=document.getElementById('app');
