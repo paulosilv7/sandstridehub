@@ -443,7 +443,7 @@ function adaptar(r){
   if(expirado)ph=null;
   return {id:r.id,env:ENV[r.id]||null,msg:MSG[r.id]||null,thread:THR[r.id]||[],sug:SUG[r.id]||null,acoes:r.acoes_loja||[],rec:rec,decidir:decidir,expirado:expirado,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
     problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(expirado?'Prazo da loja encerrado':(ROT[r.status]||r.status)),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
-    mkt:r.situacao_mkt||'',protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
+    mkt:r.situacao_mkt||'',desfecho:r.desfecho||null,reemb:r.valor_reembolsado==null?null:+r.valor_reembolsado,vped:+(r.valor_pedido||r.valor_em_risco)||0,cob:r.cobertura_ml===true,protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
 function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-01';}
 async function carregar(){
@@ -546,6 +546,14 @@ async function trocarChave(chave){
   if(r.error){toast('Não consegui alterar a chave.');return;}
   S.cfg[chave]=novo;toast(novo==='true'?'Chave ligada.':'Chave desligada.');render(true,false);
 }
+async function salvarFrete(){
+  if(!S.papelAdmin){toast('Só administradores alteram este valor.');return;}
+  var v=String(S.freteMed==null?(S.cfg.custo_frete_devolucao_brl||''):S.freteMed).replace(',','.').replace(/[^0-9.]/g,'');
+  if(v!==''&&!(Number(v)>=0)){toast('Digite só o valor, por exemplo 18,50.');return;}
+  var r=await SB.from('devol_config').upsert({chave:'custo_frete_devolucao_brl',valor:v,descricao:'Custo médio do frete de uma devolução com produto de volta (R$)',atualizado_em:new Date().toISOString()});
+  if(r.error){toast('Não consegui salvar o valor.');return;}
+  S.cfg.custo_frete_devolucao_brl=v;S.freteMed=null;toast('Custo do frete salvo.');render(true,false);
+}
 async function salvarRegra(){
   if(!S.papelAdmin){toast('Só administradores editam as regras.');return;}
   var n=S.nr;if(!n.t.trim()||!n.b.trim()){toast('Preencha o título e o texto da regra.');return;}
@@ -608,6 +616,29 @@ function aplicar(lista,f){
     if(q){var tx=(c.produto+' '+c.pedido+' '+c.loja+' '+c.problema+' '+(c.protocolo||'')).toLowerCase();if(tx.indexOf(q)===-1)return false;}
     return true;
   });
+}
+function finDesfecho(c){
+  if(c.desfecho)return c.desfecho;
+  if(c.mk==='sp')return /cancelad/i.test(c.mkt||'')?'cancelado':(c.st>=6?'devolvido_com_produto':'em_andamento');
+  return c.st>=6?null:'em_andamento';
+}
+function finCalc(){
+  var frete=parseFloat(String(S.cfg.custo_frete_devolucao_brl||'').replace(',','.')),temFrete=isFinite(frete)&&frete>0;
+  var f={frete:temFrete?frete:null,risco:0,riscoN:0,semProd:0,semProdN:0,coberto:0,cobertoN:0,naoCob:0,naoCobN:0,devN:0,devCobN:0,devVal:0,fretePerda:0,evitado:0,evitadoN:0,cancN:0,semLido:0,semValor:0,parcialN:0,total:0,porMk:{ml:{n:0,perda:0,risco:0},sp:{n:0,perda:0,risco:0},tt:{n:0,perda:0,risco:0}}};
+  S.casos.forEach(function(c){
+    var d=finDesfecho(c),v=(c.reemb>0?c.reemb:c.vped)||0,m=f.porMk[c.mk];f.total++;
+    if(d===null){f.semLido++;return;}
+    if(d==='em_andamento'){f.risco+=v;f.riscoN++;m.risco+=v;if(!v)f.semValor++;return;}
+    if(d==='ganhamos'){f.evitado+=v;f.evitadoN++;return;}
+    if(d==='cancelado'){f.cancN++;return;}
+    if(!v)f.semValor++;
+    if(d==='devolvido_com_produto'){f.devN++;f.devVal+=v;if(c.cob)f.devCobN++;else if(temFrete){f.fretePerda+=frete;m.perda+=frete;}m.n++;return;}
+    if(d==='reembolsado_parcial'&&!(c.reemb>0))f.parcialN++;
+    f.semProd+=v;f.semProdN++;m.n++;
+    if(c.cob){f.coberto+=v;f.cobertoN++;}else{f.naoCob+=v;f.naoCobN++;m.perda+=v;}
+  });
+  f.perda=f.naoCob+f.fretePerda;
+  return f;
 }
 var TIPOS_ECO=['Frete de devolução evitado','Ressarcimento do produto','Reembolso indevido barrado'];
 var TIPO_IDX={frete_evitado:0,ressarcimento:1,reembolso_barrado:2};
@@ -867,6 +898,21 @@ function custos(){
   var hoje=new Date().toISOString().slice(0,10),gHoje=S.uso.filter(function(u){return u.dia===hoje;}).reduce(function(s,u){return s+(+u.custo_brl||0);},0);
   var ETAPAS=[['devolucao_etiqueta','1. Ler a etiqueta'],['devolucao_estado','2. Analisar o estado'],['devolucao_relato','3. Redigir a contestação'],['devolucao_decisao','4. Ler a decisão']];
   var et=ETAPAS.map(function(x){var v=S.uso.filter(function(u){return u.etapa===x[0];}).reduce(function(s,u){return s+(+u.custo_brl||0);},0);return '<div class="meter"><div class="l"><span>'+x[1]+'</span><span>'+brl(v)+'</span></div><div class="bar"><span style="width:'+(GASTO_IA_MES>0?Math.round(v/GASTO_IA_MES*100):0)+'%"></span></div></div>';}).join('');
+  var fn=finCalc(),fv=S.freteMed==null?(S.cfg.custo_frete_devolucao_brl||''):S.freteMed;
+  var fmk=['ml','sp','tt'].map(function(m){var x=fn.porMk[m];return '<div class="meter"><div class="l"><span>'+MK[m].nome+' · '+x.n+(x.n===1?' caso':' casos')+'</span><span>'+brl(x.perda)+'</span></div><div class="bar"><span style="width:'+(fn.perda>0?Math.round(x.perda/fn.perda*100):0)+'%"></span></div></div>';}).join('');
+  var fin='<section class="card"><h2 class="sech">Prejuízo com devoluções</h2><p class="sub">Últimos 45 dias, segundo a decisão de cada marketplace. Conta só o que saiu do bolso: reembolso sem o produto voltar, mais o frete das devoluções com produto de volta (o produto devolvido é revendido pelo mesmo valor).</p>'+
+    '<div class="strip lg"><div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))"><div class="tile"><div class="k">Prejuízo estimado</div><div class="v bad">'+brl(fn.perda)+'</div><div class="s">'+(fn.frete===null&&fn.devN>fn.devCobN?'sem contar o frete (informe o custo abaixo)':'reembolsos sem cobertura + frete')+'</div></div>'+
+    '<div class="tile"><div class="k">Em risco agora</div><div class="v">'+brl(fn.risco)+'</div><div class="s">'+fn.riscoN+(fn.riscoN===1?' caso aberto':' casos abertos')+', se todos virarem reembolso</div></div>'+
+    '<div class="tile"><div class="k">Evitado</div><div class="v good">'+brl(fn.evitado)+'</div><div class="s">'+fn.evitadoN+(fn.evitadoN===1?' caso em que a loja ganhou':' casos em que a loja ganhou')+'</div></div></div></div>'+
+    '<div class="calc"><h3 class="sech" style="color:var(--accent-ink)">De onde vem</h3>'+
+    '<div class="meter"><div class="l"><span>Reembolsado sem o produto voltar · '+fn.semProdN+'</span><span>'+brl(fn.semProd)+'</span></div></div>'+
+    '<div class="meter"><div class="l"><span>Coberto pelo Mercado Livre · '+fn.cobertoN+'</span><span>'+brl(fn.coberto)+'</span></div></div>'+
+    '<div class="meter"><div class="l"><span>Reembolso que ficou com a loja · '+fn.naoCobN+'</span><span>'+brl(fn.naoCob)+'</span></div></div>'+
+    '<div class="meter"><div class="l"><span>Devoluções com produto de volta · '+fn.devN+' ('+brl(fn.devVal)+' reembolsados)</span><span>'+brl(fn.fretePerda)+' de frete</span></div></div>'+
+    '<div class="meter"><div class="l"><span>Vendas canceladas antes de dar problema · '+fn.cancN+'</span><span>sem prejuízo</span></div></div></div>'+
+    '<div class="calc"><h3 class="sech" style="color:var(--accent-ink)">Por marketplace</h3>'+fmk+'</div>'+
+    (admin?'<div class="row" style="gap:10px;align-items:flex-end"><label class="field" style="flex:1 1 220px"><span>Custo médio do frete de uma devolução (R$)</span><input id="frete-med" type="text" inputmode="decimal" data-in="frete-med" value="'+esc(fv)+'" placeholder="Ex.: 18,50" autocomplete="off"></label><button type="button" class="btn" data-a="salvarFrete">Salvar</button></div>':'')+
+    '<p class="sub" style="font-size:12.5px">Quando o Mercado Livre marca "cobertura aplicada", considero que ele arcou com o custo. Confirme no extrato antes de usar este número em decisões grandes.'+(fn.semLido?' '+fn.semLido+' casos antigos ainda sem desfecho lido.':'')+(fn.semValor?' '+fn.semValor+' casos sem valor informado pelo marketplace ficaram de fora das somas.':'')+(fn.parcialN?' '+fn.parcialN+' reembolsos parciais sem valor definido.':'')+'</p></section>';
   var eco=S.eco.length?
     '<div class="eco"><div class="tl"><div class="t" style="grid-column:1 / -1"><div class="k" style="color:var(--muted)">Economia total</div><div class="v good" style="font-size:40px">'+brl(e.tot)+'</div><div class="s">'+e.ganhas+(e.ganhas===1?' caso ganho':' casos ganhos')+'</div></div>'+
     '<div class="t"><div class="k" style="color:var(--muted)">Já conferido no extrato</div><div class="v">'+brl(e.conf)+'</div></div><div class="t"><div class="k" style="color:var(--muted)">A conciliar</div><div class="v">'+brl(e.aconc)+'</div></div></div>'+
@@ -875,6 +921,7 @@ function custos(){
     :'<div class="empty">Ainda não há economia registrada. Ela aparece aqui quando uma contestação for ganha, e só vira "conferida" com a referência do extrato.</div>';
   return head()+
   '<section class="strip lg"><div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))"><div class="tile"><div class="k">Gasto de IA hoje'+(admin?'':' (só administradores)')+'</div><div class="v">'+brl(gHoje)+'</div></div><div class="tile"><div class="k">Gasto no mês</div><div class="v">'+brl(GASTO_IA_MES)+'</div></div><div class="tile"><div class="k">Armazenamento de arquivos</div><div class="v">'+(arm!==undefined?arm+'%':'—')+'</div><div class="s">'+(limp?'Última limpeza: '+new Date(limp.em).toLocaleDateString('pt-BR')+' · '+limp.arquivos+' arquivos':'Limpeza diária ainda não rodou')+'</div></div></div></section>'+
+  fin+
   '<section class="card"><h2 class="sech">Economia gerada pela Sandy</h2><p class="sub">É o dinheiro que você teria perdido se o caso não tivesse sido contestado: frete de volta, produto não ressarcido ou reembolso indevido.</p>'+eco+'</section>'+
   '<div class="g2"><section class="card"><h2 class="sech">Chaves de segurança</h2><div class="fill">'+ch+(admin?'':'<p class="sub" style="font-size:12.5px;flex:0">Só administradores alteram o interruptor geral.</p>')+'</div></section><section class="card"><h2 class="sech">Gasto de IA por etapa (mês)</h2><div class="fill">'+et+'</div></section></div>'+
   '<section class="card"><h2 class="sech">Leitura dos marketplaces</h2><div class="fill">'+cnx+'</div></section>';
@@ -1103,6 +1150,7 @@ document.addEventListener('click',function(e){
   else if(a==='mais'){S.mais=!S.mais;render(true,false);}
       else if(a==='aprovar'){aprovar();}
   else if(a==='fotosCaso'){var cc=caso(v);if(cc){S.lote.pedido=String(cc.raw.pedido||cc.raw.solicitacao_id||'');ir('receber');}}
+  else if(a==='salvarFrete'){salvarFrete();}
   else if(a==='mlOfertas'){mlOfertas(v);}
   else if(a==='mlAtualizar'){mlAtualizar(v);}
   else if(a==='mlAgir'){mlAgir(v);}
@@ -1137,6 +1185,7 @@ document.addEventListener('input',function(e){
   if(k==='texto')S.lote.texto=el.value;
   else if(k==='rastreio')S.lote.rastreio=el.value;
   else if(k==='nr-t')S.nr.t=el.value;
+  else if(k==='frete-med')S.freteMed=el.value;
   else if(k==='pedido')S.lote.pedido=el.value;
   else if(k==='nr-f')S.nr.f=el.value;
   else if(k==='nr-b')S.nr.b=el.value;
