@@ -40,11 +40,12 @@ h1,h2,h3,p{margin:0}
 .hsep{width:1px;height:26px;background:#CFCFCB}
 .meuav{margin-left:auto;width:38px;height:38px;border-radius:50%;background:#1A1A1A;color:#fff;display:grid;place-items:center;font-weight:600;font-size:16px;overflow:hidden;text-decoration:none;flex:none}.meuav img{width:100%;height:100%;object-fit:cover;display:block}
 .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;align-items:start}
-.rc{gap:10px;padding:16px}
-.rc-top{display:flex;align-items:center;gap:10px}.rc-t{display:flex;flex-direction:column;min-width:0;flex:1}.rc-t b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-p{font-size:13.5px;color:var(--muted)}
-.rc-sug{background:#EEF1FB;border-radius:14px;padding:12px 14px}.rc-sug.mute{background:var(--chip)}.rc-sm{font-size:14px;line-height:1.4;margin-top:4px}.rc-cs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.rc-c{font-size:12.5px;background:#fff;border-radius:999px;padding:3px 10px}.rc-c.on{background:#1A1A1A;color:#fff}
-.rc-ops{display:flex;flex-direction:column;gap:6px}.rc-op{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px;font:inherit;font-size:14px;cursor:pointer}.rc-op b{width:22px;height:22px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:12px;flex:none}.rc-op.rec{border-color:#4A63C4;background:#F4F6FD}.rc-op i{font-style:normal;font-size:11px;background:#4A63C4;color:#fff;border-radius:999px;padding:1px 7px;margin-left:6px}
-.rc-d summary{cursor:pointer;font-size:13px;color:var(--muted)}.rc-m{font-size:13px;line-height:1.5;margin-top:8px;max-height:220px;overflow:auto}
+.rc{gap:10px;padding:16px;overflow:visible}
+.rc-top{display:flex;align-items:center;gap:10px}.rc-t{display:flex;flex-direction:column;min-width:0;flex:1}.rc-t b,.rc-t .sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-t b{font-size:15px}.rc-p{font-size:13.5px;color:var(--muted)}
+.rc-m{background:var(--chip);border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.5;max-height:250px;overflow:auto}.rc-m .kk{margin-bottom:6px}
+.rc-sb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}.rc-face{width:30px;height:30px;flex:none;display:inline-block}.rc-face svg{width:100%;height:100%;display:block}
+.rc-sy{position:relative;font-weight:600;border-bottom:1px dotted #4A63C4;cursor:help;outline:none}.rc-tip{display:none;position:absolute;left:0;top:calc(100% + 8px);z-index:30;width:min(320px,78vw);background:#1A1A1A;color:#fff;padding:12px 14px;border-radius:14px;font-weight:400;font-size:13.5px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.25)}.rc-sy:hover .rc-tip,.rc-sy:focus .rc-tip{display:flex;flex-direction:column;gap:8px}.rc-tc{display:flex;flex-direction:column;gap:2px;font-size:12.5px;opacity:.9}.rc-ta{font-size:12.5px;color:#FFD9A0}
+.rc-ops{display:flex;flex-direction:column;gap:6px}.rc-op{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer}.rc-op b{width:22px;height:22px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:12px;flex:none}.rc-op span:not(.rc-face){flex:1}.rc-op .rc-face{width:26px;height:26px}.rc-op.rec{border-color:#4A63C4;background:#F4F6FD}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:500;padding:4px 10px;border-radius:12px;background:var(--chip);color:var(--ink);white-space:nowrap}
 .pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.good{background:var(--good-bg);color:var(--good)}.pill.bad{background:var(--bad-bg);color:var(--bad)}.pill.info{background:var(--info-bg);color:var(--info)}
 .pbk{height:40px;border-radius:20px;background:var(--card);padding:0 18px 0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:500;font-size:14px}
@@ -902,21 +903,22 @@ function acomp(){
 function responder(){
   var l=S.casos.filter(function(c){return c.mk==='ml'&&c.acoes.length>0&&!c.semPrazo&&c.st<6;}).sort(function(a,b){return a.prazo-b.prazo;});
   var fmt=function(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');};
-  var cards=l.map(function(c){var p=prazoInfo(c);
+  var cards=l.map(function(c,ix){var p=prazoInfo(c);
     var sug=c.sug,ops=opcoesML(c.msg?c.msg.texto:''),med=c.acoes.indexOf('send_message_to_mediator')>-1;
-    var head='<div class="rc-top">'+mk(c.mk,true)+'<span class="rc-t"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
+    var top='<div class="rc-top">'+mk(c.mk)+'<span class="rc-t"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
+    var msgH=c.msg?'<div class="rc-m"><div class="kk">Mensagem do Mercado Livre'+(c.msg.anexos?' · '+c.msg.anexos+(c.msg.anexos===1?' anexo':' anexos'):'')+'</div>'+fmt(c.msg.texto)+'</div>':'<p class="sub" style="font-size:13px">A mensagem do Mercado Livre ainda não foi lida (até 15 minutos).</p>';
+    var face=function(k){return '<span class="rc-face">'+ritaSvg('feliz','r'+ix+k)+'</span>';};
     var sugH='';
     if(sug&&sug.motivo){
-      var cmp=(sug.comparacao||[]).map(function(x){return '<span class="rc-c'+(x.opcao===sug.recomendada?' on':'')+'">Opção '+x.opcao+': '+(x.custo_brl!=null?brl(x.custo_brl):'custo a calcular')+'</span>';}).join('');
-      sugH='<div class="rc-sug"><div class="kk">Sandy sugere'+(sug.recomendada?' · opção '+sug.recomendada:'')+'</div><div class="rc-sm">'+esc(sug.motivo)+'</div>'+(cmp?'<div class="rc-cs">'+cmp+'</div>':'')+(sug.alerta?'<div class="sub" style="font-size:12.5px;margin-top:6px">Atenção: '+esc(sug.alerta)+'</div>':'')+'</div>';
-    }else if(c.msg){sugH='<div class="rc-sug mute"><div class="sub" style="font-size:13px">A Sandy ainda está analisando as opções deste caso (até 15 minutos).</div></div>';}
+      var cmp=(sug.comparacao||[]).map(function(x){return '<div>Opção '+x.opcao+': <b>'+(x.custo_brl!=null?brl(x.custo_brl):'custo a calcular')+'</b></div>';}).join('');
+      sugH='<div class="rc-sb">'+face('a')+'<span class="rc-sy" tabindex="0">Sandy<span class="rc-tip"><span>'+esc(sug.motivo)+'</span>'+(cmp?'<span class="rc-tc">'+cmp+'</span>':'')+(sug.alerta?'<span class="rc-ta">Atenção: '+esc(sug.alerta)+'</span>':'')+'</span></span><span class="sub">'+(sug.recomendada?'sugere a opção '+sug.recomendada:'analisou este caso')+'</span></div>';
+    }else if(c.msg){sugH='<div class="rc-sb">'+face('a')+'<span class="sub">A Sandy está analisando as opções (até 15 minutos).</span></div>';}
     var bt='';
     if(med&&ops.length){
-      bt=ops.map(function(o){var rec=sug&&sug.recomendada===o.n;return '<button type="button" class="rc-op'+(rec?' rec':'')+'" data-a="mlAgir" data-v="'+c.id+'|mediador_opcao|'+o.n+'"><b>'+o.n+'</b><span>'+esc(o.titulo)+(rec?' <i>Sandy</i>':'')+'</span></button>';}).join('');
+      bt=ops.map(function(o){var rec=sug&&sug.recomendada===o.n;return '<button type="button" class="rc-op'+(rec?' rec':'')+'" data-a="mlAgir" data-v="'+c.id+'|mediador_opcao|'+o.n+'"><b>'+o.n+'</b><span>'+esc(o.titulo)+'</span>'+(rec?face('b'):'')+'</button>';}).join('');
     }
     bt+=agirHtml(c);
-    var msgH=c.msg?'<details class="rc-d"><summary>Ver a mensagem do Mercado Livre'+(c.msg.anexos?' · '+c.msg.anexos+(c.msg.anexos===1?' anexo':' anexos'):'')+'</summary><div class="rc-m">'+fmt(c.msg.texto)+'</div></details>':'<p class="sub" style="font-size:13px">A mensagem do Mercado Livre ainda não foi lida (até 15 minutos).</p>';
-    return '<section class="card rc">'+head+sugH+(bt?'<div class="rc-ops">'+bt+'</div>':'')+msgH+'<div class="row" style="gap:10px"><button type="button" class="btn ghost sm" data-a="caso" data-v="'+c.id+'">Ver caso</button></div></section>';}).join('');
+    return '<section class="card rc">'+top+msgH+sugH+(bt?'<div class="rc-ops">'+bt+'</div>':'')+'<div class="row" style="gap:10px"><button type="button" class="btn ghost sm" data-a="caso" data-v="'+c.id+'">Ver caso</button></div></section>';}).join('');
   return head()+'<p class="sub" style="margin:0 6px">Reclamações do Mercado Livre em que a loja precisa responder até um prazo, da mais urgente para a menos. Cada botão pede a sua confirmação antes de enviar.</p>'+(cards?'<div class="rgrid">'+cards+'</div>':'<div class="empty">Nenhuma reclamação do Mercado Livre esperando resposta da loja.</div>');
 }
 function opcoesML(t){var r=[];String(t||'').split('\n').forEach(function(l){var m=l.match(/^\s*(\d+)\.\s*\*\*(.+?)\*\*\s*[—\-:]\s*(.+)$/);if(m)r.push({n:+m[1],titulo:m[2].trim(),desc:m[3]});});return r;}
