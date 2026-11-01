@@ -43,7 +43,7 @@ h1,h2,h3,p{margin:0}
 .mkic{width:36px;height:36px;border-radius:10px;object-fit:cover;display:block;flex:none}.mkic.lg{width:44px;height:44px;border-radius:12px}
 .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(max(330px,calc((100% - 28px)/3)),1fr));gap:14px;align-items:start}
 .rc{gap:10px;padding:16px;overflow:visible}
-.rc-top{display:flex;align-items:center;gap:10px}.rc-t{display:flex;flex-direction:column;min-width:0}.g2 .eco{grid-template-columns:minmax(0,1fr)}.rc-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-t b{font-size:15px}.rc-t .sub{font-size:12.5px;letter-spacing:0;white-space:nowrap;line-height:1.4}.rc-p{font-size:13.5px;color:var(--muted)}
+.rc-top{display:flex;align-items:center;gap:10px}.rc-t{display:flex;flex-direction:column;min-width:0}.fx-hero{border-radius:24px;padding:20px 24px;display:flex;flex-direction:column;gap:4px}.fx-hero.bad{background:var(--bad-bg);color:var(--bad)}.fx-hero.good{background:var(--good-bg);color:var(--good)}.fx-k{font-size:11px;font-weight:500;letter-spacing:1.3px;text-transform:uppercase;opacity:.85}.fx-v{font-size:40px;font-weight:300;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}.fx-s{font-size:12.5px;color:var(--muted)}.fx-hero .fx-s{color:inherit;opacity:.85}.fx-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.fx-box{background:var(--hover);border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:3px;min-width:0}.fx-box .fx-k{color:var(--muted);opacity:1}.fx-b{font-size:28px;font-weight:300;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.fx-panel{background:var(--hover);border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;gap:2px}.fx-panel.soft{background:var(--accent-soft)}.fx-h{font-size:12px;font-weight:500;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin:0 0 6px}.fx-panel.soft .fx-h{color:var(--accent-ink)}.fx-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-size:14px}.fx-h+.fx-row{border-top:0}.fx-nm{flex:1;min-width:0;font-weight:500}.fx-n{color:var(--muted);font-size:13px;white-space:nowrap}.fx-val{font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:64px;text-align:right}.fx-dot{width:10px;height:10px;border-radius:50%;flex:none}@media (max-width:640px){.fx-grid{grid-template-columns:minmax(0,1fr)}.fx-v{font-size:34px}}.g2 .eco{grid-template-columns:minmax(0,1fr)}.rc-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-t b{font-size:15px}.rc-t .sub{font-size:12.5px;letter-spacing:0;white-space:nowrap;line-height:1.4}.rc-p{font-size:13.5px;color:var(--muted)}
 .rc-m{background:var(--chip);border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.5;max-height:250px;overflow:auto}.rc-m .kk{margin-bottom:6px}
 .mdl{position:fixed;inset:0;background:rgba(20,20,20,.55);display:grid;place-items:center;z-index:200;padding:16px;animation:mdlin .15s ease}@keyframes mdlin{from{opacity:0}to{opacity:1}}.mdl-c{background:#fff;border-radius:28px;padding:24px;max-width:440px;width:100%;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}.mdl-c h3{font-size:20px;font-weight:500;letter-spacing:-.4px;margin:0}.mdl-c p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.45}.mdl-c blockquote{margin:0;background:var(--chip);border-radius:14px;padding:12px 14px;font-size:14.5px;line-height:1.45}.mdl-a{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
 .rc-ok{display:flex;gap:10px;align-items:flex-start;background:#E3F4EA;color:#1E6B3F;border-radius:14px;padding:11px 14px;font-size:13.5px;line-height:1.4}.rc-up{margin-left:6px;border:0;background:transparent;color:#1E6B3F;font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0}
@@ -572,7 +572,7 @@ function semAcessoHtml(){return '<main class="main"><header class="head"><img cl
 
 /* ---------- utilidades ---------- */
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-function brl(n){return 'R$ '+n.toFixed(2).replace('.',',');}
+function brl(n){var p=Math.abs(n).toFixed(2).split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0?'-':'')+'R$ '+p[0]+','+p[1];}
 function num(s){var n=parseFloat(String(s).replace(/\./g,'').replace(',','.'));return isNaN(n)?0:n;}
 function mkFull(k){var LG={ml:['/chat/img/mercadolivre.png','#FFE600',16],sp:['/chat/img/shopee.png','#EE4D2D',14],tt:['/chat/img/tiktokshop.png','#111111',11]}[k];return '<span class="mk mkimg" style="background:'+LG[1]+'"><img src="'+LG[0]+'" alt="'+esc(MK[k].nome)+'" style="height:'+LG[2]+'px;width:auto;display:block"></span>';}
 function mk(k,big){var IC={ml:'/img/marketplaces/mercadolivre-icone.png',sp:'/img/marketplaces/shopee-icone.jpg',tt:'/img/marketplaces/tiktokshop-icone.png'}[k];if(IC)return '<img class="mkic'+(big?' lg':'')+'" src="'+IC+'" alt="'+esc(MK[k].nome)+'" title="'+esc(MK[k].nome)+'">';return '<span class="mk'+(big?' lg':'')+'" style="background:'+MK[k].bg+';color:'+MK[k].fg+'">'+MK[k].sigla+'</span>';}
@@ -624,20 +624,17 @@ function finDesfecho(c){
 }
 function finCalc(){
   var frete=parseFloat(String(S.cfg.custo_frete_devolucao_brl||'').replace(',','.')),temFrete=isFinite(frete)&&frete>0;
-  var f={frete:temFrete?frete:null,risco:0,riscoN:0,semProd:0,semProdN:0,coberto:0,cobertoN:0,naoCob:0,naoCobN:0,devN:0,devCobN:0,devVal:0,fretePerda:0,evitado:0,evitadoN:0,cancN:0,semLido:0,semValor:0,parcialN:0,total:0,porMk:{ml:{n:0,perda:0,risco:0},sp:{n:0,perda:0,risco:0},tt:{n:0,perda:0,risco:0}}};
+  var f={frete:temFrete?frete:null,devN:0,devCobN:0,custoN:0,semDevN:0,cancN:0,ganhouN:0,abertos:0,evitado:0,semLido:0,porMk:{ml:{dev:0,custo:0},sp:{dev:0,custo:0},tt:{dev:0,custo:0}}};
   S.casos.forEach(function(c){
-    var d=finDesfecho(c),v=(c.reemb>0?c.reemb:c.vped)||0,m=f.porMk[c.mk];f.total++;
+    var d=finDesfecho(c),v=(c.reemb>0?c.reemb:c.vped)||0,m=f.porMk[c.mk];
     if(d===null){f.semLido++;return;}
-    if(d==='em_andamento'){f.risco+=v;f.riscoN++;m.risco+=v;if(!v)f.semValor++;return;}
-    if(d==='ganhamos'){f.evitado+=v;f.evitadoN++;return;}
+    if(d==='em_andamento'){f.abertos++;return;}
+    if(d==='ganhamos'){f.ganhouN++;f.evitado+=v;return;}
     if(d==='cancelado'){f.cancN++;return;}
-    if(!v)f.semValor++;
-    if(d==='devolvido_com_produto'){f.devN++;f.devVal+=v;if(c.cob)f.devCobN++;else if(temFrete){f.fretePerda+=frete;m.perda+=frete;}m.n++;return;}
-    if(d==='reembolsado_parcial'&&!(c.reemb>0))f.parcialN++;
-    f.semProd+=v;f.semProdN++;m.n++;
-    if(c.cob){f.coberto+=v;f.cobertoN++;}else{f.naoCob+=v;f.naoCobN++;m.perda+=v;}
+    if(d==='devolvido_com_produto'){f.devN++;m.dev++;if(c.cob)f.devCobN++;else{f.custoN++;m.custo++;}return;}
+    f.semDevN++;
   });
-  f.perda=f.naoCob+f.fretePerda;
+  f.custo=temFrete?f.custoN*frete:null;
   return f;
 }
 var TIPOS_ECO=['Frete de devolução evitado','Ressarcimento do produto','Reembolso indevido barrado'];
@@ -899,20 +896,20 @@ function custos(){
   var ETAPAS=[['devolucao_etiqueta','1. Ler a etiqueta'],['devolucao_estado','2. Analisar o estado'],['devolucao_relato','3. Redigir a contestação'],['devolucao_decisao','4. Ler a decisão']];
   var et=ETAPAS.map(function(x){var v=S.uso.filter(function(u){return u.etapa===x[0];}).reduce(function(s,u){return s+(+u.custo_brl||0);},0);return '<div class="meter"><div class="l"><span>'+x[1]+'</span><span>'+brl(v)+'</span></div><div class="bar"><span style="width:'+(GASTO_IA_MES>0?Math.round(v/GASTO_IA_MES*100):0)+'%"></span></div></div>';}).join('');
   var fn=finCalc(),fv=S.freteMed==null?(S.cfg.custo_frete_devolucao_brl||''):S.freteMed;
-  var fmk=['ml','sp','tt'].map(function(m){var x=fn.porMk[m];return '<div class="meter"><div class="l"><span>'+MK[m].nome+' · '+x.n+(x.n===1?' caso':' casos')+'</span><span>'+brl(x.perda)+'</span></div><div class="bar"><span style="width:'+(fn.perda>0?Math.round(x.perda/fn.perda*100):0)+'%"></span></div></div>';}).join('');
-  var fin='<section class="card"><h2 class="sech">Prejuízo com devoluções</h2><p class="sub">Últimos 45 dias, segundo a decisão de cada marketplace. Conta só o que saiu do bolso: reembolso sem o produto voltar, mais o frete das devoluções com produto de volta (o produto devolvido é revendido pelo mesmo valor).</p>'+
-    '<div class="strip lg"><div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))"><div class="tile"><div class="k">Prejuízo estimado</div><div class="v bad">'+brl(fn.perda)+'</div><div class="s">'+(fn.frete===null&&fn.devN>fn.devCobN?'sem contar o frete (informe o custo abaixo)':'reembolsos sem cobertura + frete')+'</div></div>'+
-    '<div class="tile"><div class="k">Em risco agora</div><div class="v">'+brl(fn.risco)+'</div><div class="s">'+fn.riscoN+(fn.riscoN===1?' caso aberto':' casos abertos')+', se todos virarem reembolso</div></div>'+
-    '</div></div>'+
-    '<div class="calc"><h3 class="sech" style="color:var(--accent-ink)">De onde vem</h3>'+
-    '<div class="meter"><div class="l"><span>Reembolsado sem o produto voltar · '+fn.semProdN+'</span><span>'+brl(fn.semProd)+'</span></div></div>'+
-    '<div class="meter"><div class="l"><span>Coberto pelo Mercado Livre · '+fn.cobertoN+'</span><span>'+brl(fn.coberto)+'</span></div></div>'+
-    '<div class="meter"><div class="l"><span>Reembolso que ficou com a loja · '+fn.naoCobN+'</span><span>'+brl(fn.naoCob)+'</span></div></div>'+
-    '<div class="meter"><div class="l"><span>Devoluções com produto de volta · '+fn.devN+' ('+brl(fn.devVal)+' reembolsados)</span><span>'+brl(fn.fretePerda)+' de frete</span></div></div>'+
-    '<div class="meter"><div class="l"><span>Vendas canceladas antes de dar problema · '+fn.cancN+'</span><span>sem prejuízo</span></div></div></div>'+
-    '<div class="calc"><h3 class="sech" style="color:var(--accent-ink)">Por marketplace</h3>'+fmk+'</div>'+
-    (admin?'<div class="row" style="gap:10px;align-items:flex-end"><label class="field" style="flex:1 1 220px"><span>Custo médio do frete de uma devolução (R$)</span><input id="frete-med" type="text" inputmode="decimal" data-in="frete-med" value="'+esc(fv)+'" placeholder="Ex.: 18,50" autocomplete="off"></label><button type="button" class="btn" data-a="salvarFrete">Salvar</button></div>':'')+
-    '<p class="sub" style="font-size:12.5px">Quando o Mercado Livre marca "cobertura aplicada", considero que ele arcou com o custo. Confirme no extrato antes de usar este número em decisões grandes.'+(fn.semLido?' '+fn.semLido+' casos antigos ainda sem desfecho lido.':'')+(fn.semValor?' '+fn.semValor+' casos sem valor informado pelo marketplace ficaram de fora das somas.':'')+(fn.parcialN?' '+fn.parcialN+' reembolsos parciais sem valor definido.':'')+'</p></section>';
+  var fmk=['ml','sp','tt'].map(function(m){var x=fn.porMk[m];return '<div class="fx-row">'+mk(m)+'<span class="fx-nm">'+MK[m].nome+'</span><span class="fx-n">'+x.dev+(x.dev===1?' devolução':' devoluções')+'</span><span class="fx-val">'+(fn.frete===null?'—':brl(x.custo*fn.frete))+'</span></div>';}).join('');
+  var fin='<section class="card"><h2 class="sech">Custo com devoluções</h2><p class="sub">Últimos 45 dias. Conta só o frete das devoluções em que o produto volta para a loja. O valor do produto não entra: ele já está no custo do fornecedor.</p>'+
+    '<div class="fx-hero bad"><span class="fx-k">Custo estimado com frete</span><span class="fx-v">'+(fn.custo===null?'—':brl(fn.custo))+'</span><span class="fx-s">'+(fn.custo===null?'Informe o custo médio do frete lá embaixo para calcular.':fn.custoN+(fn.custoN===1?' devolução':' devoluções')+' × '+brl(fn.frete))+'</span></div>'+
+    '<div class="fx-grid"><div class="fx-box"><span class="fx-k">Com produto de volta</span><span class="fx-b">'+fn.devN+'</span><span class="fx-s">devoluções físicas</span></div>'+
+    '<div class="fx-box"><span class="fx-k">Cobertas pelo ML</span><span class="fx-b">'+fn.devCobN+'</span><span class="fx-s">sem custo para a loja</span></div>'+
+    '<div class="fx-box"><span class="fx-k">Em aberto</span><span class="fx-b">'+fn.abertos+'</span><span class="fx-s">ainda sem decisão</span></div></div>'+
+    '<div class="fx-panel"><h3 class="fx-h">Por marketplace</h3>'+fmk+'</div>'+
+    '<div class="fx-panel"><h3 class="fx-h">Como os casos terminaram</h3>'+
+    '<div class="fx-row"><span class="fx-dot" style="background:var(--sel)"></span><span class="fx-nm">Devolvido com produto de volta</span><span class="fx-val">'+fn.devN+'</span></div>'+
+    '<div class="fx-row"><span class="fx-dot" style="background:var(--warn)"></span><span class="fx-nm">Reembolsado sem devolução do produto</span><span class="fx-val">'+fn.semDevN+'</span></div>'+
+    '<div class="fx-row"><span class="fx-dot" style="background:var(--muted)"></span><span class="fx-nm">Venda cancelada</span><span class="fx-val">'+fn.cancN+'</span></div>'+
+    '<div class="fx-row"><span class="fx-dot" style="background:var(--good)"></span><span class="fx-nm">Loja ganhou</span><span class="fx-val">'+fn.ganhouN+'</span></div></div>'+
+    (admin?'<div class="fx-panel soft"><h3 class="fx-h">Custo médio do frete de uma devolução</h3><div class="row" style="gap:10px;align-items:center;flex-wrap:nowrap"><label class="field" style="flex:1 1 auto;min-width:0"><input id="frete-med" type="text" inputmode="decimal" data-in="frete-med" value="'+esc(fv)+'" placeholder="Ex.: 18,50" autocomplete="off" aria-label="Custo médio do frete em reais"></label><button type="button" class="btn" data-a="salvarFrete">Salvar</button></div></div>':'')+
+    '<p class="sub" style="font-size:12.5px">Quando o Mercado Livre marca "cobertura aplicada", considero que ele arcou com o custo. Confirme no extrato antes de usar este número em decisões grandes.'+(fn.semLido?' '+fn.semLido+(fn.semLido===1?' caso antigo ainda sem desfecho lido.':' casos antigos ainda sem desfecho lido.'):'')+'</p></section>';
   var eco=S.eco.length?
     '<div class="eco"><div class="tl"><div class="t" style="grid-column:1 / -1"><div class="k" style="color:var(--muted)">Economia total</div><div class="v good" style="font-size:40px">'+brl(e.tot)+'</div><div class="s">'+e.ganhas+(e.ganhas===1?' caso ganho':' casos ganhos')+'</div></div>'+
     '<div class="t"><div class="k" style="color:var(--muted)">Já conferido no extrato</div><div class="v">'+brl(e.conf)+'</div></div><div class="t"><div class="k" style="color:var(--muted)">A conciliar</div><div class="v">'+brl(e.aconc)+'</div></div></div>'+
@@ -922,7 +919,7 @@ function custos(){
   return head()+
   '<section class="strip lg"><div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))"><div class="tile"><div class="k">Gasto de IA hoje'+(admin?'':' (só administradores)')+'</div><div class="v">'+brl(gHoje)+'</div></div><div class="tile"><div class="k">Gasto no mês</div><div class="v">'+brl(GASTO_IA_MES)+'</div></div><div class="tile"><div class="k">Armazenamento de arquivos</div><div class="v">'+(arm!==undefined?arm+'%':'—')+'</div><div class="s">'+(limp?'Última limpeza: '+new Date(limp.em).toLocaleDateString('pt-BR')+' · '+limp.arquivos+' arquivos':'Limpeza diária ainda não rodou')+'</div></div></div></section>'+
   '<div class="g2">'+fin+
-  '<section class="card"><h2 class="sech">Economia gerada pela Sandy</h2><p class="sub">É o dinheiro que você teria perdido se o caso não tivesse sido contestado: frete de volta, produto não ressarcido ou reembolso indevido.</p>'+'<div class="strip lg"><div class="tiles" style="grid-template-columns:minmax(0,1fr)"><div class="tile"><div class="k">Evitado quando a loja ganhou</div><div class="v good">'+brl(fn.evitado)+'</div><div class="s">'+fn.evitadoN+(fn.evitadoN===1?' caso decidido a favor da loja (últimos 45 dias)':' casos decididos a favor da loja (últimos 45 dias)')+'</div></div></div></div>'+eco+'</section></div>'+
+  '<section class="card"><h2 class="sech">Economia gerada pela Sandy</h2><p class="sub">É o dinheiro que você teria perdido se o caso não tivesse sido contestado: frete de volta, produto não ressarcido ou reembolso indevido.</p>'+'<div class="fx-hero good"><span class="fx-k">Vendas mantidas quando a loja ganhou</span><span class="fx-v">'+brl(fn.evitado)+'</span><span class="fx-s">'+fn.ganhouN+(fn.ganhouN===1?' caso decidido a favor da loja':' casos decididos a favor da loja')+' nos últimos 45 dias</span></div>'+eco+'</section></div>'+
   '<div class="g2"><section class="card"><h2 class="sech">Chaves de segurança</h2><div class="fill">'+ch+(admin?'':'<p class="sub" style="font-size:12.5px;flex:0">Só administradores alteram o interruptor geral.</p>')+'</div></section><section class="card"><h2 class="sech">Gasto de IA por etapa (mês)</h2><div class="fill">'+et+'</div></section></div>'+
   '<section class="card"><h2 class="sech">Leitura dos marketplaces</h2><div class="fill">'+cnx+'</div></section>';
 }
