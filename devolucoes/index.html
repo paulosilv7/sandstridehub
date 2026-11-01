@@ -624,17 +624,19 @@ function finDesfecho(c){
 }
 function finCalc(){
   var frete=parseFloat(String(S.cfg.custo_frete_devolucao_brl||'').replace(',','.')),temFrete=isFinite(frete)&&frete>0;
-  var f={frete:temFrete?frete:null,devN:0,devCobN:0,custoN:0,semDevN:0,cancN:0,ganhouN:0,abertos:0,evitado:0,semLido:0,porMk:{ml:{dev:0,custo:0},sp:{dev:0,custo:0},tt:{dev:0,custo:0}}};
+  var f={frete:temFrete?frete:null,parcialN:0,parcial:0,parcialSem:0,devN:0,devCobN:0,custoN:0,semDevN:0,cancN:0,ganhouN:0,abertos:0,evitado:0,semLido:0,porMk:{ml:{dev:0,custo:0,parc:0},sp:{dev:0,custo:0,parc:0},tt:{dev:0,custo:0,parc:0}}};
   S.casos.forEach(function(c){
     var d=finDesfecho(c),v=(c.reemb>0?c.reemb:c.vped)||0,m=f.porMk[c.mk];
     if(d===null){f.semLido++;return;}
     if(d==='em_andamento'){f.abertos++;return;}
     if(d==='ganhamos'){f.ganhouN++;f.evitado+=v;return;}
     if(d==='cancelado'){f.cancN++;return;}
+    if(d==='reembolsado_parcial'){f.parcialN++;if(c.reemb>0){f.parcial+=c.reemb;m.parc+=c.reemb;}else f.parcialSem++;return;}
     if(d==='devolvido_com_produto'){f.devN++;m.dev++;if(c.cob)f.devCobN++;else{f.custoN++;m.custo++;}return;}
     f.semDevN++;
   });
-  f.custo=temFrete?f.custoN*frete:null;
+  f.fretePart=temFrete?f.custoN*frete:0;
+  f.custo=(temFrete||f.parcialN>0)?f.fretePart+f.parcial:null;
   return f;
 }
 var TIPOS_ECO=['Frete de devolução evitado','Ressarcimento do produto','Reembolso indevido barrado'];
@@ -896,15 +898,16 @@ function custos(){
   var ETAPAS=[['devolucao_etiqueta','1. Ler a etiqueta'],['devolucao_estado','2. Analisar o estado'],['devolucao_relato','3. Redigir a contestação'],['devolucao_decisao','4. Ler a decisão']];
   var et=ETAPAS.map(function(x){var v=S.uso.filter(function(u){return u.etapa===x[0];}).reduce(function(s,u){return s+(+u.custo_brl||0);},0);return '<div class="meter"><div class="l"><span>'+x[1]+'</span><span>'+brl(v)+'</span></div><div class="bar"><span style="width:'+(GASTO_IA_MES>0?Math.round(v/GASTO_IA_MES*100):0)+'%"></span></div></div>';}).join('');
   var fn=finCalc(),fv=S.freteMed==null?(S.cfg.custo_frete_devolucao_brl||''):S.freteMed;
-  var fmk=['ml','sp','tt'].map(function(m){var x=fn.porMk[m];return '<div class="fx-row">'+mk(m)+'<span class="fx-nm">'+MK[m].nome+'</span><span class="fx-n">'+x.dev+(x.dev===1?' devolução':' devoluções')+'</span><span class="fx-val">'+(fn.frete===null?'—':brl(x.custo*fn.frete))+'</span></div>';}).join('');
-  var fin='<section class="card"><h2 class="sech">Custo com devoluções</h2><p class="sub">Últimos 45 dias. Conta só o frete das devoluções em que o produto volta para a loja. O valor do produto não entra: ele já está no custo do fornecedor.</p>'+
-    '<div class="fx-hero bad"><span class="fx-k">Custo estimado com frete</span><span class="fx-v">'+(fn.custo===null?'—':brl(fn.custo))+'</span><span class="fx-s">'+(fn.custo===null?'Informe o custo médio do frete lá embaixo para calcular.':fn.custoN+(fn.custoN===1?' devolução':' devoluções')+' × '+brl(fn.frete))+'</span></div>'+
+  var fmk=['ml','sp','tt'].map(function(m){var x=fn.porMk[m];return '<div class="fx-row">'+mk(m)+'<span class="fx-nm">'+MK[m].nome+'</span><span class="fx-n">'+x.dev+(x.dev===1?' devolução':' devoluções')+'</span><span class="fx-val">'+((fn.frete===null&&!x.parc)?'—':brl((fn.frete===null?0:x.custo*fn.frete)+x.parc))+'</span></div>';}).join('');
+  var fin='<section class="card"><h2 class="sech">Custo com devoluções</h2><p class="sub">Últimos 45 dias. Conta o frete das devoluções em que o produto volta para a loja e o dinheiro devolvido nos reembolsos parciais (o cliente ficou com o produto). O valor do produto não entra: ele já está no custo do fornecedor.</p>'+
+    '<div class="fx-hero bad"><span class="fx-k">Custo estimado com devoluções</span><span class="fx-v">'+(fn.custo===null?'—':brl(fn.custo))+'</span><span class="fx-s">'+(fn.custo===null?'Informe o custo médio do frete lá embaixo para calcular.':'Reembolsos parciais '+brl(fn.parcial)+' + frete '+(fn.frete===null?'(informe o custo do frete)':fn.custoN+' × '+brl(fn.frete)))+'</span></div>'+
     '<div class="fx-grid"><div class="fx-box"><span class="fx-k">Com produto de volta</span><span class="fx-b">'+fn.devN+'</span><span class="fx-s">devoluções físicas</span></div>'+
-    '<div class="fx-box"><span class="fx-k">Cobertas pelo ML</span><span class="fx-b">'+fn.devCobN+'</span><span class="fx-s">sem custo para a loja</span></div>'+
+    '<div class="fx-box"><span class="fx-k">Reembolsos parciais</span><span class="fx-b">'+fn.parcialN+'</span><span class="fx-s">'+brl(fn.parcial)+' devolvidos'+(fn.parcialSem?' ('+fn.parcialSem+' ainda sem valor)':'')+'</span></div>'+
     '<div class="fx-box"><span class="fx-k">Em aberto</span><span class="fx-b">'+fn.abertos+'</span><span class="fx-s">ainda sem decisão</span></div></div>'+
     '<div class="fx-panel"><h3 class="fx-h">Por marketplace</h3>'+fmk+'</div>'+
     '<div class="fx-panel"><h3 class="fx-h">Como os casos terminaram</h3>'+
     '<div class="fx-row"><span class="fx-dot" style="background:var(--sel)"></span><span class="fx-nm">Devolvido com produto de volta</span><span class="fx-val">'+fn.devN+'</span></div>'+
+    '<div class="fx-row"><span class="fx-dot" style="background:var(--bad)"></span><span class="fx-nm">Reembolso parcial</span><span class="fx-val">'+fn.parcialN+'</span></div>'+
     '<div class="fx-row"><span class="fx-dot" style="background:var(--warn)"></span><span class="fx-nm">Reembolsado sem devolução do produto</span><span class="fx-val">'+fn.semDevN+'</span></div>'+
     '<div class="fx-row"><span class="fx-dot" style="background:var(--muted)"></span><span class="fx-nm">Venda cancelada</span><span class="fx-val">'+fn.cancN+'</span></div>'+
     '<div class="fx-row"><span class="fx-dot" style="background:var(--good)"></span><span class="fx-nm">Loja ganhou</span><span class="fx-val">'+fn.ganhouN+'</span></div></div>'+
