@@ -41,7 +41,7 @@ h1,h2,h3,p{margin:0}
 .meuav{margin-left:auto;width:38px;height:38px;border-radius:50%;background:#1A1A1A;color:#fff;display:grid;place-items:center;font-weight:600;font-size:16px;overflow:hidden;text-decoration:none;flex:none}.meuav img{width:100%;height:100%;object-fit:cover;display:block}
 .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;align-items:start}
 .rc{gap:10px;padding:16px;overflow:visible}
-.rc-top{display:flex;align-items:center;gap:10px}.rc-t{display:flex;flex-direction:column;min-width:0;flex:1}.rc-t b,.rc-t .sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-t b{font-size:15px}.rc-p{font-size:13.5px;color:var(--muted)}
+.rc-top{display:flex;align-items:center;gap:10px}.rc-t{display:flex;flex-direction:column;min-width:0;flex:1}.rc-t b{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-t .sub{font-size:12px;letter-spacing:0;word-break:break-all;line-height:1.35}.rc-p{font-size:13.5px;color:var(--muted)}
 .rc-m{background:var(--chip);border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.5;max-height:250px;overflow:auto}.rc-m .kk{margin-bottom:6px}
 .rc-sb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}.rc-face{width:30px;height:30px;flex:none;display:inline-block}.rc-face svg{width:100%;height:100%;display:block}
 .rc-sy{position:relative;font-weight:600;border-bottom:1px dotted #4A63C4;cursor:help;outline:none}.rc-tip{display:none;position:absolute;left:0;top:calc(100% + 8px);z-index:30;width:min(320px,78vw);background:#1A1A1A;color:#fff;padding:12px 14px;border-radius:14px;font-weight:400;font-size:13.5px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.25)}.rc-sy:hover .rc-tip,.rc-sy:focus .rc-tip{display:flex;flex-direction:column;gap:8px}.rc-tc{display:flex;flex-direction:column;gap:2px;font-size:12.5px;opacity:.9}.rc-ta{font-size:12.5px;color:#FFD9A0}
@@ -905,7 +905,7 @@ function responder(){
   var fmt=function(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');};
   var cards=l.map(function(c,ix){var p=prazoInfo(c);
     var sug=c.sug,ops=opcoesML(c.msg?c.msg.texto:''),med=c.acoes.indexOf('send_message_to_mediator')>-1;
-    var top='<div class="rc-top">'+mk(c.mk)+'<span class="rc-t"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
+    var top='<div class="rc-top">'+mk(c.mk)+'<span class="rc-t"><b>'+esc(/^Pedido /.test(c.produto)?c.loja:c.produto)+'</b><span class="sub">Pedido '+esc(c.pedido.replace('#',''))+'</span><span class="sub">Reclamação '+esc(c.solicitacao)+(/^Pedido /.test(c.produto)?'':' · '+esc(c.loja))+'</span></span><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="rc-p">'+esc(c.problema)+'</div>';
     var msgH=c.msg?'<div class="rc-m"><div class="kk">Mensagem do Mercado Livre'+(c.msg.anexos?' · '+c.msg.anexos+(c.msg.anexos===1?' anexo':' anexos'):'')+'</div>'+fmt(c.msg.texto)+'</div>':'<p class="sub" style="font-size:13px">A mensagem do Mercado Livre ainda não foi lida (até 15 minutos).</p>';
     var face=function(k){return '<span class="rc-face">'+ritaSvg('feliz','r'+ix+k)+'</span>';};
     var sugH='';
