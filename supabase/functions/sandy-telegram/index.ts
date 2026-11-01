@@ -42,6 +42,15 @@ async function config(chave: string): Promise<string | null> {
   const { data } = await supabase.from("configuracoes").select("valor").eq("chave", chave).maybeSingle();
   return data?.valor || null;
 }
+// Memória curta do grupo: o Telegram só entrega uma mensagem por vez, então guardamos as últimas para a Sandy entender "sim", "pode mandar" etc.
+async function guardarMsg(chatId: any, messageId: number | null, de: "equipe" | "sandy", texto: string) {
+  try { await supabase.from("sandy_telegram_msgs").insert({ chat_id: String(chatId), message_id: messageId, de, texto: texto.slice(0, 1500) }); } catch (_) { /* ignora */ }
+}
+async function historico(chatId: any): Promise<{ de: string; texto: string }[]> {
+  const { data } = await supabase.from("sandy_telegram_msgs").select("de, texto").eq("chat_id", String(chatId))
+    .gt("criado_em", new Date(Date.now() - 3 * 3600_000).toISOString()).order("criado_em", { ascending: false }).limit(8);
+  return (data ?? []).reverse();
+}
 const link = (id: string) => `${SITE}/chat/?c=${id}`;
 const hora = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeZone: FUSO, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 function haQuanto(iso: string) {
@@ -244,15 +253,18 @@ function instrucoes(quem: string, contexto: string, lojasTxt = "") {
     lojasTxt ? `Você atende TODAS estas lojas da empresa (nenhuma é "de outra empresa"): ${lojasTxt}. Uma conversa de qualquer uma delas é sua para responder.` : "",
     "Se responder_cliente voltar com erro, conte à equipe o erro exato que a ferramenta devolveu, sem inventar outro motivo. Não suponha que a conversa seja de outra loja.",
     "Assuntos fora do atendimento da loja: responda brevemente que você cuida do atendimento.",
+    "Se a equipe responder a um aviso de conversa com o texto a enviar (ex.: 'responda assim: ...', 'manda isso', 'fala isso'), isso é ORDEM EXPLÍCITA: envie exatamente esse texto com responder_cliente na conversa do aviso, sem pedir confirmação nem pedir o texto de novo. Se a pessoa responder 'sim', 'pode', 'manda' ou 'isso' a uma pergunta sua, execute agora o que você propôs, usando o histórico da conversa e o conversa_id já citado; nunca pergunte de novo o que já foi dito.",
     contexto ? `CONTEXTO (mensagem a que estão respondendo): ${contexto}` : "",
   ].filter(Boolean).join("\n");
 }
 
-async function conversarComModelo(texto: string, quem: string, contexto: string, imagem?: string): Promise<string> {
+async function conversarComModelo(texto: string, quem: string, contexto: string, imagem?: string, hist: { de: string; texto: string }[] = []): Promise<string> {
   const conteudo: any = imagem ? [{ type: "text", text: texto || "(sem texto, só a imagem)" }, { type: "image_url", image_url: { url: imagem } }] : texto;
   const { data: ls } = await supabase.from("lojas").select("nome, marketplace");
   const lojasTxt = (ls ?? []).map((l: any) => `${l.nome} (${MK[l.marketplace] ?? l.marketplace})`).join(", ");
-  const msgs: any[] = [{ role: "system", content: instrucoes(quem, contexto, lojasTxt) }, { role: "user", content: conteudo }];
+  const msgs: any[] = [{ role: "system", content: instrucoes(quem, contexto, lojasTxt) },
+    ...hist.map((h) => (h.de === "sandy" ? { role: "assistant", content: h.texto } : { role: "user", content: h.texto })),
+    { role: "user", content: conteudo }];
   for (let i = 0; i < 5; i++) {
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI}` }, signal: AbortSignal.timeout(45_000),
@@ -352,8 +364,17 @@ async function processar(u: any) {
     const conv = `${rt} ${ents}`.match(/[?&]c=([0-9a-f-]{36})/);
     contexto = `${rt.slice(0, 800)}${conv ? `\n(conversa_id desta conversa: ${conv[1]})` : ""}`;
   }
+  const hist = await historico(msg.chat.id);
+  // Se a mensagem não cita a conversa, usa a última conversa mencionada no histórico recente.
+  if (!/conversa_id desta conversa/.test(contexto)) {
+    const ult = [...hist].reverse().map((h) => h.texto.match(/\[conversa_id: ([0-9a-f-]{36})\]/)).find(Boolean);
+    if (ult) contexto = `${contexto}\n(conversa_id desta conversa: ${ult[1]})`.trim();
+  }
+  const idConv = contexto.match(/conversa_id desta conversa: ([0-9a-f-]{36})/)?.[1];
+  const limpo = texto.replace(new RegExp(`@${usuarioBot}`, "ig"), "").trim();
+  await guardarMsg(msg.chat.id, msg.message_id, "equipe", `${quem}: ${limpo}${idConv ? ` [conversa_id: ${idConv}]` : ""}`);
   let resposta: string;
-  try { resposta = await conversarComModelo(texto.replace(new RegExp(`@${usuarioBot}`, "ig"), "").trim(), quem, contexto, imagem); }
+  try { resposta = await conversarComModelo(limpo, quem, contexto, imagem, hist); }
   catch (e) { await diag(`erro: ${e instanceof Error ? e.message : e}`); resposta = "Tive um problema para responder agora. Tenta de novo daqui a pouco?"; }
   // Envia em partes, com "digitando..." entre elas, como uma pessoa.
   const partes = resposta.split(/\n?\s*\|\|\|\s*\n?/).map((t) => t.trim()).filter(Boolean).slice(0, 5);
@@ -362,10 +383,11 @@ async function processar(u: any) {
       await telegram("sendChatAction", { chat_id: msg.chat.id, action: "typing" }).catch(() => {});
       await new Promise((r) => setTimeout(r, Math.min(900 + partes[i].length * 25, 3500)));
     }
-    await telegram("sendMessage", {
+    const env = await telegram("sendMessage", {
       chat_id: msg.chat.id, text: partes[i].slice(0, 3900), disable_web_page_preview: true,
       ...(i === 0 ? { reply_to_message_id: msg.message_id, allow_sending_without_reply: true } : {}),
     });
+    await guardarMsg(msg.chat.id, env?.message_id ?? null, "sandy", partes[i]);
   }
 }
 
