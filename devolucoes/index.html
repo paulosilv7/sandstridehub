@@ -456,7 +456,7 @@ async function carregar(){
     SB.from('configuracoes').select('valor').eq('chave','cambio_usd_brl').maybeSingle(),
     SB.from('devol_modelos').select('id,titulo,versao,ativo').order('titulo'),
     SB.from('devol_relatos').select('caso_id,recomendacao,criado_em').order('criado_em',{ascending:false}).limit(1000),
-    SB.from('devol_mensagens').select('caso_id,origem,texto,anexos,enviado_em').order('enviado_em',{ascending:false}).limit(600),
+    SB.from('devol_mensagens').select('caso_id,chave,origem,texto,anexos,enviado_em').order('enviado_em',{ascending:false}).limit(600),
     SB.from('devol_eventos').select('caso_id,criado_em,dados').eq('tipo','resposta_ml_enviada').order('criado_em',{ascending:false}).limit(200),
     SB.from('devol_sugestoes').select('caso_id,recomendada,situacao,pct_ml,valor_pedido,motivo,comparacao,alerta')
   ]);
@@ -467,7 +467,7 @@ async function carregar(){
   Object.keys(LOJAS).forEach(function(k){LOJAS[k].sort();});
   ANEXOS={};(q[2].data||[]).forEach(function(a){ANEXOS[a.caso_id]=(ANEXOS[a.caso_id]||0)+1;});
   REC={};(q[9].data||[]).forEach(function(x){if(!REC[x.caso_id])REC[x.caso_id]=x.recomendacao;});
-  MSG={};THR={};(q[10].data||[]).forEach(function(x){if(x.origem==='mediador'&&!MSG[x.caso_id])MSG[x.caso_id]=x;(THR[x.caso_id]=THR[x.caso_id]||[]);if(THR[x.caso_id].length<6)THR[x.caso_id].push(x);});
+  MSG={};THR={};var _msgs=(q[10].data||[]);var _reais=_msgs.filter(function(x){return x.origem==='loja'&&String(x.chave).indexOf('loja-local:')!==0;});_msgs=_msgs.filter(function(x){if(String(x.chave).indexOf('loja-local:')!==0)return true;var t=new Date(x.enviado_em).getTime();return !_reais.some(function(y){return y.caso_id===x.caso_id&&Math.abs(new Date(y.enviado_em).getTime()-t)<180000;});});_msgs.forEach(function(x){if(x.origem==='mediador'&&!MSG[x.caso_id])MSG[x.caso_id]=x;(THR[x.caso_id]=THR[x.caso_id]||[]);if(THR[x.caso_id].length<6)THR[x.caso_id].push(x);});
   ENV={};(q[11].data||[]).forEach(function(x){if(!ENV[x.caso_id])ENV[x.caso_id]=x;});SUG={};(q[12].data||[]).forEach(function(x){SUG[x.caso_id]=x;});
   S.casos=(q[1].data||[]).map(adaptar);
   S.cfg={};(q[3].data||[]).forEach(function(c){S.cfg[c.chave]=c.valor;});
