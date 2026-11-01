@@ -454,7 +454,7 @@ async function carregar(){
     SB.from('devol_modelos').select('id,titulo,versao,ativo').order('titulo'),
     SB.from('devol_relatos').select('caso_id,recomendacao,criado_em').order('criado_em',{ascending:false}).limit(1000),
     SB.from('devol_mensagens').select('caso_id,origem,texto,anexos,enviado_em').order('enviado_em',{ascending:false}).limit(600),
-    SB.from('devol_sugestoes').select('caso_id,recomendada,situacao,motivo,comparacao,alerta')
+    SB.from('devol_sugestoes').select('caso_id,recomendada,situacao,pct_ml,valor_pedido,motivo,comparacao,alerta')
   ]);
   var falha=q.filter(function(x){return x.error;})[0];
   if(falha)throw new Error(falha.error.message);
@@ -927,8 +927,9 @@ function responder(){
       bt=ops.map(function(o){var rec=sug&&sug.recomendada===o.n;return '<button type="button" class="rc-op'+(rec?' rec':'')+'" data-a="mlAgir" data-v="'+c.id+'|mediador_opcao|'+o.n+'"><b>'+o.n+'</b><span>'+esc(o.titulo)+'</span>'+(rec?face('b'):'')+'</button>';}).join('');
     }
     if(pedePct){
-      var of=S.ofertas&&S.ofertas[c.id];
-      bt+=of&&of.length?'<div class="rc-pcts">'+of.map(function(o){var rec=sug&&sug.recomendada===Number(o.percentage);return '<button type="button" class="chipb'+(rec?' rec':'')+'" data-a="mlAgir" data-v="'+c.id+'|mediador_pct|'+o.percentage+'">'+o.percentage+'% · '+brl(o.amount)+(rec?' ★':'')+'</button>';}).join('')+'</div>':'<p class="sub" style="font-size:13px">Buscando as porcentagens que o Mercado Livre permite…</p>';
+      var of=(S.ofertas&&S.ofertas[c.id])||null,lista=of?of.map(function(o){return {p:Number(o.percentage),v:Number(o.amount)};}):null;
+      if(lista&&sug&&sug.pct_ml&&!lista.some(function(o){return o.p===Number(sug.pct_ml);}))lista.unshift({p:Number(sug.pct_ml),v:sug.valor_pedido?Number(sug.valor_pedido)*Number(sug.pct_ml)/100:null,ml:true});
+      bt+=lista&&lista.length?'<div class="rc-pcts">'+lista.map(function(o){var rec=sug&&sug.recomendada===o.p;return '<button type="button" class="chipb'+(rec?' rec':'')+'" data-a="mlAgir" data-v="'+c.id+'|mediador_pct|'+o.p+'">'+o.p+'%'+(o.v!=null?' · '+brl(o.v):'')+(o.ml?' · ML':'')+(rec?' ★':'')+'</button>';}).join('')+'</div>':'<p class="sub" style="font-size:13px">Buscando as porcentagens que o Mercado Livre permite…</p>';
     }
     bt+=agirHtml(c);
     var form=med?'<form class="rc-f" data-id="'+c.id+'"><input name="t" type="text" maxlength="400" autocomplete="off" placeholder="Responder ao mediador com texto"><button type="submit" class="btn sm">Enviar</button></form>':'';
