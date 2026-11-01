@@ -35,6 +35,12 @@ body{overflow-x:clip}
 .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
 .seg button[aria-disabled="true"]{cursor:default;opacity:.7}
 .seg button small{font-size:11px;font-weight:500;margin-left:6px;padding:2px 7px;border-radius:8px;background:var(--chip);color:var(--muted)}
+.mkl{display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 8px;border-radius:7px;flex:none;vertical-align:middle}
+.mkl img{display:block;width:auto}
+.mkl-ml{background:#FFE600}.mkl-ml img{height:15px}
+.mkl-sp{background:#EE4D2D}.mkl-sp img{height:13px}
+.mkl-tt{background:#111}.mkl-tt img{height:10px}
+.seg button .mkl{height:24px;margin-right:2px}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:500;padding:4px 10px;border-radius:12px;background:var(--chip);color:var(--ink);white-space:nowrap}
 .pill.good{background:var(--good-bg);color:var(--good)}.pill.bad{background:var(--bad-bg);color:var(--bad)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.info{background:var(--info-bg);color:var(--info)}.pill.ink{background:var(--ink);color:#fff}
 .dd{font-variant-numeric:tabular-nums}.dd.good{color:#5FD39A}.dd.bad{color:#FF8A80}
@@ -456,9 +462,9 @@ html.tv-on,html.tv-on body{overflow:hidden!important;scrollbar-width:none}html.t
     <div class="sp"></div>
     <div class="seg" role="group" aria-label="Plataforma" id="seg">
       <button type="button" data-f="all" aria-pressed="true">Todas as lojas</button>
-      <button type="button" data-f="ml" aria-pressed="false">Mercado Livre</button>
-      <button type="button" data-f="tt" aria-pressed="false">TikTok Shop</button>
-      <button type="button" data-f="sp" aria-pressed="false">Shopee</button>
+      <button type="button" data-f="ml" aria-pressed="false" aria-label="Mercado Livre" title="Mercado Livre"><span class="mkl mkl-ml"><img src="../img/mercadolivre.png" alt=""></span></button>
+      <button type="button" data-f="tt" aria-pressed="false" aria-label="TikTok Shop" title="TikTok Shop"><span class="mkl mkl-tt"><img src="../img/tiktokshop.png" alt=""></span></button>
+      <button type="button" data-f="sp" aria-pressed="false" aria-label="Shopee" title="Shopee"><span class="mkl mkl-sp"><img src="../img/shopee.png" alt=""></span></button>
     </div>
   </header>
 
@@ -646,6 +652,8 @@ function rnd(s){var x=Math.sin(s*12.9898)*43758.5453;return x-Math.floor(x)}
 
 var HN=0, FR=0, NOW=0;
 var MKT={ml:'Mercado Livre',tt:'TikTok Shop',sp:'Shopee'};
+var MKIMG={ml:'mercadolivre',tt:'tiktokshop',sp:'shopee'};
+function mkLogo(k){return '<span class="mkl mkl-'+k+'"><img src="../img/'+MKIMG[k]+'.png" alt="'+MKT[k]+'"></span>'}
 var MKTC={mercado_livre:'ml',tiktok_shop:'tt',shopee:'sp'};
 var PALETA=['#4A63C4','#2F9C95','#C45A9B','#E0A33B','#8E7CD6','#D4723F','#5B8DEF','#3FA66B'];
 var LOJAS=[],PROD=[],pend=[],CATALOGO=[],CATMAP={},filtro='all',DADOS=null,USER=null,RESUMO={},CAL_MIN=0,PRIMEIRA=true,cfgSnap=null;
@@ -1008,7 +1016,7 @@ function render(){
     var luc=cumHoje(L),tag=L.mkt==='ml'?'info':(L.mkt==='tt'?'ink':'warn');
     var dim=(!on&&!L.pendente)?' dim':'';
     if(L.pendente)return '<div class="lrow'+dim+'"><div class="nmw"><div class="nm">'+L.nome+' <span class="pill warn">Aguardando conexão</span></div></div><div class="r" data-l="Pedidos">—</div><div class="r hs" data-l="Faturamento">—</div><div class="r" data-l="Lucro">—</div><div class="r hs" data-l="Margem">—</div><div class="r" data-l="Ontem">—</div></div>';
-    return '<div class="lrow'+dim+'"><div class="nmw"><div class="nm">'+L.nome+' <span class="pill '+tag+'">'+MKT[L.mkt]+'</span></div><div class="sb"><span style="width:'+Math.max(2,luc/totalLuc*100)+'%"></span></div></div><div class="r" data-l="Pedidos">'+ped+'</div><div class="r hs" data-l="Faturamento">'+brl0(fat)+'</div><div class="r lv" data-l="Lucro">'+brl0(luc)+'</div><div class="r hs" data-l="Margem">'+pct(fat>0?luc/fat:0)+'</div><div class="r" data-l="Ontem">'+dpill(delta(luc,cumOntem(L,NOW)))+'</div></div>';
+    return '<div class="lrow'+dim+'"><div class="nmw"><div class="nm">'+L.nome+' '+mkLogo(L.mkt)+'</div><div class="sb"><span style="width:'+Math.max(2,luc/totalLuc*100)+'%"></span></div></div><div class="r" data-l="Pedidos">'+ped+'</div><div class="r hs" data-l="Faturamento">'+brl0(fat)+'</div><div class="r lv" data-l="Lucro">'+brl0(luc)+'</div><div class="r hs" data-l="Margem">'+pct(fat>0?luc/fat:0)+'</div><div class="r" data-l="Ontem">'+dpill(delta(luc,cumOntem(L,NOW)))+'</div></div>';
   }).join('');
   $('#lojas').innerHTML='<div class="lrow h"><div>Loja</div><div class="r">Pedidos</div><div class="r hs">Faturamento</div><div class="r">Lucro</div><div class="r hs">Margem</div><div class="r">Ontem</div></div>'+rows;
 
