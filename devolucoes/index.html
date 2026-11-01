@@ -46,7 +46,8 @@ h1,h2,h3,p{margin:0}
 .rc-top{display:flex;align-items:center;gap:10px}.rc-t{display:flex;flex-direction:column;min-width:0}.rc-t b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-t .sub{font-size:12.5px;letter-spacing:0;white-space:nowrap;line-height:1.4}.rc-p{font-size:13.5px;color:var(--muted)}
 .rc-m{background:var(--chip);border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.5;max-height:250px;overflow:auto}.rc-m .kk{margin-bottom:6px}
 .mdl{position:fixed;inset:0;background:rgba(20,20,20,.55);display:grid;place-items:center;z-index:200;padding:16px;animation:mdlin .15s ease}@keyframes mdlin{from{opacity:0}to{opacity:1}}.mdl-c{background:#fff;border-radius:28px;padding:24px;max-width:440px;width:100%;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}.mdl-c h3{font-size:20px;font-weight:500;letter-spacing:-.4px;margin:0}.mdl-c p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.45}.mdl-c blockquote{margin:0;background:var(--chip);border-radius:14px;padding:12px 14px;font-size:14.5px;line-height:1.45}.mdl-a{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
-.rc-ok{display:flex;gap:10px;align-items:flex-start;background:#E3F4EA;color:#1E6B3F;border-radius:14px;padding:11px 14px;font-size:13.5px;line-height:1.4}.rc-ok b{width:20px;height:20px;border-radius:50%;background:#2E9D5B;color:#fff;display:grid;place-items:center;font-size:12px;flex:none}
+.rc-ok{display:flex;gap:10px;align-items:flex-start;background:#E3F4EA;color:#1E6B3F;border-radius:14px;padding:11px 14px;font-size:13.5px;line-height:1.4}.rc-up{margin-left:6px;border:0;background:transparent;color:#1E6B3F;font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0}
+.rc-ok b{width:20px;height:20px;border-radius:50%;background:#2E9D5B;color:#fff;display:grid;place-items:center;font-size:12px;flex:none}
 .rc-chat{display:flex;flex-direction:column;gap:8px;background:var(--chip);border-radius:14px;padding:12px;max-height:300px;overflow:auto}.rc-bl{align-self:flex-start;max-width:92%;background:#fff;border-radius:14px 14px 14px 4px;padding:9px 12px;font-size:13.5px;line-height:1.5}.rc-bl.eu{align-self:flex-end;background:#DDE5FB;border-radius:14px 14px 4px 14px}.rc-w{font-size:11.5px;color:var(--muted);margin-bottom:3px}.rc-pcts{display:flex;flex-wrap:wrap;gap:6px}.rc-pcts .chipb.rec{border-color:#4A63C4;background:#F4F6FD}.rc-f{display:flex;gap:8px}.rc-f input{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:9px 12px;font:inherit;font-size:14px;background:#fff}
 .rc-sb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}.rc-face{width:30px;height:30px;flex:none;display:inline-block}.rc-face svg{width:100%;height:100%;display:block}
 .rc-sy{position:relative;font-weight:600;border-bottom:1px dotted #4A63C4;cursor:help;outline:none}.rc-tip{display:none;position:absolute;left:0;top:calc(100% + 8px);z-index:30;width:min(320px,78vw);background:#1A1A1A;color:#fff;padding:12px 14px;border-radius:14px;font-weight:400;font-size:13.5px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.25)}.rc-sy:hover .rc-tip,.rc-sy:focus .rc-tip{display:flex;flex-direction:column;gap:8px}.rc-tc{display:flex;flex-direction:column;gap:2px;font-size:12.5px;opacity:.9}.rc-ta{font-size:12.5px;color:#FFD9A0}
@@ -938,7 +939,7 @@ function responder(){
     }
     if(!respondeu)bt+=agirHtml(c);
     var form=med?'<form class="rc-f" data-id="'+c.id+'"><input name="t" type="text" maxlength="400" autocomplete="off" placeholder="Responder ao mediador com texto"><button type="submit" class="btn sm">Enviar</button></form>':'';
-    return '<section class="card rc">'+top+avisoEnvio(c)+msgH+sugH+(bt?'<div class="rc-ops">'+bt+'</div>':'')+form+'<div class="row" style="gap:10px"><button type="button" class="btn ghost sm" data-a="caso" data-v="'+c.id+'">Ver caso</button></div></section>';}).join('');
+    return '<section class="card rc">'+top+avisoEnvio(c)+msgH+sugH+(bt?'<div class="rc-ops">'+bt+'</div>':'')+form+'<div class="row" style="gap:10px"><button type="button" class="btn ghost sm" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(med?'<button type="button" class="btn ghost sm" data-a="mlAtualizar" data-v="'+c.id+'">Atualizar conversa</button>':'')+'</div></section>';}).join('');
   return head()+'<p class="sub" style="margin:0 6px">Reclamações do Mercado Livre em que a loja precisa responder até um prazo, da mais urgente para a menos. Cada envio pede a sua confirmação.</p>'+(cards?'<div class="rgrid">'+cards+'</div>':'<div class="empty">Nenhuma reclamação do Mercado Livre esperando resposta da loja.</div>');
 }
 function opcoesML(t){var r=[];String(t||'').split('\n').forEach(function(l){var m=l.match(/^\s*(\d+)\.\s*\*\*(.+?)\*\*\s*[—\-:]\s*(.+)$/);if(m)r.push({n:+m[1],titulo:m[2].trim(),desc:m[3]});});return r;}
@@ -1013,8 +1014,23 @@ function avisoEnvio(c){
   var e=c.env;if(!e)return '';
   var t=new Date(e.criado_em);if(c.msg&&new Date(c.msg.enviado_em)>t)return '';
   var d=e.dados||{},o={mediador_texto:'Sua mensagem foi enviada ao mediador do Mercado Livre',mediador_opcao:'Sua escolha foi enviada ao mediador do Mercado Livre',mediador_pct:'Sua porcentagem foi enviada ao mediador do Mercado Livre',partial_refund:'O reembolso parcial foi oferecido ao comprador',refund:'O reembolso total foi feito',allow_return:'A devolução foi aceita'}[d.acao]||'Sua resposta foi enviada ao Mercado Livre';
-  return '<div class="rc-ok"><b>✓</b><span>'+o+' às '+t.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'. O ML aceitou o envio. A resposta dele aparece aqui em até 15 minutos.</span></div>';
+  return '<div class="rc-ok"><b>✓</b><span>'+o+' às '+t.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' e o Mercado Livre aceitou. Aguardando o mediador responder. <button type="button" class="rc-up" data-a="mlAtualizar" data-v="'+c.id+'">Atualizar agora</button></span></div>';
 }
+
+async function mlAtualizar(id,quieto){
+  try{
+    var rr=await SB.functions.invoke('devol-ml-agir',{body:{modo:'mensagens',caso_id:id}});
+    var d=rr.data||{};if(rr.error||!d.ok)throw new Error(d.mensagem||(rr.error&&rr.error.message)||'erro');
+    await carregar();render(true,false);
+    if(!quieto)toast('Conversa atualizada.');
+  }catch(e){if(!quieto)toast('Não consegui atualizar: '+((e&&e.message)||'erro'));}
+}
+setInterval(function(){
+  if(document.hidden||S.tela!=='resp'||S.agindo)return;
+  var ae=document.activeElement;if(ae&&ae.closest&&ae.closest('.rc-f')&&ae.value)return;
+  var pend=S.casos.filter(function(c){return c.env&&(!c.msg||new Date(c.msg.enviado_em)<=new Date(c.env.criado_em));}).slice(0,3);
+  pend.forEach(function(c){mlAtualizar(c.id,true);});
+},20000);
 
 /* ---------- render e eventos ---------- */
 var app=document.getElementById('app');
@@ -1073,6 +1089,7 @@ document.addEventListener('click',function(e){
       else if(a==='aprovar'){aprovar();}
   else if(a==='fotosCaso'){var cc=caso(v);if(cc){S.lote.pedido=String(cc.raw.pedido||cc.raw.solicitacao_id||'');ir('receber');}}
   else if(a==='mlOfertas'){mlOfertas(v);}
+  else if(a==='mlAtualizar'){mlAtualizar(v);}
   else if(a==='mlAgir'){mlAgir(v);}
   else if(a==='concordar'){decidirCaso(v,'concordar_nao_contestar');}
   else if(a==='forcar'){decidirCaso(v,'contestar_mesmo_assim');}
