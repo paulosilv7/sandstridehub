@@ -482,7 +482,8 @@ body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 @media (min-width:900px){
   .custos-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
-  .custos-grid{height:calc(100dvh - 190px);min-height:520px;align-items:stretch}
+  .custos-grid{height:calc(100dvh - 128px);min-height:560px;align-items:stretch}
+  .palco{padding-bottom:96px}
   .palco{height:100%;min-height:0}
   .custos-dados{height:100%;overflow-y:auto;padding:0 6px 24px 0;scrollbar-width:thin}
 }
@@ -512,3 +513,8 @@ body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
 @media (prefers-reduced-motion:reduce){.palco::before,.sandy-grande,.brilho,.palco-bolha.entra{animation:none!important}}
 .palco-bolha .bt{display:block;text-align:center}
 .palco-bolha .nb{display:inline;line-height:1}
+
+/* Texto do balão: espaçamento limpo e números integrados à frase */
+.palco-bolha{font-size:18px;line-height:1.55;letter-spacing:0;word-spacing:.08em;padding:20px 26px;max-width:38ch;font-weight:600}
+.palco-bolha .bt{text-wrap:balance;text-align:center}
+.palco-bolha .nb{font-size:1em;font-weight:800;line-height:inherit;letter-spacing:0;margin:0;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;white-space:nowrap}
