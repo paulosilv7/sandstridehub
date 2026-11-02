@@ -522,3 +522,10 @@ body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
 /* Página de custos usa a largura toda da tela (sem o limite de 1500px) */
 body:has(#vista[data-v="custos"]) .shell{max-width:none}
 body:has(#vista[data-v="custos"]) .main,body:has(#vista[data-v="custos"]) .vista{width:100%}
+
+/* Custos: mesma largura e altura da caixa de entrada (preenche até o fim da tela, o menu flutua por cima) */
+@media (min-width:861px){
+  .vista[data-v="custos"]{flex:1 1 0;min-height:0}
+  .custos-grid{flex:1 1 0;height:auto;min-height:0}
+  .custos-dados{padding:0}
+}
