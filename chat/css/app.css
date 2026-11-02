@@ -518,3 +518,7 @@ body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
 .palco-bolha{font-size:18px;line-height:1.55;letter-spacing:0;word-spacing:.08em;padding:20px 26px;max-width:38ch;font-weight:600}
 .palco-bolha .bt{text-wrap:balance;text-align:center}
 .palco-bolha .nb{font-size:1em;font-weight:800;line-height:inherit;letter-spacing:0;margin:0;padding:1px 7px;border-radius:8px;background:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Página de custos usa a largura toda da tela (sem o limite de 1500px) */
+body:has(#vista[data-v="custos"]) .shell{max-width:none}
+body:has(#vista[data-v="custos"]) .main,body:has(#vista[data-v="custos"]) .vista{width:100%}
