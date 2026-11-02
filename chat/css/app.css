@@ -475,3 +475,10 @@ body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   .row .nm{font-size:13px}
   .rows{padding-bottom:76px}
 }
+
+/* Balões da Sandy na página de custos */
+.bolha{cursor:pointer;text-align:left;border:0;font:inherit;font-size:15px;font-weight:600;line-height:1.45;padding:12px 16px;max-width:62ch;transition:opacity .18s}
+.bolha.troca{opacity:0}
+.pontos{display:flex;gap:5px;flex-wrap:wrap}
+.pontos i{width:6px;height:6px;border-radius:50%;background:var(--chip)}
+.pontos i.on{background:var(--info)}

@@ -601,10 +601,75 @@ function inicioPeriodoCusto(p) {
   d.setUTCDate(d.getUTCDate() - (p === '7' ? 6 : p === '30' ? 29 : 0));
   return d;
 }
+const fmtN = (n) => Number(n).toLocaleString('pt-BR');
+const q = (n, um, varios) => `${fmtN(n)} ${n === 1 ? um : varios}`;
+function inicioSemana() {
+  const hoje = diaBR(Date.now()), d = new Date(`${hoje}T00:00:00-03:00`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d;
+}
+// Frases da Sandy sobre o próprio desempenho (cada uma vira um balão).
+function bolhasSandy(regs) {
+  const agora = Date.now(), hoje0 = inicioPeriodoCusto('hoje').getTime(), sem0 = inicioSemana().getTime(), mes0 = inicioPeriodoCusto('mes').getTime();
+  const quando = (r) => new Date(r.criado_em).getTime();
+  const resp = regs.filter((r) => r.decisao === 'respondeu' && r.modelo !== 'equipe');
+  const esc2 = regs.filter((r) => r.decisao === 'escalou');
+  const conv = (lista, ini) => new Set(lista.filter((r) => quando(r) >= ini).map((r) => r.conversa_id));
+  const atend = { total: conv(resp, 0).size, mes: conv(resp, mes0).size, sem: conv(resp, sem0).size, hoje: conv(resp, hoje0).size };
+  const acolh = conv(resp.filter((r) => String(r.motivo || '').startsWith('[acolhimento]')), mes0).size;
+  const eficiencia = (ini) => {
+    const a = conv(resp, ini), e = conv(esc2, ini);
+    const sozinhas = [...a].filter((id) => !e.has(id)).length, todas = new Set([...a, ...e]).size;
+    return todas ? { pct: Math.round((sozinhas / todas) * 100), sozinhas, todas } : null;
+  };
+  const efSem = eficiencia(sem0), efMes = eficiencia(mes0);
+  const msgsMes = resp.filter((r) => quando(r) >= mes0).length;
+  const porDia = new Map();
+  resp.filter((r) => quando(r) >= mes0).forEach((r) => { const d = diaBR(r.criado_em); porDia.set(d, (porDia.get(d) || new Set()).add(r.conversa_id)); });
+  const melhor = [...porDia.entries()].sort((a, b) => b[1].size - a[1].size)[0];
+  const horas = new Array(24).fill(0);
+  resp.filter((r) => quando(r) >= mes0).forEach((r) => { horas[Number(new Date(r.criado_em).toLocaleString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false })) % 24]++; });
+  const pico = horas.indexOf(Math.max(...horas));
+  const b = [`${cumprimento()}, ${eu()}! Vou te contar como eu estou me saindo. Toca em mim ou no balão para ver a próxima. 😊`];
+  b.push(atend.hoje ? `Hoje eu já atendi ${q(atend.hoje, 'cliente', 'clientes')}.` : 'Hoje eu ainda não precisei atender ninguém. Dia calminho por aqui.');
+  b.push(atend.sem ? `Nesta semana eu respondi ${q(atend.sem, 'cliente', 'clientes')}.` : 'Nesta semana ainda não respondi nenhum cliente.');
+  b.push(atend.mes ? `Neste mês eu já respondi ${q(atend.mes, 'cliente', 'clientes')}, com ${q(msgsMes, 'mensagem enviada', 'mensagens enviadas')}.` : 'Neste mês eu ainda não respondi ninguém.');
+  b.push(atend.total ? `Desde que comecei, já atendi ${q(atend.total, 'cliente', 'clientes')} no total. Vamos que vamos!` : 'Ainda estou no começo: nenhum cliente atendido no total.');
+  if (efSem) b.push(`Nesta semana resolvi sozinha ${efSem.pct}% dos casos (${efSem.sozinhas} de ${efSem.todas}). O resto eu passei para a equipe.`);
+  if (efMes) b.push(`No mês, ${efMes.pct}% das conversas eu resolvi sem precisar chamar ninguém (${efMes.sozinhas} de ${efMes.todas}).`);
+  if (acolh) b.push(`Neste mês eu acolhi ${q(acolh, 'cliente com problema no pedido', 'clientes com problema no pedido')}, para a equipe acompanhar com calma.`);
+  if (esc2.length) { const n = conv(esc2, mes0).size; b.push(n ? `Neste mês pedi ajuda à equipe em ${q(n, 'conversa', 'conversas')}, só quando não tinha certeza da resposta.` : 'Neste mês não precisei pedir ajuda à equipe. Estou orgulhosa! 💪'); }
+  if (melhor) b.push(`Meu dia mais corrido do mês foi ${melhor[0].slice(8)}/${melhor[0].slice(5, 7)}: atendi ${q(melhor[1].size, 'cliente', 'clientes')}.`);
+  if (Math.max(...horas) > 0) b.push(`O horário em que mais trabalho é por volta das ${pico}h. Os clientes gostam de falar nessa hora!`);
+  return b;
+}
+function sandyBolha() {
+  const k = S.custos; if (!k?.bolhas?.length) return '';
+  const i = (S.bolhaIdx || 0) % k.bolhas.length;
+  return `<div class="sandy" id="sandyCusto"><button type="button" class="sandy-fig" data-act="bolha-prox" aria-label="Próxima mensagem da Sandy">${sandySvg('feliz', 'k')}</button>` +
+    `<div class="sandy-txt"><button type="button" class="fala bolha" id="bolhaTxt" data-act="bolha-prox" aria-live="polite">${esc(k.bolhas[i])}</button>` +
+    `<div class="pontos" aria-hidden="true">${k.bolhas.map((_, j) => `<i${j === i ? ' class="on"' : ''}></i>`).join('')}</div></div></div>`;
+}
+function proximaBolha(manual) {
+  const k = S.custos; if (S.view !== 'custos' || !k?.bolhas?.length) return;
+  const t = $('bolhaTxt'); if (!t) return;
+  S.bolhaIdx = ((S.bolhaIdx || 0) + 1) % k.bolhas.length;
+  t.classList.add('troca');
+  setTimeout(() => {
+    const t2 = $('bolhaTxt'); if (!t2) return;
+    t2.textContent = k.bolhas[S.bolhaIdx]; t2.classList.remove('troca');
+    document.querySelectorAll('#sandyCusto .pontos i').forEach((el, j) => el.classList.toggle('on', j === S.bolhaIdx));
+  }, 180);
+  if (manual) { const f = document.querySelector('#sandyCusto .sandy-fig'); if (f) { f.classList.add('pula'); setTimeout(() => f.classList.remove('pula'), 520); } }
+}
+function ligarBolha() {
+  clearInterval(S.tBolha);
+  S.tBolha = setInterval(() => proximaBolha(false), 7000);
+}
 async function carregarCustos() {
   if (!souAdmin()) { S.custos = { semAcesso: true }; return; }
   const p = S.custosPeriodo || 'mes', ini = inicioPeriodoCusto(p).toISOString();
-  const [cam, mes] = await Promise.all([
+  const [cam, mes, regs] = await Promise.all([
     sb.from('configuracoes').select('valor').eq('chave', 'cambio_usd_brl').maybeSingle(),
     (async () => {
       let todas = [], de = 0;
@@ -618,9 +683,20 @@ async function carregarCustos() {
       }
       return { linhas: todas };
     })(),
+    (async () => {
+      let todas = [], de = 0;
+      for (let i = 0; i < 40; i++) {
+        const r = await sb.from('sandy_registros').select('conversa_id, decisao, motivo, modelo, criado_em').order('criado_em', { ascending: true }).range(de, de + 999);
+        if (r.error) break;
+        todas = todas.concat(r.data || []);
+        if ((r.data || []).length < 1000) break;
+        de += 1000;
+      }
+      return todas;
+    })(),
   ]);
   const cambio = Number(String(cam.data?.valor ?? '5.5').replace(',', '.')) || 5.5;
-  S.custos = { periodo: p, cambio, linhas: mes.linhas, erro: !!mes.erro };
+  S.custos = { periodo: p, cambio, linhas: mes.linhas, erro: !!mes.erro, bolhas: bolhasSandy(regs) };
 }
 function vistaCustos() {
   const k = S.custos;
@@ -655,7 +731,7 @@ function vistaCustos() {
     const hoje = new Date(); const diaDoMes = Number(diaBR(hoje).slice(8)), ultimo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
     proj = `<div class="txt">Se continuar neste ritmo, o mês fecha em torno de <strong>${brl((total / diaDoMes) * ultimo)}</strong>.</div>`;
   }
-  let h = `<p class="sub">Quanto a Sandy gasta com a OpenAI. Valores estimados pelos tokens de cada chamada; o painel da OpenAI é a fonte oficial.</p>${notaHtml()}`;
+  let h = sandyBolha() + `<p class="sub">Quanto a Sandy gasta com a OpenAI. Valores estimados pelos tokens de cada chamada; o painel da OpenAI é a fonte oficial.</p>${notaHtml()}`;
   h += `<div class="mks" role="group" aria-label="Período">${PERIODOS_CUSTO.map((x) => `<button type="button" class="pill sm" data-act="custos-periodo" data-v="${x[0]}" aria-pressed="${k.periodo === x[0]}">${x[1]}</button>`).join('')}</div>`;
   if (k.erro) h += '<p class="erro" role="alert">Não consegui carregar todo o consumo. Os números abaixo podem estar incompletos.</p>';
   h += `<div class="grade"><div class="box"><span class="eyebrow">Gasto no período</span><h2 style="font-size:1.6rem">${brl(total)}</h2><div class="mut">${usd(total)}</div></div>` +
@@ -811,7 +887,8 @@ function ir(v) {
   S.view = v; S.msg = ''; S.editRap = null; S.novaRap = false; S.delRap = null; S.delMembro = null; S.editBase = null; S.novaBase = false; S.delBase = null;
   renderView(); if (v === 'inbox') renderInbox();
   if (v === 'sandy') carregarSandy().then(() => { if (S.view === 'sandy') renderView(); });
-  if (v === 'custos') { S.custos = null; carregarCustos().then(() => { if (S.view === 'custos') renderView(); }); }
+  clearInterval(S.tBolha);
+  if (v === 'custos') { S.custos = null; carregarCustos().then(() => { if (S.view === 'custos') { renderView(); ligarBolha(); } }); }
 }
 async function escolher(id) {
   S.sel = id; S.draft = ''; S.anexos = []; S.aviso = ''; S.msgs = []; S.tela = 'conversa';
@@ -926,6 +1003,7 @@ document.addEventListener('click', async (ev) => {
     case 'apagar-rap':
       if (await guardar(sb.from('respostas_rapidas').delete().eq('id', id), 'Resposta apagada.')) { S.delRap = null; await carregarBase(); }
       renderView(); break;
+    case 'bolha-prox': proximaBolha(true); ligarBolha(); break;
     case 'custos-periodo': S.custosPeriodo = v; S.custos = null; renderView(); await carregarCustos(); if (S.view === 'custos') renderView(); break;
     case 'custos-cambio': {
       const n = Number(val('cs-cambio').replace(',', '.'));
