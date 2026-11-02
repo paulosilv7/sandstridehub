@@ -644,7 +644,7 @@ function bolhasSandy(regs) {
   return b;
 }
 const moodBolha = (t) => (/corrido/.test(t) ? 'cansada' : /calminho|ainda n[ãa]o|nenhum cliente/.test(t) ? 'tranquila' : 'feliz');
-const bolhaHtml = (t) => esc(t).replace(/(\d[\d.,]*%?)/g, '<b class="nb">$1</b>');
+const bolhaHtml = (t) => `<span class="bt">${esc(t).replace(/(\d[\d.,]*%?)/g, '<b class="nb">$1</b>')}</span>`;
 function sandyBolha() {
   const k = S.custos; if (!k?.bolhas?.length) return '';
   const i = (S.bolhaIdx || 0) % k.bolhas.length, t = k.bolhas[i];

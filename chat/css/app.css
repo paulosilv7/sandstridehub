@@ -508,3 +508,5 @@ body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
 @keyframes cintilar{0%,100%{opacity:0;transform:scale(.4) rotate(0)}50%{opacity:.9;transform:scale(1) rotate(30deg)}}
 @media (max-width:899px){.palco{min-height:0;padding-bottom:18px}.sandy-grande{width:min(220px,62%)}}
 @media (prefers-reduced-motion:reduce){.palco::before,.sandy-grande,.brilho,.palco-bolha.entra{animation:none!important}}
+.palco-bolha .bt{display:block;text-align:center}
+.palco-bolha .nb{display:inline;line-height:1}
