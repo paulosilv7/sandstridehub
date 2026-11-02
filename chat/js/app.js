@@ -643,24 +643,32 @@ function bolhasSandy(regs) {
   if (Math.max(...horas) > 0) b.push(`O horário em que mais trabalho é por volta das ${pico}h. Os clientes gostam de falar nessa hora!`);
   return b;
 }
+const moodBolha = (t) => (/corrido/.test(t) ? 'cansada' : /calminho|ainda n[ãa]o|nenhum cliente/.test(t) ? 'tranquila' : 'feliz');
+const bolhaHtml = (t) => esc(t).replace(/(\d[\d.,]*%?)/g, '<b class="nb">$1</b>');
 function sandyBolha() {
   const k = S.custos; if (!k?.bolhas?.length) return '';
-  const i = (S.bolhaIdx || 0) % k.bolhas.length;
-  return `<div class="sandy" id="sandyCusto"><button type="button" class="sandy-fig" data-act="bolha-prox" aria-label="Próxima mensagem da Sandy">${sandySvg('feliz', 'k')}</button>` +
-    `<div class="sandy-txt"><button type="button" class="fala bolha" id="bolhaTxt" data-act="bolha-prox" aria-live="polite">${esc(k.bolhas[i])}</button>` +
-    `<div class="pontos" aria-hidden="true">${k.bolhas.map((_, j) => `<i${j === i ? ' class="on"' : ''}></i>`).join('')}</div></div></div>`;
+  const i = (S.bolhaIdx || 0) % k.bolhas.length, t = k.bolhas[i];
+  return `<aside class="palco" id="sandyCusto" aria-label="Sandy conta como está se saindo">` +
+    '<span class="brilho b1" aria-hidden="true">✦</span><span class="brilho b2" aria-hidden="true">✦</span><span class="brilho b3" aria-hidden="true">✦</span><span class="brilho b4" aria-hidden="true">✦</span>' +
+    `<button type="button" class="palco-bolha" id="bolhaTxt" data-act="bolha-prox" aria-live="polite">${bolhaHtml(t)}</button>` +
+    `<button type="button" class="sandy-grande" id="sandyGrande" data-act="bolha-prox" aria-label="Próxima mensagem da Sandy">${sandySvg(moodBolha(t), 'k')}</button>` +
+    '<span class="palco-dica">Toque na Sandy para ouvir mais</span></aside>';
 }
+const GESTOS = ['g-pulo', 'g-giro', 'g-tremida'];
 function proximaBolha(manual) {
   const k = S.custos; if (S.view !== 'custos' || !k?.bolhas?.length) return;
-  const t = $('bolhaTxt'); if (!t) return;
+  const t = $('bolhaTxt'), g = $('sandyGrande'); if (!t || !g) return;
   S.bolhaIdx = ((S.bolhaIdx || 0) + 1) % k.bolhas.length;
   t.classList.add('troca');
+  const gesto = GESTOS[(S.gesto = ((S.gesto ?? -1) + 1) % GESTOS.length)];
+  g.classList.add(gesto);
   setTimeout(() => {
-    const t2 = $('bolhaTxt'); if (!t2) return;
-    t2.textContent = k.bolhas[S.bolhaIdx]; t2.classList.remove('troca');
-    document.querySelectorAll('#sandyCusto .pontos i').forEach((el, j) => el.classList.toggle('on', j === S.bolhaIdx));
-  }, 180);
-  if (manual) { const f = document.querySelector('#sandyCusto .sandy-fig'); if (f) { f.classList.add('pula'); setTimeout(() => f.classList.remove('pula'), 520); } }
+    const t2 = $('bolhaTxt'), g2 = $('sandyGrande'); if (!t2 || !g2) return;
+    const txt = k.bolhas[S.bolhaIdx];
+    t2.innerHTML = bolhaHtml(txt); t2.classList.remove('troca'); t2.classList.add('entra');
+    g2.innerHTML = sandySvg(moodBolha(txt), 'k');
+    setTimeout(() => { t2.classList.remove('entra'); g2.classList.remove(gesto); }, 700);
+  }, 220);
 }
 function ligarBolha() {
   clearInterval(S.tBolha);
@@ -731,19 +739,19 @@ function vistaCustos() {
     const hoje = new Date(); const diaDoMes = Number(diaBR(hoje).slice(8)), ultimo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
     proj = `<div class="txt">Se continuar neste ritmo, o mês fecha em torno de <strong>${brl((total / diaDoMes) * ultimo)}</strong>.</div>`;
   }
-  let h = sandyBolha() + `<p class="sub">Quanto a Sandy gasta com a OpenAI. Valores estimados pelos tokens de cada chamada; o painel da OpenAI é a fonte oficial.</p>${notaHtml()}`;
+  let h = `<p class="sub">Quanto a Sandy gasta com a OpenAI. Valores estimados pelos tokens de cada chamada; o painel da OpenAI é a fonte oficial.</p>${notaHtml()}`;
   h += `<div class="mks" role="group" aria-label="Período">${PERIODOS_CUSTO.map((x) => `<button type="button" class="pill sm" data-act="custos-periodo" data-v="${x[0]}" aria-pressed="${k.periodo === x[0]}">${x[1]}</button>`).join('')}</div>`;
   if (k.erro) h += '<p class="erro" role="alert">Não consegui carregar todo o consumo. Os números abaixo podem estar incompletos.</p>';
-  h += `<div class="grade"><div class="box"><span class="eyebrow">Gasto no período</span><h2 style="font-size:1.6rem">${brl(total)}</h2><div class="mut">${usd(total)}</div></div>` +
-    `<div class="box"><span class="eyebrow">Chamadas à IA</span><h2 style="font-size:1.6rem">${num(chamadas)}</h2><div class="mut">${num(tokens)} tokens</div></div>` +
-    `<div class="box"><span class="eyebrow">Custo por conversa atendida</span><h2 style="font-size:1.6rem">${convs ? brl4(soAtend / convs) : '—'}</h2><div class="mut">${num(convs)} conversas</div></div></div>`;
+  h += `<div class="kpis"><div class="box"><span class="eyebrow">Gasto no período</span><h2 style="font-size:1.45rem">${brl(total)}</h2><div class="mut">${usd(total)}</div></div>` +
+    `<div class="box"><span class="eyebrow">Chamadas à IA</span><h2 style="font-size:1.45rem">${num(chamadas)}</h2><div class="mut">${num(tokens)} tokens</div></div>` +
+    `<div class="box"><span class="eyebrow">Custo por conversa atendida</span><h2 style="font-size:1.45rem">${convs ? brl4(soAtend / convs) : '—'}</h2><div class="mut">${num(convs)} conversas</div></div></div>`;
   h += `<div class="box"><h2>Gasto por dia</h2>${proj}` + (dias.length ? `<div style="display:flex;align-items:flex-end;gap:6px;height:120px;overflow-x:auto;padding-top:6px">${dias.map(([d, u]) => `<div style="flex:1 0 28px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px" title="${fmtDia(d)}: ${brl(u)}"><span class="mut" style="font-size:.68rem">${brl(u).replace('R$', '').trim()}</span><div style="width:100%;max-width:34px;height:${Math.max(3, (u / maxDia) * 78)}px;background:var(--brand,#2a6df4);border-radius:4px 4px 0 0"></div><span class="mut" style="font-size:.68rem">${fmtDia(d)}</span></div>`).join('')}</div>` : '<p class="mut" style="margin:0">Sem consumo neste período.</p>') + '</div>';
   h += `<div class="box"><h2>Por marketplace</h2>${barras(agrupa((x) => x.marketplace || 'outros'), (c) => MKS[c]?.nome || (c === 'outros' ? 'Telegram / outros' : c))}</div>`;
   h += `<div class="box"><h2>Por loja</h2>${barras(agrupa((x) => x.loja_id || ''), (c) => (c ? nomeLoja(c) : 'Telegram / sem loja'))}</div>`;
   h += `<div class="box"><h2>Por tipo de uso</h2>${barras(agrupa((x) => x.origem), (c) => ORIGENS_CUSTO[c] || c)}</div>`;
   h += `<div class="box"><h2>Cotação do dólar</h2><div class="txt">Usada para converter o custo em reais. Ajuste quando quiser.</div><div class="envio"><input id="cs-cambio" type="text" inputmode="decimal" value="${String(k.cambio).replace('.', ',')}" aria-label="Cotação do dólar em reais" style="max-width:120px"><button type="button" class="btn" data-act="custos-cambio">Salvar</button></div>` +
     '<p class="mut" style="margin:0">O registro começou quando esta página foi criada: não há histórico de antes disso. A transcrição de áudio do Telegram ainda não entra na conta.</p></div>';
-  return h;
+  return `<div class="custos-grid">${sandyBolha()}<div class="custos-dados">${h}</div></div>`;
 }
 const TITULOS = { inbox: 'Chats', rapidas: 'Respostas rápidas', sandy: 'Sandy', custos: 'Custos de API', config: 'Configurações' };
 function renderView() {

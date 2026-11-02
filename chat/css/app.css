@@ -476,9 +476,35 @@ body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   .rows{padding-bottom:76px}
 }
 
-/* Balões da Sandy na página de custos */
-.bolha{cursor:pointer;text-align:left;border:0;font:inherit;font-size:15px;font-weight:600;line-height:1.45;padding:12px 16px;max-width:62ch;transition:opacity .18s}
-.bolha.troca{opacity:0}
-.pontos{display:flex;gap:5px;flex-wrap:wrap}
-.pontos i{width:6px;height:6px;border-radius:50%;background:var(--chip)}
-.pontos i.on{background:var(--info)}
+/* Sandy em destaque na página de custos: tela dividida meio a meio */
+.custos-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+.custos-dados{display:flex;flex-direction:column;gap:14px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+@media (min-width:900px){
+  .custos-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
+  .palco{position:sticky;top:14px}
+}
+.palco{position:relative;overflow:hidden;background:var(--card);border-radius:28px;padding:26px 22px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:520px}
+.palco::before{content:"";position:absolute;left:50%;top:58%;width:380px;height:380px;max-width:90%;border-radius:50%;background:radial-gradient(closest-side,var(--info-bg),transparent);transform:translate(-50%,-50%);animation:respirar 5s ease-in-out infinite}
+.palco-bolha{position:relative;z-index:1;border:0;font:inherit;cursor:pointer;background:var(--info-bg);color:var(--info);border-radius:22px;padding:16px 20px;font-size:17px;font-weight:600;line-height:1.45;text-align:center;max-width:34ch;min-height:5.6em;display:flex;align-items:center;justify-content:center;transition:opacity .2s,transform .2s}
+.palco-bolha::after{content:"";position:absolute;left:50%;bottom:-11px;width:22px;height:22px;background:inherit;transform:translateX(-50%) rotate(45deg);border-radius:4px}
+.palco-bolha .nb{font-size:1.35em;font-weight:800;letter-spacing:-.3px;margin:0 .08em}
+.palco-bolha.troca{opacity:0;transform:translateY(8px) scale(.96)}
+.palco-bolha.entra{animation:surgir .5s cubic-bezier(.2,1.4,.4,1)}
+.sandy-grande{position:relative;z-index:1;width:min(300px,74%);border:0;background:transparent;padding:0;cursor:pointer;margin-top:14px;animation:balancar 6s ease-in-out infinite}
+.sandy-grande svg{display:block;width:100%;height:auto;overflow:visible}
+.sandy-grande.g-pulo{animation:pulo .75s}
+.sandy-grande.g-giro{animation:giro .8s}
+.sandy-grande.g-tremida{animation:tremida .7s}
+.palco-dica{position:relative;z-index:1;font-size:12px;color:var(--muted)}
+.brilho{position:absolute;z-index:1;color:var(--info);opacity:0;font-size:22px;animation:cintilar 3.2s ease-in-out infinite}
+.brilho.b1{left:14%;top:46%}.brilho.b2{right:13%;top:40%;animation-delay:.9s;font-size:30px}.brilho.b3{left:20%;bottom:20%;animation-delay:1.8s;font-size:16px}.brilho.b4{right:20%;bottom:24%;animation-delay:2.5s}
+@keyframes respirar{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.1)}}
+@keyframes balancar{0%,100%{transform:rotate(-3deg) translateY(0)}50%{transform:rotate(3deg) translateY(-6px)}}
+@keyframes pulo{0%{transform:translateY(0) scale(1,1)}20%{transform:translateY(0) scale(1.08,.92)}45%{transform:translateY(-34px) scale(.95,1.06)}70%{transform:translateY(0) scale(1.06,.94)}100%{transform:translateY(0) scale(1,1)}}
+@keyframes giro{0%{transform:rotate(0) scale(1)}60%{transform:rotate(380deg) scale(1.12)}100%{transform:rotate(360deg) scale(1)}}
+@keyframes tremida{0%,100%{transform:rotate(0)}15%{transform:rotate(-9deg) translateX(-6px)}35%{transform:rotate(8deg) translateX(6px)}55%{transform:rotate(-6deg)}75%{transform:rotate(5deg)}}
+@keyframes surgir{0%{transform:scale(.8);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes cintilar{0%,100%{opacity:0;transform:scale(.4) rotate(0)}50%{opacity:.9;transform:scale(1) rotate(30deg)}}
+@media (max-width:899px){.palco{min-height:0;padding-bottom:18px}.sandy-grande{width:min(220px,62%)}}
+@media (prefers-reduced-motion:reduce){.palco::before,.sandy-grande,.brilho,.palco-bolha.entra{animation:none!important}}
