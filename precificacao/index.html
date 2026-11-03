@@ -402,6 +402,7 @@ var FOTOS={}, FILA=[], BAIXANDO=0;
 function fotoSrc(id){
   if(!id) return '';
   if(/^[0-9a-f]{32}$/i.test(id)) return urlImagem(id);
+  if(id.indexOf('sb:')===0) return 'https://imlgfmaqmzfonvbmlwpd.supabase.co/storage/v1/object/public/fotos-estoque/'+encodeURI(id.slice(3));
   if(FOTOS[id]&&FOTOS[id]!=='carregando'&&FOTOS[id]!=='erro') return FOTOS[id];
   if(!FOTOS[id]){ try{var c=localStorage.getItem('foto:'+id); if(c){FOTOS[id]=c;return c;}}catch(x){} FOTOS[id]='carregando'; FILA.push(id); setTimeout(proximaFoto,0); }
   return '';
