@@ -1071,11 +1071,10 @@ window.FOTO_PREVIA = null;
     return span;
   }
 
-  /* Para o modelo, vale a cor contada há mais tempo (ou nunca contada). */
-  function contagemMaisAntiga(lista) {
-    var temNunca = lista.some(function (p) { return !p.contado; });
-    if (temNunca) return null;
-    return Math.min.apply(null, lista.map(function (p) { return p.contado; }));
+  /* Para o modelo, vale a contagem mais recente de qualquer cor dele; só fica "nunca contado" se nenhuma cor foi contada. As cores mostram a própria data ao abrir o modelo. */
+  function contagemDoModelo(lista) {
+    var datas = lista.map(function (p) { return p.contado; }).filter(function (d) { return !!d; });
+    return datas.length ? Math.max.apply(null, datas) : null;
   }
 
   /* Miniatura com a foto do produto (pasta pública no Drive). Sem foto, mostra a letra. */
@@ -1175,7 +1174,7 @@ window.FOTO_PREVIA = null;
         var n = cores.length;
         lista.appendChild(criarItem(bola, m, n + (n === 1 ? ' cor' : ' cores'), function () {
           modeloAberto = m; filtrar(); window.scrollTo(0, 0);
-        }, etiquetaContagem(contagemMaisAntiga(cores))));
+        }, etiquetaContagem(contagemDoModelo(cores))));
       });
     });
   }
