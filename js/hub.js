@@ -127,13 +127,15 @@ async function tabelaAcessos() {
   $('tab').innerHTML = `<table><thead><tr><th>Pessoa</th>${APPS.filter((a) => !a.breve).map((a) => `<th class="c">${a.nome}</th>`).join('')}</tr></thead><tbody>` +
     (eq || []).map((p) => `<tr><td><div style="display:flex;align-items:center;gap:10px">${avatar(p.foto_path, p.nome)}<div><b>${esc(p.nome)}</b><br><span class="sub">${p.papel === 'admin' ? 'Administrador' : 'Atendente'}</span></div></div></td>` +
       APPS.filter((a) => !a.breve).map((a) => p.papel === 'admin' ? '<td class="c sub">Tudo</td>' :
-        `<td class="c"><input type="checkbox" data-u="${p.usuario_id}" data-a="${a.id}" aria-label="${esc(p.nome)}: ${a.nome}"${tem.has(`${p.usuario_id}|${a.id}`) ? ' checked' : ''}></td>`).join('') + '</tr>').join('') + '</tbody></table>';
+        `<td class="c"><input type="checkbox" data-u="${p.usuario_id}" data-a="${a.id}" aria-label="${esc(p.nome)}: ${a.nome}"${tem.has(`${p.usuario_id}|${a.id}`) ? ' checked' : ''}></td>`).join('') + '</tr>').join('') + '</tbody></table><p id="msg-acessos" class="sub" style="margin:8px 0 0" aria-live="polite"></p>';
   $('tab').onchange = async (ev) => {
     const c = ev.target; if (!c.dataset.u) return;
     const q = c.checked ? sb.from('acessos_apps').insert({ usuario_id: c.dataset.u, app: c.dataset.a })
       : sb.from('acessos_apps').delete().eq('usuario_id', c.dataset.u).eq('app', c.dataset.a);
     const { error } = await q;
-    if (error) { c.checked = !c.checked; c.title = 'Não foi possível salvar.'; }
+    const msg = $('msg-acessos');
+    if (error) { c.checked = !c.checked; c.title = 'Não foi possível salvar.'; if (msg) msg.textContent = 'Não foi possível salvar este acesso. Atualize a página e tente de novo; se continuar, avise o suporte.'; }
+    else if (msg) msg.textContent = c.checked ? 'Acesso liberado.' : 'Acesso retirado.';
   };
 }
 let iniciando = false;
