@@ -47,9 +47,10 @@ function base64(bytes: Uint8Array): string {
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(s);
 }
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
 
-async function ler(mime: string, bytes: Uint8Array, nome: string, categorias: string[]): Promise<any> {
+async function ler(mime: string, bytes: Uint8Array, nome: string, categorias: string[], legenda = ""): Promise<any> {
   const dados = `data:${mime};base64,${base64(bytes)}`;
   const parte = mime === "application/pdf"
     ? { type: "file", file: { filename: nome, file_data: dados } }
@@ -60,7 +61,7 @@ async function ler(mime: string, bytes: Uint8Array, nome: string, categorias: st
       model: MODELO, temperature: 0,
       response_format: { type: "json_schema", json_schema: { name: "comprovante", strict: true, schema: {
         type: "object", additionalProperties: false,
-        required: ["e_comprovante", "tipo", "valor", "data", "favorecido", "id_transacao", "descricao", "categoria", "pagador_nome", "pagador_documento", "pagador_instituicao"],
+        required: ["e_comprovante", "tipo", "valor", "data", "favorecido", "id_transacao", "descricao", "categoria", "pagador_nome", "pagador_documento", "pagador_instituicao", "mes_referencia", "conta_ref"],
         properties: {
           e_comprovante: { type: "boolean" },
           tipo: { type: "string", enum: ["Pix", "Boleto", "TED", "Cartão", "DAS", "Nota fiscal", "Outro"] },
@@ -73,10 +74,12 @@ async function ler(mime: string, bytes: Uint8Array, nome: string, categorias: st
           pagador_nome: { type: "string" },
           pagador_documento: { type: "string" },
           pagador_instituicao: { type: "string" },
+          mes_referencia: { type: "string" },
+          conta_ref: { type: "string", enum: ["", "I", "II", "III"] },
         } } } },
       messages: [
-        { role: "system", content: "Você lê comprovantes de pagamento brasileiros (Pix, boleto, TED, DAS, notas e recibos) de uma loja de tênis. Devolva só os dados que aparecem no documento. valor em reais como número (ex.: 85.98). data no formato AAAA-MM-DD (data do pagamento ou, se não houver, a do documento); vazio se não achar. favorecido = quem RECEBEU o dinheiro (nome ou empresa). id_transacao = ID da transação Pix (E2E, começa com E) ou código de autenticação; vazio se não houver. descricao = frase curta do que foi pago. categoria = a que melhor combina entre as permitidas, ou vazio se não tiver certeza. pagador_nome = quem PAGOU (titular da conta de origem, o campo "De", "Pagador" ou "Origem"); pagador_documento = CPF/CNPJ dele como aparece (mesmo mascarado); pagador_instituicao = banco ou instituição de origem (ex.: Mercado Pago, Sicoob, Nubank); vazio se não houver. e_comprovante=false se a imagem não for um comprovante ou documento de pagamento." },
-        { role: "user", content: [{ type: "text", text: "Leia este comprovante." }, parte] },
+        { role: "system", content: "Você lê comprovantes de pagamento brasileiros (Pix, boleto, TED, DAS, notas e recibos) de uma loja de tênis. Devolva só os dados que aparecem no documento. valor em reais como número (ex.: 85.98). data no formato AAAA-MM-DD (data do pagamento ou, se não houver, a do documento); vazio se não achar. favorecido = quem RECEBEU o dinheiro (nome ou empresa). id_transacao = ID da transação Pix (E2E, começa com E) ou código de autenticação; vazio se não houver. descricao = frase curta do que foi pago. categoria = a que melhor combina entre as permitidas, ou vazio se não tiver certeza. pagador_nome = quem PAGOU (titular da conta de origem, o campo \"De\", \"Pagador\" ou \"Origem\"); pagador_documento = CPF/CNPJ dele como aparece (mesmo mascarado); pagador_instituicao = banco ou instituição de origem (ex.: Mercado Pago, Sicoob, Nubank); vazio se não houver. mes_referencia = o mês a que o pagamento SE REFERE, no formato AAAA-MM, só se a legenda enviada junto disser (ex.: \"aluguel de outubro\" => o outubro mais plausível, do ano do pagamento ou do anterior); vazio se a legenda não disser. conta_ref = \"I\", \"II\" ou \"III\" só se a legenda disser de qual empresa/conta (ex.: \"da II\"); vazio se não disser. e_comprovante=false se a imagem não for um comprovante ou documento de pagamento." },
+        { role: "user", content: [{ type: "text", text: legenda ? `Leia este comprovante. Legenda enviada junto pela equipe: \"${legenda.slice(0, 400)}\"` : "Leia este comprovante." }, parte] },
       ],
     }),
   });
@@ -94,7 +97,7 @@ async function processar(u: any) {
   const foto = Array.isArray(msg.photo) && msg.photo.length ? msg.photo[msg.photo.length - 1] : (mimeDoc.startsWith("image/") ? doc : null);
   const pdf = mimeDoc === "application/pdf" ? doc : null;
   const arq = foto ?? pdf;
-  if (!arq) return; // só reage a foto ou PDF; conversa normal do grupo é ignorada
+  if (!arq) return complementar(msg); // sem arquivo: só reage se for um complemento ("é de outubro", "da II") a um comprovante recente
   const quem = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ") || "alguém";
   const responder = (t: string) => telegram("sendMessage", { chat_id: chat, text: t, reply_to_message_id: msg.message_id, allow_sending_without_reply: true, disable_web_page_preview: true }).catch(() => {});
   if (Number(arq.file_size ?? 0) > 15_000_000) return responder("Esse arquivo é grande demais (máx. 15 MB).");
@@ -109,7 +112,8 @@ async function processar(u: any) {
   const nomes = (cats ?? []).map((c: any) => c.nome);
   const mime = pdf ? "application/pdf" : (foto?.mime_type ?? "image/jpeg");
   let l: any;
-  try { l = await ler(mime, bytes, pdf?.file_name ?? "comprovante.pdf", nomes); }
+  const legenda = String(msg.caption ?? "").trim();
+  try { l = await ler(mime, bytes, pdf?.file_name ?? "comprovante.pdf", nomes, legenda); }
   catch (e) { await diag(`leitura: ${e instanceof Error ? e.message : e}`); return responder("Não consegui ler esse arquivo agora. Tenta enviar de novo daqui a pouco?"); }
   if (!l.e_comprovante || !(Number(l.valor) > 0)) return responder("Isso não parece um comprovante de pagamento (ou não achei o valor). Se for, tenta mandar uma foto mais nítida.");
 
@@ -122,7 +126,8 @@ async function processar(u: any) {
 
   // casa com conta fixa do mês ainda não paga
   let conta: any = null, liga = "";
-  const mes = (data ?? new Date().toISOString().slice(0, 10)).slice(0, 7) + "-01";
+  const mesRef = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(l.mes_referencia ?? "")) ? String(l.mes_referencia) : null;
+  const mes = (mesRef ?? (data ?? new Date().toISOString().slice(0, 10)).slice(0, 7)) + "-01";
   const { data: contas } = await supabase.from("financeiro_contas_fixas").select("id,nome,categoria,valor,dia").eq("ativa", true);
   const { data: pagas } = await supabase.from("financeiro_contas_pagas").select("conta_id").eq("mes", mes);
   const jaPagas = new Set((pagas ?? []).map((p: any) => p.conta_id));
@@ -147,7 +152,7 @@ async function processar(u: any) {
   const pagDig = dig(`${l.pagador_documento ?? ""}`);
   // Documento: compara só os números (o leitor às vezes devolve 58.258.487, às vezes 58258487 ou 58986174NOME).
   const origem = (origens ?? []).find((o: any) => dig(o.termo).length >= 6 ? pagDig.includes(dig(o.termo)) : ` ${pag} `.includes(` ${norm(o.termo)} `));
-  const sufixo = origem ? String(origem.rotulo).trim().split(/\s+/).pop()!.toUpperCase() : "";
+  const sufixo = l.conta_ref || (origem ? String(origem.rotulo).trim().split(/\s+/).pop()!.toUpperCase() : "");
   const catAlvo = regra?.categoria ?? l.categoria ?? "";
   if (!conta && /^(I|II|III)$/.test(sufixo) && catAlvo) {
     const doSufixo = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === catAlvo && String(c.nome).trim().toUpperCase().split(/\s+/).pop() === sufixo && Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
@@ -158,7 +163,7 @@ async function processar(u: any) {
     const iguais = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === regra.categoria && Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
     if (iguais.length === 1) conta = iguais[0];
   }
-  if (conta) liga = `Baixa a conta fixa ${conta.nome} (vence dia ${conta.dia})`;
+  if (conta) liga = `Baixa a conta fixa ${conta.nome} (vence dia ${conta.dia})${mesRef ? " de " + MESES[+mesRef.slice(5) - 1] + "/" + mesRef.slice(0, 4) : ""}`;
 
   const path = `telegram/${hash}.${pdf ? "pdf" : "jpg"}`;
   const up = await supabase.storage.from("financeiro-comprovantes").upload(path, bytes, { contentType: mime, upsert: true });
@@ -169,12 +174,55 @@ async function processar(u: any) {
     categoria_sugerida: (regra?.categoria ?? conta?.categoria ?? l.categoria) || null, conta_fixa_id: conta?.id ?? null,
     liga: repetido ? `Parece repetido: já existe um comprovante de ${brl(+repetido.valor)}${repetido.favorecido ? " para " + repetido.favorecido : ""}.` : liga || null,
     pagador_nome: String(l.pagador_nome ?? "").slice(0, 120) || null, pagador_documento: String(l.pagador_documento ?? "").slice(0, 40) || null, pagador_instituicao: String(l.pagador_instituicao ?? "").slice(0, 60) || null,
+    legenda: legenda || null, mes_referencia: mesRef ? mesRef + "-01" : null,
     arquivo_path: up.error ? null : path, estado: repetido ? "repetido" : "novo",
   };
   const ins = await supabase.from("financeiro_comprovantes").insert(linha);
   if (ins.error) { await diag(`inserir: ${ins.error.message}`); return responder("Li o comprovante, mas não consegui guardar. Tenta de novo?"); }
   if (repetido) return responder(`Esse parece repetido (${brl(valor)}${l.favorecido ? " · " + l.favorecido : ""}). Deixei sinalizado na Central, nada foi lançado.`);
-  await responder(`Li: ${l.tipo} de ${brl(valor)}${l.favorecido ? " para " + l.favorecido : ""}${data ? " em " + data.split("-").reverse().join("/") : ""}${linha.categoria_sugerida ? ` → ${linha.categoria_sugerida}` : ""}.${conta ? ` Combina com a conta fixa ${conta.nome}.` : ""}\nConfirme na Central: ${SITE}/financeiro/#despesas`);
+  await responder(`Li: ${l.tipo} de ${brl(valor)}${l.favorecido ? " para " + l.favorecido : ""}${data ? " em " + data.split("-").reverse().join("/") : ""}${linha.categoria_sugerida ? ` → ${linha.categoria_sugerida}` : ""}.${conta ? ` Combina com a conta fixa ${conta.nome}.` : ""}${mesRef ? ` Anotei: referente a ${MESES[+mesRef.slice(5) - 1]}/${mesRef.slice(0, 4)}.` : ""}\nConfirme na Central: ${SITE}/financeiro/#despesas`);
+}
+
+
+// Texto sem arquivo, logo depois de um comprovante (ou respondendo a ele): "é de outubro", "da II".
+async function complementar(msg: any) {
+  const texto = String(msg.text ?? "").trim();
+  if (!texto || texto.length > 300 || !/(janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|m[eê]s|referente|\b(I|II|III)\b)/i.test(texto)) return;
+  const quem = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ");
+  let alvo: any = null;
+  if (msg.reply_to_message?.message_id) {
+    const { data } = await supabase.from("financeiro_comprovantes").select("*").eq("chat_id", String(msg.chat.id)).eq("message_id", msg.reply_to_message.message_id).eq("estado", "novo").maybeSingle();
+    alvo = data;
+  }
+  if (!alvo) {
+    const desde = new Date(Date.now() - 15 * 60_000).toISOString();
+    const { data } = await supabase.from("financeiro_comprovantes").select("*").eq("chat_id", String(msg.chat.id)).eq("estado", "novo").eq("enviado_por", quem).gt("criado_em", desde).order("criado_em", { ascending: false }).limit(1).maybeSingle();
+    alvo = data;
+  }
+  if (!alvo) return;
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI}` }, signal: AbortSignal.timeout(30_000),
+    body: JSON.stringify({ model: MODELO, temperature: 0,
+      response_format: { type: "json_schema", json_schema: { name: "complemento", strict: true, schema: { type: "object", additionalProperties: false, required: ["mes_referencia", "conta_ref"], properties: { mes_referencia: { type: "string" }, conta_ref: { type: "string", enum: ["", "I", "II", "III"] } } } } },
+      messages: [
+        { role: "system", content: `Pagamento de ${alvo.data_pagamento ?? "data desconhecida"} (${alvo.favorecido ?? ""}). A equipe escreveu um complemento. mes_referencia = mês a que o pagamento se refere no formato AAAA-MM (ex.: "é de outubro" => o outubro mais plausível, do ano do pagamento ou do anterior); vazio se não disser. conta_ref = "I", "II" ou "III" só se o texto disser de qual empresa/conta; vazio se não disser.` },
+        { role: "user", content: texto }] }),
+  });
+  const j: any = await r.json().catch(() => ({}));
+  if (!r.ok) return;
+  const c = JSON.parse(j.choices?.[0]?.message?.content ?? "{}");
+  const mesRef = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(c.mes_referencia ?? "")) ? String(c.mes_referencia) : null;
+  if (!mesRef && !c.conta_ref) return;
+  const upd: any = { legenda: [alvo.legenda, texto].filter(Boolean).join(" | ").slice(0, 400) };
+  const partes: string[] = [];
+  if (mesRef) { upd.mes_referencia = mesRef + "-01"; partes.push(`referente a ${MESES[+mesRef.slice(5) - 1]}/${mesRef.slice(0, 4)}`); }
+  if (c.conta_ref && alvo.categoria_sugerida) {
+    const { data: contas } = await supabase.from("financeiro_contas_fixas").select("id,nome,categoria,valor,dia").eq("ativa", true);
+    const achou = (contas ?? []).filter((k: any) => k.categoria === alvo.categoria_sugerida && String(k.nome).trim().toUpperCase().split(/\s+/).pop() === c.conta_ref && Math.abs(+k.valor - +alvo.valor) <= Math.max(0.5, +k.valor * 0.01));
+    if (achou.length === 1) { upd.conta_fixa_id = achou[0].id; upd.liga = `Baixa a conta fixa ${achou[0].nome} (vence dia ${achou[0].dia})`; partes.push(`conta ${achou[0].nome}`); }
+  }
+  await supabase.from("financeiro_comprovantes").update(upd).eq("id", alvo.id);
+  if (partes.length) await telegram("sendMessage", { chat_id: msg.chat.id, text: `Anotei no comprovante de ${brl(+alvo.valor)}: ${partes.join(" e ")}.`, reply_to_message_id: msg.message_id, allow_sending_without_reply: true }).catch(() => {});
 }
 
 // Relê comprovantes já guardados que ainda não têm o pagador (uso interno).

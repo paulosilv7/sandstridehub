@@ -595,6 +595,8 @@ function pagouDe(x){
   var rot=rotuloOrigem(x),inst=x.pagador_instituicao||'',doc=x.pagador_documento||'';
   return '<div class="cmp-p">'+ic('wallet',14)+'<span><b>'+esc(rot||x.pagador_nome)+'</b>'+(rot?'<em>'+esc(x.pagador_nome)+'</em>':'')+'<em>'+esc([inst,doc].filter(Boolean).join(' · '))+'</em></span></div>';
 }
+function mesesOpc(x){var dt=x.data_pagamento||hojeSP(),base=dt.slice(0,7),sel=x.mes_referencia?String(x.mes_referencia).slice(0,7):mesConta(S.contas.filter(function(c){return c.id===x.conta_fixa_id})[0],dt),o='';
+  [-2,-1,0].forEach(function(n){var ym=ymSomar(base,n);o+='<option value="'+ym+'"'+(ym===sel?' selected':'')+'>'+mesNome(ym).toLowerCase()+'/'+ym.slice(0,4)+'</option>'});return o}
 function cardComp(){
   var L=S.comp||[],n=L.filter(function(x){return x.estado==='novo'}).length;
   var h='<section class="card"><div class="ch">'+chip('send','rec',1)+'<h2>Comprovantes do grupo Financeiro</h2>'+(L.length?pill('disp','clock',n?n+(n===1?' para confirmar':' para confirmar'):'Repetidos para conferir'):pill('pago','check','Grupo ligado'))+'</div>';
@@ -604,9 +606,9 @@ function cardComp(){
     var rep=x.estado==='repetido',v=+x.valor;
     var cs=S.contas.filter(function(c){return c.ativa}).sort(function(a,b){var ma=Math.abs(+a.valor-v)<=Math.max(.5,+a.valor*.01)?0:1,mb=Math.abs(+b.valor-v)<=Math.max(.5,+b.valor*.01)?0:1;return ma-mb||a.dia-b.dia});
     h+='<div class="cmp'+(rep?' rep':'')+'" data-cmp="'+x.id+'"><div class="cmp-t">'+pill(rep?'disp':'rec',rep?'clock':'receipt',rep?'Parece repetido':esc(x.tipo||'Comprovante'))+'<span class="sub">'+esc(x.enviado_por||'')+(x.data_pagamento?' · '+ddmm(x.data_pagamento):'')+'</span><div class="sp"></div><b>'+brl(v)+'</b></div>'+
-      '<div class="cmp-f"><span class="sub">Pago a</span><span style="font-weight:600">'+esc(x.favorecido||x.descricao||'Sem favorecido')+'</span>'+(x.liga?'<span class="sub">'+esc(x.liga)+'</span>':'')+'</div>'+pagouDe(x);
+      '<div class="cmp-f"><span class="sub">Pago a</span><span style="font-weight:600">'+esc(x.favorecido||x.descricao||'Sem favorecido')+'</span>'+(x.liga?'<span class="sub">'+esc(x.liga)+'</span>':'')+(x.legenda?'<span class="sub">Sua mensagem: “'+esc(x.legenda)+'”</span>':'')+'</div>'+pagouDe(x);
     if(rep)h+='<div class="cmp-a"><button class="btn sec sm" data-cver="'+x.id+'">'+ic('clip',14)+'Ver</button><button class="btn sm" data-cno="'+x.id+'">'+ic('check',14)+'Entendi, descartar</button></div>';
-    else h+='<div class="cmp-s"><label class="fld">Categoria'+selCat(x.categoria_sugerida||'','')+'</label><label class="fld">Conta fixa<select class="selx" data-sc><option value="">Não é conta fixa</option>'+cs.map(function(c){return '<option value="'+c.id+'"'+(c.id===x.conta_fixa_id?' selected':'')+'>'+esc(c.nome)+' · dia '+c.dia+' · '+brl(+c.valor)+'</option>'}).join('')+'</select></label></div>'+
+    else h+='<div class="cmp-s"><label class="fld">Categoria'+selCat(x.categoria_sugerida||'','')+'</label><label class="fld">Conta fixa<select class="selx" data-sc><option value="">Não é conta fixa</option>'+cs.map(function(c){return '<option value="'+c.id+'"'+(c.id===x.conta_fixa_id?' selected':'')+'>'+esc(c.nome)+' · dia '+c.dia+' · '+brl(+c.valor)+'</option>'}).join('')+'</select></label><label class="fld">Mês da conta<select class="selx" data-sm>'+mesesOpc(x)+'</select></label></div>'+
       '<div class="cmp-a"><button class="btn sec sm" data-cver="'+x.id+'">'+ic('clip',14)+'Ver comprovante</button><button class="btn sec sm" data-cno="'+x.id+'">Não é pagamento</button><button class="btn sm" data-cok="'+x.id+'">'+ic('check',14)+'Confirmar</button></div>';
     h+='</div>';
   });
@@ -616,7 +618,7 @@ async function confirmarComp(id,el){
   var x=(S.comp||[]).filter(function(c){return c.id===id})[0];if(!x)return;
   var box=el.closest('.cmp'),cat=box.querySelector('select.selx').value,cid=box.querySelector('[data-sc]').value||null;
   if(!cat)return toast('Escolha a categoria.');
-  var c=cid?S.contas.filter(function(k){return k.id===cid})[0]:null,dt=x.data_pagamento||hojeSP(),mes=c?mesConta(c,dt)+'-01':null;
+  var c=cid?S.contas.filter(function(k){return k.id===cid})[0]:null,dt=x.data_pagamento||hojeSP(),sm=box.querySelector('[data-sm]'),mes=c?((sm&&sm.value)||mesConta(c,dt))+'-01':null;
   el.disabled=true;
   try{
     var de=await SB.from('financeiro_despesas').insert({data:dt,descricao:c?c.nome:(x.favorecido||x.descricao||'Comprovante'),valor:+x.valor,categoria:cat,origem:'comprovante',comprovante_path:x.arquivo_path,conta_fixa_id:cid,mes_conta:mes,criado_por:S.uid}).select('id').single();if(de.error)throw de.error;
