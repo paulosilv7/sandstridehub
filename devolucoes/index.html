@@ -438,12 +438,11 @@ function adaptar(r){
   var st=ST_MAP[r.status]!=null?ST_MAP[r.status]:2;
   var ph=r.prazo_em?Math.round((new Date(r.prazo_em).getTime()-Date.now())/3600000):null;
   var rec=REC[r.id]||null,decidir=rec==='nao_contestar'&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1;
-  var aguarda=!decidir&&!!r.aguarda_loja&&['EM_ANALISE','ENVIADO'].indexOf(r.status)>-1;
-  if(decidir||aguarda)st=3;
+  if(decidir)st=3;
   var expirado=!decidir&&mk==='sp'&&r.tipo_origem==='ACCEPTED'&&ph!==null&&ph<0&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1;
   if(expirado)ph=null;
-  return {id:r.id,env:ENV[r.id]||null,msg:MSG[r.id]||null,thread:THR[r.id]||[],sug:SUG[r.id]||null,acoes:r.acoes_loja||[],rec:rec,decidir:decidir,aguarda:aguarda,expirado:expirado,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
-    problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(aguarda?'O mediador pediu sua resposta':(expirado?'Prazo da loja encerrado':(ROT[r.status]||r.status))),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
+  return {id:r.id,env:ENV[r.id]||null,msg:MSG[r.id]||null,thread:THR[r.id]||[],sug:SUG[r.id]||null,acoes:r.acoes_loja||[],rec:rec,decidir:decidir,expirado:expirado,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
+    problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(expirado?'Prazo da loja encerrado':(ROT[r.status]||r.status)),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
     mkt:r.situacao_mkt||'',desfecho:r.desfecho||null,reemb:r.valor_reembolsado==null?null:+r.valor_reembolsado,vped:+(r.valor_pedido||r.valor_em_risco)||0,cob:r.cobertura_ml===true,arq:!!r.arquivado_em,decEm:r.decidido_em||null,custoFrete:r.custo_frete==null?null:+r.custo_frete,freteLido:r.frete_lido===true,protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
 function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-01';}
@@ -593,7 +592,7 @@ function caso(id){return S.casos.filter(function(c){return c.id===id;})[0]||S.ca
 function lojasDe(m){var l=[];(m==='todos'?['ml','sp','tt']:[m]).forEach(function(k){LOJAS[k].forEach(function(n){if(l.indexOf(n)===-1)l.push(n);});});return l;}
 var GRUPOS=[
   ['todos','Todos','Casos em andamento. Os já decididos pelo marketplace ficam na aba Decididos.'],
-  ['voce','Para você','Esperam algo de você: aprovar um relato que a Sandy preparou, resolver um envio incerto ou responder o mediador.'],
+  ['voce','Para você','Esperam algo de você: aprovar um relato que a Sandy preparou ou resolver um envio incerto.'],
   ['preparo','Novos','Chegaram dos marketplaces e a Sandy ainda não preparou. Por enquanto ela só lê, em modo sombra.'],
   ['enviados','Com o marketplace','Em análise ou enviados: a decisão está com o marketplace.'],
   ['decididos','Decididos','O marketplace já deu a resposta final, mas o caso ainda pode mudar (por exemplo, se o comprador voltar a falar).'],
@@ -602,7 +601,7 @@ var GRUPOS=[
 function grupoDe(c){
   var s=c.status;
   if(c.arq)return 'arquivados';
-  if(c.decidir||c.aguarda)return 'voce';
+  if(c.decidir)return 'voce';
   if(c.expirado)return 'decididos';
   if(['PREPARADO','RECURSO_DISPONIVEL','COMPLEMENTACAO','AGUARDANDO_PROVAS','ENVIO_INCERTO'].indexOf(s)>-1)return 'voce';
   if(['NOVO','AGUARDANDO_ANALISE'].indexOf(s)>-1)return 'preparo';
@@ -907,7 +906,6 @@ function proxPasso(c){
   if(c.expirado)return '<div style="flex:1 1 100%;font-size:16px;line-height:1.4;margin-top:4px">A devolução foi aceita e já voltou. O prazo da loja na Shopee <b>já encerrou</b>, então não há mais o que fazer neste caso.</div>';
   var ini=['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(c.status)>-1,txt,btn='';
   if(c.decidir)txt='A Sandy sugere <b>não contestar</b>. Veja o relato abaixo e decida.';
-  else if(c.aguarda)txt='O Mercado Livre (ou o comprador) escreveu por último e <b>espera a sua resposta</b>. Veja a conversa abaixo.';
   else if(c.status==='PREPARADO')txt='A Sandy preparou o relato. Confira abaixo.';
   else if(ini&&c.fotos>0)txt='Fotos recebidas. A Sandy está analisando.';
   else if(ini){txt='O sistema já reconheceu esta devolução. <b>Falta só tirar as fotos</b> quando o produto chegar ao galpão.';btn='<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar fotos deste pedido</button>';}
