@@ -17,7 +17,7 @@ Não colocar chaves secretas ou `service_role` no navegador. `bootstrap.js` reut
 
 Fornecedores, produtos, histórico de preços, compras com um produto por registro, pagamentos, abatimentos, cancelamentos, extrato mensal e consultas. A gravação ocorre em transação com revisão otimista e auditoria de autoria gerada no servidor. Exclusão de movimentos e substituição de preços antigos são bloqueadas no banco.
 
-O rateio dos pagamentos por mês é calculado a partir dos dados persistidos; não marca uma notinha individual como quitada. Comprovantes, retenção de arquivos, agrupamento de múltiplos itens por notinha, importação de planilhas e relatórios avançados continuam sendo evoluções posteriores.
+O rateio dos pagamentos por mês é calculado a partir dos dados persistidos; não marca uma notinha individual como quitada. Retenção de arquivos, agrupamento de múltiplos itens por notinha, importação de planilhas e relatórios avançados continuam sendo evoluções posteriores.
 
 ## Verificação
 
@@ -36,4 +36,14 @@ As migrações 001 e 002 foram aplicadas no Supabase remoto. A segunda mantém a
 
 Executar testes sem dependências: `node --test fornecedores/tests/*.test.mjs` (12 cenários). Também foram executados testes PostgreSQL locais das duas migrações e testes transacionais com reversão no Supabase. Conferências de interface com dados fictícios: seleção, teclado, preço dependente, rejeição de terceira casa decimal, compra de 3 × R$ 0,10 e relatório por período. Layout móvel conferido em 390 × 844, sem transbordamento horizontal.
 
-Essas verificações cobrem os cenários descritos; não constituem garantia de ausência absoluta de erros. Comprovantes, vencimentos negociados e importação continuam fora desta revisão.
+Essas verificações cobrem os cenários descritos; não constituem garantia de ausência absoluta de erros. Vencimentos negociados e importação continuam fora desta revisão.
+
+## Comprovantes e cabeçalho compacto
+
+A migração 003 cria o bucket privado `fin-comprovantes`, a tabela de metadados e funções de vinculação/consulta. Somente os administradores já autorizados do financeiro podem enviar ou baixar arquivos; políticas restritivas isolam este bucket de políticas permissivas de outras ferramentas. Não há URL pública, atualização, sobrescrita ou exclusão de arquivos pelo navegador.
+
+O formulário de pagamento aceita um PDF, JPG ou PNG opcional, de até 5 MB, validado por formato, assinatura e tamanho. A lista de Pagamentos permite adicionar outros comprovantes e baixar os existentes; pagamentos cancelados preservam a consulta dos arquivos. O pagamento é confirmado antes do upload. Se o arquivo falhar, a mensagem explica que o pagamento foi salvo e mantém o formulário para tentar novamente, com o mesmo ID. Tentativas de upload do mesmo arquivo reutilizam o caminho e a vinculação é idempotente.
+
+O cabeçalho usa ícones de Central, Atualizar e Sair, com rótulos ao passar o mouse ou focar pelo teclado e avatar da conta no desktop. Os rótulos acessíveis permanecem nos botões.
+
+Agora são 17 testes Node, incluindo validação de arquivo, limites, resposta perdida, falha e envio simultâneo. A migração foi testada em PostgreSQL local e aplicada no Supabase; privacidade e negação de acesso foram conferidas remotamente sem anexar documentos reais. O fluxo de seleção, gravação, consulta e download foi conferido em ambiente local isolado com PDF fictício. Exclusão automática após seis meses ainda não está ativada.
