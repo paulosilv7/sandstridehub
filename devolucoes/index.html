@@ -438,15 +438,15 @@ function adaptar(r){
   var lj=LOJAID[r.loja_id]||{},mk=MKS[lj.marketplace]||'ml';
   var st=ST_MAP[r.status]!=null?ST_MAP[r.status]:2;
   var ph=r.prazo_em?Math.round((new Date(r.prazo_em).getTime()-Date.now())/3600000):null;
-  var rec=REC[r.id]||null,decidir=rec==='nao_contestar'&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1;
+  var rec=REC[r.id]||null,pedirInfo=rec==='pedir_informacao'&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1,decidir=(rec==='nao_contestar'||rec==='pedir_informacao')&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1;
   if(decidir)st=3;
   var expirado=!decidir&&mk==='sp'&&r.tipo_origem==='ACCEPTED'&&ph!==null&&ph<0&&['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(r.status)>-1;
   if(expirado)ph=null;
   var etapa=r.etapa_fisica||null,etapaEm=r.etapa_fisica_em||r.atualizado_em;
   if(!etapa&&mk==='tt'){var _t=String(r.situacao_mkt||'');if(/Aguardando o comprador enviar/i.test(_t))etapa='despachar';else if(/Comprador enviou/i.test(_t))etapa='transito';}
   if(/cancelad/i.test(r.situacao_mkt||'')||r.desfecho==='cancelado'||r.desfecho==='ganhamos')etapa=null;if(etapa==='chegou'&&(ANEXOS[r.id]||0)>0)etapa='conferido';if(etapa==='chegou'&&(Date.now()-new Date(etapaEm).getTime())>30*86400000)etapa=null;
-  return {id:r.id,env:ENV[r.id]||null,msg:MSG[r.id]||null,thread:THR[r.id]||[],sug:SUG[r.id]||null,acoes:r.acoes_loja||[],rec:rec,decidir:decidir,expirado:expirado,etapa:etapa,etapaEm:etapaEm,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
-    problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(expirado?'Prazo da loja encerrado':(ROT[r.status]||r.status)),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
+  return {id:r.id,env:ENV[r.id]||null,msg:MSG[r.id]||null,thread:THR[r.id]||[],sug:SUG[r.id]||null,acoes:r.acoes_loja||[],rec:rec,decidir:decidir,pedirInfo:pedirInfo,expirado:expirado,etapa:etapa,etapaEm:etapaEm,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
+    problema:problemaDe(r,mk),status:r.status,rot:pedirInfo?'Sandy precisa de informação':decidir?'Sandy sugere não contestar':(expirado?'Prazo da loja encerrado':(ROT[r.status]||r.status)),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
     mkt:r.situacao_mkt||'',desfecho:r.desfecho||null,reemb:r.valor_reembolsado==null?null:+r.valor_reembolsado,vped:+(r.valor_pedido||r.valor_em_risco)||0,cob:r.cobertura_ml===true,arq:!!r.arquivado_em,decEm:r.decidido_em||null,custoFrete:r.custo_frete==null?null:+r.custo_frete,freteLido:r.frete_lido===true,protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
 function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-01';}
@@ -940,7 +940,8 @@ function itensHtml(it){
 function proxPasso(c){
   if(c.expirado)return '<div style="flex:1 1 100%;font-size:16px;line-height:1.4;margin-top:4px">A devolução foi aceita e já voltou. O prazo da loja na Shopee <b>já encerrou</b>, então não há mais o que fazer neste caso.</div>';
   var ini=['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(c.status)>-1,txt,btn='';
-  if(c.decidir)txt='A Sandy sugere <b>não contestar</b>. Veja o relato abaixo e decida.';
+  if(c.pedirInfo)txt='A Sandy <b>precisa de uma informação</b> para decidir. Veja o que ela perguntou abaixo: envie mais fotos ou decida você mesmo.';
+  else if(c.decidir)txt='A Sandy sugere <b>não contestar</b>. Veja o relato abaixo e decida.';
   else if(c.status==='PREPARADO')txt='A Sandy preparou o relato. Confira abaixo.';
   else if(ini&&c.fotos>0)txt='Fotos recebidas. A Sandy está analisando.';
   else if(ini){txt='O sistema já reconheceu esta devolução. <b>Falta só tirar as fotos</b> quando o produto chegar ao galpão.';btn='<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar fotos deste pedido</button>';}
@@ -964,6 +965,7 @@ function relatoHtml(r){
     var b=[];
     if(r.recomendacao==='contestar')b.push('<button type="button" class="btn lg" data-a="aprovar" data-v="'+S.casoId+'">Revisar e contestar no '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução</button>');
     else if(r.recomendacao==='nao_contestar')b.push('<button type="button" class="btn lg" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução no '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+S.casoId+'">Contestar mesmo assim</button>'+(cs.decidir?'<button type="button" class="btn ghost" data-a="concordar" data-v="'+S.casoId+'">Só encerrar aqui</button>':''));
+    else if(r.recomendacao==='pedir_informacao')b.push('<button type="button" class="btn lg" data-a="fotosCaso" data-v="'+S.casoId+'">Enviar mais fotos deste pedido</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução no '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+S.casoId+'">Contestar mesmo assim</button>');
     if(b.length)ac='<div class="row" style="gap:10px;flex-wrap:wrap">'+b.join('')+'</div><p class="sub" style="font-size:12.5px">Nada é enviado sem o seu toque e a sua confirmação. Depois de enviado, não dá para desfazer.</p>';
   }
   return ind+mkt+ac;
@@ -1028,7 +1030,7 @@ function regras(){
 
 function aprov(){
   var l=aplicar(S.casos.filter(function(c){return c.st===3;}),S.f.aprov);
-  var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(c.decidir?'<button type="button" class="btn" data-a="concordar" data-v="'+c.id+'">Concordo, não contestar</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':'<button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">Aprovar</button>')+'</div></section>';}).join('');
+  var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(c.pedirInfo?'<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar mais fotos</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+c.id+'">Aceitar a devolução</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':c.decidir?'<button type="button" class="btn" data-a="concordar" data-v="'+c.id+'">Concordo, não contestar</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':'<button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">Aprovar</button>')+'</div></section>';}).join('');
   var vazio=S.casos.filter(function(c){return c.st===3;}).length===0?'Nada aguardando a sua aprovação agora.':'Nenhum caso com esses filtros.';
   return head()+'<section class="card tight">'+toolbar('aprov','Buscar por produto ou pedido')+'</section><p class="sub" style="margin:0 6px">Casos que a Sandy preparou e que só saem com o seu aprovado. Hoje ela só lê, em modo sombra: quando preparar um relato, ele aparece aqui.</p>'+(linhas||'<div class="empty">'+vazio+'</div>');
 }
