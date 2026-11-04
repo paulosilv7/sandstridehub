@@ -1000,7 +1000,7 @@ function acomp(){
 
 
 function responder(){
-  var l=S.casos.filter(function(c){return c.mk==='ml'&&c.st<6&&((c.acoes.length>0&&!c.semPrazo)||(c.thread||[]).some(function(m){return m.origem==='loja';}));}).sort(function(a,b){var ea=esperaRetorno(a)?1:0,eb=esperaRetorno(b)?1:0;return ea-eb||(ea?String(b.atualizado).localeCompare(String(a.atualizado)):a.prazo-b.prazo);});
+  var l=S.casos.filter(function(c){return c.mk==='ml'&&c.st<6&&((c.acoes.length>0&&!c.semPrazo)||clienteEsperaLoja(c)||(c.thread||[]).some(function(m){return m.origem==='loja';}));}).sort(function(a,b){var ea=esperaRetorno(a)?1:0,eb=esperaRetorno(b)?1:0;return ea-eb||(ea?String(b.atualizado).localeCompare(String(a.atualizado)):a.prazo-b.prazo);});
   S.ofTent=S.ofTent||{};
   var fmt=function(t){return esc(limpaMsg(t)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');};
   var cards=l.map(function(c,ix){var p=prazoInfo(c),env=S.enviandoId===c.id;
@@ -1127,7 +1127,9 @@ setInterval(function(){
 },20000);
 
 async function corpoErro(err){try{if(err&&err.context&&typeof err.context.json==='function')return await err.context.json();}catch(e){}return {};}
-function esperaRetorno(c){return c.semPrazo||!c.acoes.length;}
+function ultimaMsg(c){var t=(c.thread||[]).slice().sort(function(a,b){return String(a.enviado_em).localeCompare(String(b.enviado_em));});return t.length?t[t.length-1]:null;}
+function clienteEsperaLoja(c){var u=ultimaMsg(c);return !!u&&u.origem==='comprador'&&c.acoes.length>0;}
+function esperaRetorno(c){return !clienteEsperaLoja(c)&&(c.semPrazo||!c.acoes.length);}
 function limpaMsg(t){
   t=String(t||'');
   if(!/<[a-z][\s\S]*>/i.test(t))return t;
