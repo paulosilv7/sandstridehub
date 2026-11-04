@@ -917,14 +917,14 @@ function detalhe(){
       kv('Em risco',r.valor_em_risco>0?brl(+r.valor_em_risco):'Não informado')+kv('Revertido / conciliado',brl(+r.valor_revertido||0)+' / '+brl(+r.valor_conciliado||0))+
       kv('Atualizado',dt(r.atualizado_em))+
     '</section>'+
-    '<section class="card" style="gap:10px"><h2 class="sech">Histórico</h2>'+(cx.carregando?'<p class="sub">Carregando…</p>':(evs||'<div class="empty">Sem registros ainda.</div>'))+'</section></div>'+
+    '</div>'+
   '<div style="flex:1 1 380px"><section class="card"><h2 class="sech">Fotos do caso</h2>'+(fotos?'<div class="slots">'+fotos+'</div><p class="sub">As fotos saem automaticamente quando o caso fica conciliado ou encerrado e o prazo de retenção passa.</p>':'<div class="empty">Nenhuma foto ligada a este caso. Lotes recebidos entram aqui depois de identificados.</div>')+'</section>'+
     '<section class="card" style="gap:10px"><h2 class="sech">Análise da Sandy</h2>'+relatoHtml(cx.relato)+'</section></div></div>';
 }
 
 function itensHtml(it){
   if(!it||!Array.isArray(it.comprados)||!it.comprados.length)return '';
-  var lin=function(a){return a.map(function(x){return '<li>'+esc((x.qtd||1)+'× '+(x.nome||'Item')+(x.variacao?' · '+x.variacao:'')+(x.sku?' ('+x.sku+')':''))+'</li>';}).join('');};
+  var lin=function(a){return a.map(function(x){return '<li>'+esc((x.qtd||1)+'× '+(x.sku||x.variacao||x.nome||'Item'))+'</li>';}).join('');};
   var qc=it.comprados.reduce(function(s,x){return s+(+x.qtd||1);},0),dv=Array.isArray(it.devolvidos)?it.devolvidos:[],qd=dv.reduce(function(s,x){return s+(+x.qtd||1);},0);
   var aviso=(dv.length&&qd<qc)?'<div class="tag warn" style="align-self:flex-start">O cliente pediu para devolver só '+qd+' de '+qc+' itens do pedido</div>':'';
   return '<section class="card" style="gap:10px"><h2 class="sech">O pedido</h2>'+aviso+'<div class="idrow"><span class="a">Comprou</span><span class="b"><ul style="margin:0;padding-left:18px">'+lin(it.comprados)+'</ul></span></div>'+(dv.length?'<div class="idrow"><span class="a">Está devolvendo</span><span class="b"><ul style="margin:0;padding-left:18px">'+lin(dv)+'</ul></span></div>':'')+(it.motivo_comprador?'<div class="idrow"><span class="a">O cliente disse</span><span class="b">'+esc(it.motivo_comprador)+'</span></div>':'')+'</section>';
