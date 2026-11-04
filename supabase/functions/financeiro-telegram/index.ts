@@ -140,6 +140,16 @@ async function processar(u: any) {
     const score = (nome ? 2 : 0) + (val ? 1 : 0);
     if (nome && score > melhor) { melhor = score; conta = c; }
   }
+  // A conta que pagou diz qual das contas fixas é: pago pela Sandstride II => a conta "... II" da categoria, pelo valor.
+  const { data: origens } = await supabase.from("financeiro_contas_origem").select("termo,rotulo");
+  const pag = norm(String(l.pagador_nome ?? "") + " " + String(l.pagador_documento ?? ""));
+  const origem = (origens ?? []).find((o: any) => ` ${pag} `.includes(` ${norm(o.termo)} `));
+  const sufixo = origem ? String(origem.rotulo).trim().split(/\s+/).pop()!.toUpperCase() : "";
+  const catAlvo = regra?.categoria ?? l.categoria ?? "";
+  if (!conta && /^(I|II|III)$/.test(sufixo) && catAlvo) {
+    const doSufixo = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === catAlvo && String(c.nome).trim().toUpperCase().split(/\s+/).pop() === sufixo && Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
+    if (doSufixo.length === 1) conta = doSufixo[0];
+  }
   // Sem nome que case, mas com regra de categoria: se só UMA conta fixa dessa categoria tem este valor, é ela.
   if (!conta && regra) {
     const iguais = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === regra.categoria && Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));

@@ -622,10 +622,9 @@ async function confirmarComp(id,el){
     var de=await SB.from('financeiro_despesas').insert({data:dt,descricao:c?c.nome:(x.favorecido||x.descricao||'Comprovante'),valor:+x.valor,categoria:cat,origem:'comprovante',comprovante_path:x.arquivo_path,conta_fixa_id:cid,mes_conta:mes,criado_por:S.uid}).select('id').single();if(de.error)throw de.error;
     if(c){var pg=await SB.from('financeiro_contas_pagas').upsert({conta_id:cid,mes:mes,despesa_id:de.data.id,valor_pago:+x.valor,pago_em:dt},{onConflict:'conta_id,mes'});if(pg.error){await SB.from('financeiro_despesas').delete().eq('id',de.data.id);throw pg.error}}
     var up=await SB.from('financeiro_comprovantes').update({estado:'confirmado',despesa_id:de.data.id,categoria_sugerida:cat,conta_fixa_id:cid}).eq('id',id);if(up.error)throw up.error;
-    // aprende: o mesmo favorecido já entra com essa categoria (e a conta fixa, se o valor dela for único)
+    // aprende só a categoria do favorecido; a conta fixa vem do nome, do valor e de quem pagou (a Sandstride I, II ou III)
     var termo=normT(x.favorecido);
-    if(termo.length>=4){var unica=c&&S.contas.filter(function(k){return k.ativa&&Math.abs(+k.valor-+c.valor)<=.5}).length===1;
-      await SB.from('financeiro_regras').upsert({termo:termo,categoria:cat,conta_fixa_id:unica?cid:null,origem:'confirmacao'},{onConflict:'termo'})}
+    if(termo.length>=4){await SB.from('financeiro_regras').upsert({termo:termo,categoria:cat,origem:'confirmacao'},{onConflict:'termo'})}
     toast('Despesa lançada'+(c?' e '+c.nome+' marcada como paga.':'.'));
     carregarMes();
   }catch(e){console.error(e);toast('Não consegui lançar. Tente de novo.');el.disabled=false}
