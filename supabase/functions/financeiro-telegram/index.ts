@@ -60,7 +60,7 @@ async function ler(mime: string, bytes: Uint8Array, nome: string, categorias: st
       model: MODELO, temperature: 0,
       response_format: { type: "json_schema", json_schema: { name: "comprovante", strict: true, schema: {
         type: "object", additionalProperties: false,
-        required: ["e_comprovante", "tipo", "valor", "data", "favorecido", "id_transacao", "descricao", "categoria"],
+        required: ["e_comprovante", "tipo", "valor", "data", "favorecido", "id_transacao", "descricao", "categoria", "pagador_nome", "pagador_documento", "pagador_instituicao"],
         properties: {
           e_comprovante: { type: "boolean" },
           tipo: { type: "string", enum: ["Pix", "Boleto", "TED", "Cartão", "DAS", "Nota fiscal", "Outro"] },
@@ -70,9 +70,12 @@ async function ler(mime: string, bytes: Uint8Array, nome: string, categorias: st
           id_transacao: { type: "string" },
           descricao: { type: "string" },
           categoria: { type: "string", enum: [...categorias, ""] },
+          pagador_nome: { type: "string" },
+          pagador_documento: { type: "string" },
+          pagador_instituicao: { type: "string" },
         } } } },
       messages: [
-        { role: "system", content: "Você lê comprovantes de pagamento brasileiros (Pix, boleto, TED, DAS, notas e recibos) de uma loja de tênis. Devolva só os dados que aparecem no documento. valor em reais como número (ex.: 85.98). data no formato AAAA-MM-DD (data do pagamento ou, se não houver, a do documento); vazio se não achar. favorecido = quem RECEBEU o dinheiro (nome ou empresa). id_transacao = ID da transação Pix (E2E, começa com E) ou código de autenticação; vazio se não houver. descricao = frase curta do que foi pago. categoria = a que melhor combina entre as permitidas, ou vazio se não tiver certeza. e_comprovante=false se a imagem não for um comprovante ou documento de pagamento." },
+        { role: "system", content: "Você lê comprovantes de pagamento brasileiros (Pix, boleto, TED, DAS, notas e recibos) de uma loja de tênis. Devolva só os dados que aparecem no documento. valor em reais como número (ex.: 85.98). data no formato AAAA-MM-DD (data do pagamento ou, se não houver, a do documento); vazio se não achar. favorecido = quem RECEBEU o dinheiro (nome ou empresa). id_transacao = ID da transação Pix (E2E, começa com E) ou código de autenticação; vazio se não houver. descricao = frase curta do que foi pago. categoria = a que melhor combina entre as permitidas, ou vazio se não tiver certeza. pagador_nome = quem PAGOU (titular da conta de origem, o campo "De", "Pagador" ou "Origem"); pagador_documento = CPF/CNPJ dele como aparece (mesmo mascarado); pagador_instituicao = banco ou instituição de origem (ex.: Mercado Pago, Sicoob, Nubank); vazio se não houver. e_comprovante=false se a imagem não for um comprovante ou documento de pagamento." },
         { role: "user", content: [{ type: "text", text: "Leia este comprovante." }, parte] },
       ],
     }),
@@ -137,6 +140,11 @@ async function processar(u: any) {
     const score = (nome ? 2 : 0) + (val ? 1 : 0);
     if (nome && score > melhor) { melhor = score; conta = c; }
   }
+  // Sem nome que case, mas com regra de categoria: se só UMA conta fixa dessa categoria tem este valor, é ela.
+  if (!conta && regra) {
+    const iguais = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === regra.categoria && Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
+    if (iguais.length === 1) conta = iguais[0];
+  }
   if (conta) liga = `Baixa a conta fixa ${conta.nome} (vence dia ${conta.dia})`;
 
   const path = `telegram/${hash}.${pdf ? "pdf" : "jpg"}`;
@@ -147,6 +155,7 @@ async function processar(u: any) {
     favorecido: String(l.favorecido ?? "").slice(0, 120) || null, e2e_id: e2e, descricao: String(l.descricao ?? "").slice(0, 200) || null,
     categoria_sugerida: (regra?.categoria ?? conta?.categoria ?? l.categoria) || null, conta_fixa_id: conta?.id ?? null,
     liga: repetido ? `Parece repetido: já existe um comprovante de ${brl(+repetido.valor)}${repetido.favorecido ? " para " + repetido.favorecido : ""}.` : liga || null,
+    pagador_nome: String(l.pagador_nome ?? "").slice(0, 120) || null, pagador_documento: String(l.pagador_documento ?? "").slice(0, 40) || null, pagador_instituicao: String(l.pagador_instituicao ?? "").slice(0, 60) || null,
     arquivo_path: up.error ? null : path, estado: repetido ? "repetido" : "novo",
   };
   const ins = await supabase.from("financeiro_comprovantes").insert(linha);
@@ -155,9 +164,29 @@ async function processar(u: any) {
   await responder(`Li: ${l.tipo} de ${brl(valor)}${l.favorecido ? " para " + l.favorecido : ""}${data ? " em " + data.split("-").reverse().join("/") : ""}${linha.categoria_sugerida ? ` → ${linha.categoria_sugerida}` : ""}.${conta ? ` Combina com a conta fixa ${conta.nome}.` : ""}\nConfirme na Central: ${SITE}/financeiro/#despesas`);
 }
 
+// Relê comprovantes já guardados que ainda não têm o pagador (uso interno).
+async function reler() {
+  const { data: cats } = await supabase.from("financeiro_categorias").select("nome").order("ordem");
+  const nomes = (cats ?? []).map((c: any) => c.nome);
+  const { data: rows } = await supabase.from("financeiro_comprovantes").select("id,arquivo_path").is("pagador_nome", null).not("arquivo_path", "is", null).limit(20);
+  for (const r of rows ?? []) {
+    try {
+      const { data: blob, error } = await supabase.storage.from("financeiro-comprovantes").download(r.arquivo_path);
+      if (error || !blob) { await diag(`reler baixar ${r.id}: ${error?.message}`); continue; }
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const pdf = r.arquivo_path.endsWith(".pdf");
+      const l = await ler(pdf ? "application/pdf" : "image/jpeg", bytes, "comprovante.pdf", nomes);
+      await supabase.from("financeiro_comprovantes").update({
+        pagador_nome: String(l.pagador_nome ?? "").slice(0, 120) || "—", pagador_documento: String(l.pagador_documento ?? "").slice(0, 40) || null, pagador_instituicao: String(l.pagador_instituicao ?? "").slice(0, 60) || null,
+      }).eq("id", r.id);
+    } catch (e) { await diag(`reler ${r.id}: ${e instanceof Error ? e.message : e}`); }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.headers.get("x-fin-token") !== await segredoWebhook()) return new Response("não autorizado", { status: 401 });
   const u: any = await req.json().catch(() => ({}));
+  if (u?.reler) { await reler(); return new Response("ok"); }
   try { await processar(u); } catch (e) { await diag(`processar: ${e instanceof Error ? e.message : e}`); }
   return new Response("ok");
 });
