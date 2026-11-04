@@ -1230,8 +1230,9 @@ async function aprovar(id){
   var opts=lista.map(function(m){return '<option value="'+esc(m.id)+'">'+esc(m.rotulo)+'</option>';}).join('');
   var pede={};lista.forEach(function(m){pede[m.id]=m.pede||'';});
   var est='border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;background:#fff';
-  var emailCampo=(c.mk==='sp'&&!d.email_ok)?'<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>E-mail de contato da loja (a Shopee exige)</b><input type="email" class="ct-e" placeholder="contato@sualoja.com.br" style="'+est+'"><small style="color:var(--muted)">Pedimos uma vez só e guardamos para os próximos casos.</small></label>':'';
-  var html='<h3>Contestar no '+esc(nome)+'</h3><p>Pedido '+esc(c.pedido)+'. Vão junto '+nf+' foto'+(nf===1?'':'s')+' da conferência. Depois de enviado, não dá para desfazer.</p>'+
+  var emailLoja=String(S.cfg['email_loja:'+String(c.loja||'').toLowerCase()]||'').trim();
+  var emailCampo=(c.mk==='sp'&&!emailLoja)?'<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>E-mail de contato da loja (a Shopee exige)</b><input type="email" class="ct-e" placeholder="contato@sualoja.com.br" style="'+est+'"></label>':'';
+  var html='<h3>Contestar no '+esc(nome)+'</h3><p>Pedido '+esc(c.pedido)+(emailLoja?'. Contato da loja: '+esc(emailLoja):'')+'. Vão junto '+nf+' foto'+(nf===1?'':'s')+' da conferência. Depois de enviado, não dá para desfazer.</p>'+
     '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Motivo</b><select class="ct-m" style="'+est+'">'+opts+'</select></label><p class="ct-r" style="font-size:13px"></p>'+emailCampo+
     '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Texto que vai ao '+esc(nome)+'</b><textarea class="ct-t" rows="6" style="'+est+';line-height:1.45;resize:vertical">'+esc(texto)+'</textarea></label>'+
     '<div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">Enviar ao '+esc(nome)+'</button></div>';
@@ -1239,6 +1240,7 @@ async function aprovar(id){
     var t=String(m.querySelector('.ct-t').value||'').trim();
     if(t.length<20){toast('Escreva o texto da contestação.');return;}
     var corpo={modo:'contestar',caso_id:id,confirmado:true,motivo_id:m.querySelector('.ct-m').value,texto:t};
+    if(emailLoja)corpo.email=emailLoja;
     var em=m.querySelector('.ct-e');if(em){corpo.email=String(em.value||'').trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(corpo.email)){toast('Digite um e-mail válido da loja.');return;}}
     b.disabled=true;b.textContent='Enviando…';
     try{
