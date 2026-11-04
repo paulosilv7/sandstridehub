@@ -351,7 +351,7 @@ button.kpi:hover{background:var(--hover)}
 
 .al .top2 small{font-size:11.5px;font-weight:500;color:var(--mut);min-width:64px;text-align:right;white-space:nowrap}
 .t-painel .grow1 .ch h2{white-space:nowrap}
-.dock .soon{opacity:.45}.dbars{flex:1;min-height:120px;display:flex;align-items:flex-end;gap:4px}.dbar{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px}.dbar i{display:block;border-radius:5px 5px 2px 2px;background:var(--rec);min-height:3px}.dbar:hover i{opacity:.7}.dbar.hj i{background:var(--pago)}.dbar em{font-style:normal;font-size:11px;color:#6B6B66;text-align:center}.card .btn.sm{height:34px;padding:0 14px;font-size:13px}.pill.neu{background:#EDEDEA;color:#6B6B66}.brv{grid-column:2/-1;display:flex;justify-content:flex-end}@media (max-width:700px){.brv{grid-column:1/-1;justify-content:flex-start}.cd .cv{display:none}}</style></head><body>
+.dock .soon{opacity:.45}.dbars{flex:1;min-height:120px;display:flex;align-items:flex-end;gap:4px}.dbar{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px}.dbar i{display:block;border-radius:5px 5px 2px 2px;background:var(--rec);min-height:3px}.dbar:hover i{opacity:.7}.dbar.hj i{background:var(--pago)}.dbar em{font-style:normal;font-size:11px;color:#6B6B66;text-align:center}.card .btn.sm{height:34px;padding:0 14px;font-size:13px}.cmps{display:flex;flex-direction:column;gap:12px;margin-top:6px}.cmp{background:var(--soft);border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}.cmp.rep{background:var(--disp-bg)}.cmp-t{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.cmp-t b{font-size:18px;font-weight:600}.cmp-f{display:flex;flex-direction:column;gap:2px}.cmp-s{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cmp-s .selx{background:#fff}.cmp-a{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}@media (max-width:700px){.cmp-s{grid-template-columns:1fr}.cmp-a{justify-content:stretch}.cmp-a .btn{flex:1}}.pill.neu{background:#EDEDEA;color:#6B6B66}.brv{grid-column:2/-1;display:flex;justify-content:flex-end}@media (max-width:700px){.brv{grid-column:1/-1;justify-content:flex-start}.cd .cv{display:none}}</style></head><body>
 <div id="app"></div><div id="ctip" hidden></div><div id="toast" role="status" hidden></div>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
@@ -450,7 +450,7 @@ function milhar(v){return v>=1000?(new Intl.NumberFormat('pt-BR',{maximumFractio
 function head(t,extra){
   var atu=S.d?new Date(S.d.gerado_em):null;
   var hora=atu?atu.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}):'';
-  return '<header class="head"><img class="hlogo" alt="Sandstride" src="'+LOGO+'"><span class="hsep" aria-hidden="true"></span><h1>'+t+'</h1>'+(hora&&(t==='Financeiro'||t==='Recebimentos')?pill('rec','clock','Atualizado às '+hora):'')+'<div class="sp"></div>'+(extra||'')+'</header>';
+  return '<header class="head"><img class="hlogo" alt="Sandstride" src="'+LOGO+'"><span class="hsep" aria-hidden="true"></span><h1>'+t+'</h1>'+(hora&&t!=='Vendas'?pill('rec','clock','Atualizado às '+hora):'')+'<div class="sp"></div>'+(extra||'')+'</header>';
 }
 function dock(){
   var at=rota(),ini=S.nome?esc(S.nome.charAt(0).toUpperCase()):'';
@@ -586,6 +586,54 @@ function telaContas(){
 
 // ---------- Despesas ----------
 function selCat(atual,nome){return '<select class="selx"'+(nome?' name="'+nome+'" required':'')+' aria-label="Categoria"><option value="">Escolha a categoria</option>'+S.cats.map(function(k){return '<option'+(k.nome===atual?' selected':'')+'>'+esc(k.nome)+'</option>'}).join('')+'</select>'}
+
+function normT(t){return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
+function mesConta(c,dt){var d=dt||hojeSP(),ym=d.slice(0,7);if(c&&+c.dia-(+d.slice(8))>15)ym=ymSomar(ym,-1);return ym}
+function cardComp(){
+  var L=S.comp||[],n=L.filter(function(x){return x.estado==='novo'}).length;
+  var h='<section class="card"><div class="ch">'+chip('send','rec',1)+'<h2>Comprovantes do grupo Financeiro</h2>'+(L.length?pill('disp','clock',n?n+(n===1?' para confirmar':' para confirmar'):'Repetidos para conferir'):pill('pago','check','Grupo ligado'))+'</div>';
+  if(!L.length)return h+'<p class="sub">Nenhum comprovante esperando. Mande a foto ou o PDF no grupo Financeiro do Telegram: eu leio, e ele aparece aqui para você confirmar.</p></section>';
+  h+='<div class="cmps">';
+  L.forEach(function(x){
+    var rep=x.estado==='repetido',v=+x.valor;
+    var cs=S.contas.filter(function(c){return c.ativa}).sort(function(a,b){var ma=Math.abs(+a.valor-v)<=Math.max(.5,+a.valor*.01)?0:1,mb=Math.abs(+b.valor-v)<=Math.max(.5,+b.valor*.01)?0:1;return ma-mb||a.dia-b.dia});
+    h+='<div class="cmp'+(rep?' rep':'')+'" data-cmp="'+x.id+'"><div class="cmp-t">'+pill(rep?'disp':'rec',rep?'clock':'receipt',rep?'Parece repetido':esc(x.tipo||'Comprovante'))+'<span class="sub">'+esc(x.enviado_por||'')+(x.data_pagamento?' · '+ddmm(x.data_pagamento):'')+'</span><div class="sp"></div><b>'+brl(v)+'</b></div>'+
+      '<div class="cmp-f"><span style="font-weight:600">'+esc(x.favorecido||x.descricao||'Sem favorecido')+'</span>'+(x.liga?'<span class="sub">'+esc(x.liga)+'</span>':'')+'</div>';
+    if(rep)h+='<div class="cmp-a"><button class="btn sec sm" data-cver="'+x.id+'">'+ic('clip',14)+'Ver</button><button class="btn sm" data-cno="'+x.id+'">'+ic('check',14)+'Entendi, descartar</button></div>';
+    else h+='<div class="cmp-s"><label class="fld">Categoria'+selCat(x.categoria_sugerida||'','')+'</label><label class="fld">Conta fixa<select class="selx" data-sc><option value="">Não é conta fixa</option>'+cs.map(function(c){return '<option value="'+c.id+'"'+(c.id===x.conta_fixa_id?' selected':'')+'>'+esc(c.nome)+' · dia '+c.dia+' · '+brl(+c.valor)+'</option>'}).join('')+'</select></label></div>'+
+      '<div class="cmp-a"><button class="btn sec sm" data-cver="'+x.id+'">'+ic('clip',14)+'Ver comprovante</button><button class="btn sec sm" data-cno="'+x.id+'">Não é pagamento</button><button class="btn sm" data-cok="'+x.id+'">'+ic('check',14)+'Confirmar</button></div>';
+    h+='</div>';
+  });
+  return h+'</div></section>';
+}
+async function confirmarComp(id,el){
+  var x=(S.comp||[]).filter(function(c){return c.id===id})[0];if(!x)return;
+  var box=el.closest('.cmp'),cat=box.querySelector('select.selx').value,cid=box.querySelector('[data-sc]').value||null;
+  if(!cat)return toast('Escolha a categoria.');
+  var c=cid?S.contas.filter(function(k){return k.id===cid})[0]:null,dt=x.data_pagamento||hojeSP(),mes=c?mesConta(c,dt)+'-01':null;
+  el.disabled=true;
+  try{
+    var de=await SB.from('financeiro_despesas').insert({data:dt,descricao:c?c.nome:(x.favorecido||x.descricao||'Comprovante'),valor:+x.valor,categoria:cat,origem:'comprovante',comprovante_path:x.arquivo_path,conta_fixa_id:cid,mes_conta:mes,criado_por:S.uid}).select('id').single();if(de.error)throw de.error;
+    if(c){var pg=await SB.from('financeiro_contas_pagas').upsert({conta_id:cid,mes:mes,despesa_id:de.data.id,valor_pago:+x.valor,pago_em:dt},{onConflict:'conta_id,mes'});if(pg.error){await SB.from('financeiro_despesas').delete().eq('id',de.data.id);throw pg.error}}
+    var up=await SB.from('financeiro_comprovantes').update({estado:'confirmado',despesa_id:de.data.id,categoria_sugerida:cat,conta_fixa_id:cid}).eq('id',id);if(up.error)throw up.error;
+    // aprende: o mesmo favorecido já entra com essa categoria (e a conta fixa, se o valor dela for único)
+    var termo=normT(x.favorecido);
+    if(termo.length>=4){var unica=c&&S.contas.filter(function(k){return k.ativa&&Math.abs(+k.valor-+c.valor)<=.5}).length===1;
+      await SB.from('financeiro_regras').upsert({termo:termo,categoria:cat,conta_fixa_id:unica?cid:null,origem:'confirmacao'},{onConflict:'termo'})}
+    toast('Despesa lançada'+(c?' e '+c.nome+' marcada como paga.':'.'));
+    carregarMes();
+  }catch(e){console.error(e);toast('Não consegui lançar. Tente de novo.');el.disabled=false}
+}
+async function descartarComp(id,el){
+  el.disabled=true;var r=await SB.from('financeiro_comprovantes').update({estado:'descartado'}).eq('id',id);
+  if(r.error){el.disabled=false;return toast('Não consegui descartar.')}
+  S.comp=(S.comp||[]).filter(function(c){return c.id!==id});seguro();toast('Comprovante descartado.');
+}
+async function verComp(id){
+  var x=(S.comp||[]).filter(function(c){return c.id===id})[0];if(!x||!x.arquivo_path)return toast('Esse comprovante não tem arquivo.');
+  var w=window.open('','_blank');var u=await SB.storage.from('financeiro-comprovantes').createSignedUrl(x.arquivo_path,300);
+  if(u.data&&u.data.signedUrl&&w)w.location=u.data.signedUrl;else{if(w)w.close();toast('Não consegui abrir o arquivo.')}
+}
 function telaDespesas(){
   if(S.vcarregando)return carregando('Despesas');
   if(S.verro)return falha('Despesas');
@@ -597,7 +645,7 @@ function telaDespesas(){
     '<label class="fld">Categoria'+selCat('','c')+'</label>'+
     '<label class="fld">Comprovante<span class="anx">'+ic('clip',16)+'<input type="file" name="arq" accept="image/*,application/pdf"><span id="anxTxt">Anexar foto ou PDF</span></span></label>'+
     '<button class="btn" type="submit">'+ic('plus',16)+'Lançar</button></form></section>';
-  h+='<section class="card"><div class="ch">'+chip('send','rec',1)+'<h2>Comprovantes do grupo Financeiro</h2>'+pill('neu','clock','Em breve')+'</div><p class="sub">Quando o grupo do Telegram estiver ligado, os comprovantes enviados aparecem aqui para você confirmar. Por enquanto, lance as despesas pelo formulário acima.</p></section>';
+  h+=cardComp();
   var lista=S.desp.filter(function(d){var c=catInfo(d.categoria);return S.filtro==='todas'||(S.filtro==='res'?c.entra_resultado:!c.entra_resultado)});
   h+='<section class="card"><div class="ch">'+chip('receipt','sai',1)+'<h2>Despesas de '+mesNome(S.ym).toLowerCase()+'</h2><div class="sp"></div><div class="seg" role="group" aria-label="Filtro"><button type="button" data-fd="todas" aria-pressed="'+(S.filtro==='todas')+'">Todas</button><button type="button" data-fd="res" aria-pressed="'+(S.filtro==='res')+'">'+ic('check',14)+'No resultado</button><button type="button" data-fd="fora" aria-pressed="'+(S.filtro==='fora')+'">Fora do resultado</button></div></div>'+
     '<div class="ext" style="--cols:56px minmax(0,1.5fr) minmax(0,1fr) 150px 120px"><div class="eh"><span>Data</span><span>Descrição</span><span>Categoria</span><span>Origem</span><span class="r">Valor</span></div>'+
@@ -710,6 +758,7 @@ async function carregarMes(){
     while(true){rr=await SB.from('lucro_resumo_dia').select('dia,loja_id,faturamento,pedidos,pares,taxas,frete,lucro,custo_produtos,pendente_pedidos').gte('dia',ini).lt('dia',fim).order('dia').range(from,from+999);if(rr.error)throw rr.error;rows=rows.concat(rr.data||[]);if((rr.data||[]).length<1000)break;from+=1000}
     S.v={rows:rows,lojas:S.lojasMap};
     var d=await SB.from('financeiro_despesas').select('*').gte('data',ini).lt('data',fim).order('data',{ascending:false}).order('criado_em',{ascending:false});if(d.error)throw d.error;S.desp=d.data||[];
+    var cp=await SB.from('financeiro_comprovantes').select('*').in('estado',['novo','repetido']).order('criado_em',{ascending:false});S.comp=cp.error?[]:(cp.data||[]);
     var p=await SB.from('financeiro_contas_pagas').select('*').eq('mes',ini);if(p.error)throw p.error;S.pagas={};(p.data||[]).forEach(function(x){S.pagas[x.conta_id]=x});
   }catch(e){S.verro=true;console.error(e)}
   S.vcarregando=false;seguro();
@@ -803,6 +852,9 @@ document.addEventListener('click',async function(e){
   if(d.fd){S.filtro=d.fd;return seguro()}
   if(d.per){S.per=d.per;return seguro()}
   if(d.cal!=null){S.mes=+d.cal;return seguro()}
+  if(d.cok)return confirmarComp(d.cok,b);
+  if(d.cno)return descartarComp(d.cno,b);
+  if(d.cver)return verComp(d.cver);
   if(d.conta)return modalConta(d.conta);
   if(b.hasAttribute('data-nconta'))return modalNovaConta();
   if(b.hasAttribute('data-ncat'))return modalNovaCat();

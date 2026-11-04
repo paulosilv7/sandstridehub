@@ -328,7 +328,28 @@ async function processar(u: any) {
     await diag(`grupo migrou para ${msg.migrate_to_chat_id}`);
     return;
   }
+  // Grupo Financeiro (comprovantes): as mensagens seguem para a função financeiro-telegram.
+  const finGrupo = await config("telegram_financeiro_chat_id");
+  if (msg.migrate_to_chat_id && finGrupo && String(msg.chat?.id) === finGrupo) {
+    await supabase.from("configuracoes").upsert({ chave: "telegram_financeiro_chat_id", valor: String(msg.migrate_to_chat_id) }, { onConflict: "chave" });
+    await diag(`grupo financeiro migrou para ${msg.migrate_to_chat_id}`);
+    return;
+  }
   if (msg.from?.is_bot) return;
+  if (finGrupo && String(msg.chat?.id) === finGrupo) {
+    await fetch(`${URL_BASE}/functions/v1/financeiro-telegram`, {
+      method: "POST", headers: { "Content-Type": "application/json", "x-fin-token": await segredoWebhook() }, body: JSON.stringify(u),
+    }).catch((e) => diag(`financeiro: ${e instanceof Error ? e.message : e}`));
+    return;
+  }
+  // Conexão do grupo Financeiro: só vale enquanto a chave telegram_financeiro_aguardando estiver ligada (uma vez).
+  if (!finGrupo && String(msg.chat?.id) !== grupo && (msg.chat?.type === "group" || msg.chat?.type === "supergroup") && (await config("telegram_financeiro_aguardando")) === "1") {
+    await supabase.from("configuracoes").upsert({ chave: "telegram_financeiro_chat_id", valor: String(msg.chat.id) }, { onConflict: "chave" });
+    await supabase.from("configuracoes").delete().eq("chave", "telegram_financeiro_aguardando");
+    await diag(`grupo financeiro conectado: ${msg.chat.title ?? msg.chat.id}`);
+    await telegram("sendMessage", { chat_id: msg.chat.id, text: "✅ Grupo Financeiro conectado. Mande aqui a foto ou o PDF dos comprovantes: eu leio e deixo para você confirmar na Central, na tela Despesas." }).catch(() => {});
+    return;
+  }
   let texto = String(msg.text ?? msg.caption ?? "").trim();
   const audio = msg.voice ?? msg.audio ?? (String(msg.document?.mime_type ?? "").startsWith("audio/") ? msg.document : null);
   const foto = Array.isArray(msg.photo) && msg.photo.length ? msg.photo[msg.photo.length - 1]
