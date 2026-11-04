@@ -494,12 +494,13 @@ async function carregarCaso(id){
     var r=await Promise.all([
       SB.from('devol_eventos').select('tipo,dados,criado_em').eq('caso_id',id).order('id',{ascending:false}).limit(40),
       SB.from('devol_anexos').select('caminho,tipo,estado,bytes').eq('caso_id',id).neq('estado','excluido'),
-      SB.from('devol_relatos').select('recomendacao,motivo,relato,pedido_financeiro,provas,alertas,categoria,criado_em,visao').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1)
+      SB.from('devol_relatos').select('recomendacao,motivo,relato,pedido_financeiro,provas,alertas,categoria,criado_em,visao').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1),
+      SB.from('devol_recebimentos').select('descricao_equipe,criado_em').eq('caso_id',id).order('criado_em',{ascending:false}).limit(3)
     ]);
     var anexos=r[1].data||[],imgs=anexos.filter(function(a){return a.tipo!=='video';});
     var urls={};
     if(imgs.length){var su=await SB.storage.from('devol-provas').createSignedUrls(imgs.map(function(a){return a.caminho;}),3600);(su.data||[]).forEach(function(u){urls[u.path]=u.signedUrl;});}
-    S.cx={id:id,carregando:false,relato:(r[2].data||[])[0]||null,eventos:r[0].data||[],anexos:anexos.map(function(a){return {url:urls[a.caminho]||null,tipo:a.tipo,bytes:a.bytes};})};
+    S.cx={id:id,carregando:false,relato:(r[2].data||[])[0]||null,equipe:(r[3].data||[]),eventos:r[0].data||[],anexos:anexos.map(function(a){return {url:urls[a.caminho]||null,tipo:a.tipo,bytes:a.bytes};})};
   }catch(e){S.cx={id:id,carregando:false,eventos:[],anexos:[],erro:true};}
   if(S.tela==='caso'&&S.casoId===id)render(true,false);
 }
@@ -910,6 +911,7 @@ function detalhe(){
   '<section class="stage"><div style="min-width:0;flex:1 1 360px"><div class="lbl">'+mk(c.mk)+esc(MK[c.mk].nome+' · '+c.loja)+'</div><div class="tt">'+esc(c.problema)+'</div><div class="sub" style="color:var(--on-dark-muted);margin-top:6px">'+esc(c.pedido+' · solicitação '+c.solicitacao)+'</div></div><div class="sr"><div class="k">Prazo</div><div class="pv">'+(c.st>=6?'Encerrado':(c.semPrazo?'—':(c.prazo<=0?'Vencido':c.prazo+' h')))+'</div></div>'+proxPasso(c)+'</section>'+
   '<div class="cols"><div style="flex:1 1 440px">'+
     itensHtml(r.itens_pedido)+
+    equipeHtml(cx.equipe,cx.carregando)+
     '<section class="card" style="gap:10px"><h2 class="sech">Situação no marketplace</h2>'+
       (c.mkt?kv('Resposta do marketplace','<b>'+esc(c.mkt)+'</b>'):'')+
       kv('Situação','<span class="tag '+stCls(c.st)+'">'+esc(c.rot)+'</span>'+(c.st<6?' <span class="tag '+p.cls+'">'+p.t+'</span>':''))+
@@ -922,6 +924,12 @@ function detalhe(){
     '<section class="card" style="gap:10px"><h2 class="sech">Análise da Sandy</h2>'+relatoHtml(cx.relato)+'</section></div></div>';
 }
 
+function equipeHtml(l,carr){
+  var t=(l||[]).filter(function(x){return x&&String(x.descricao_equipe||'').trim();});
+  if(!t.length)return '<section class="card" style="gap:10px"><h2 class="sech">O que a equipe viu</h2><div class="empty">'+(carr?'Carregando…':'A equipe ainda não descreveu o estado do produto. Isso é feito em Receber lote, junto com as fotos.')+'</div></section>';
+  var dt=function(x){return new Date(x).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
+  return '<section class="card" style="gap:10px"><h2 class="sech">O que a equipe viu</h2>'+t.map(function(x){return '<div class="box" style="gap:6px"><div class="sub" style="font-size:12px">Conferência do galpão · '+dt(x.criado_em)+'</div><div style="font-size:15px;line-height:1.5;white-space:pre-wrap">'+esc(x.descricao_equipe)+'</div></div>';}).join('')+'</section>';
+}
 function itensHtml(it){
   if(!it||!Array.isArray(it.comprados)||!it.comprados.length)return '';
   var lin=function(a){return a.map(function(x){return '<li>'+esc((x.qtd||1)+'× '+(x.sku||x.variacao||x.nome||'Item'))+'</li>';}).join('');};
