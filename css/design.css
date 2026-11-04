@@ -1,0 +1,5 @@
+/* Camada de design compartilhada (04/11/2026): pesos firmes (sem letra fina nem negrito exagerado) e números tabulares.
+   Carregada por último nas ferramentas; não entra na Home nem em Fornecedores. */
+b,strong,th{font-weight:600}
+.head h1,.topo-pg h1{font-weight:600}
+td,.num,.v,.vv,.pv,.rk{font-variant-numeric:tabular-nums}
