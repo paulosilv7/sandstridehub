@@ -121,6 +121,7 @@ button.tile:hover{background:var(--hover)}
 .caso .c1 b{font-weight:500;font-size:15px}
 .caso .c2{flex:1 1 150px;font-size:13.5px}
 .caso .go{color:#9A9A98;flex:none}
+@media (min-width:960px){.caso{display:grid;grid-template-columns:minmax(0,1fr) 150px 38% 14px;gap:14px 18px;align-items:center}.caso>.c2,.caso>.cs-main{flex:none;min-width:0}.caso .cs-tags{justify-content:flex-end;flex-wrap:wrap}}
 .segs{display:flex;gap:3px}.segs i{width:16px;height:5px;border-radius:3px;background:var(--line);display:block}
 .segs i.d{background:var(--ink)}.segs i.n{background:var(--sel)}
 .empty{border:1.5px dashed #C9C9C4;border-radius:24px;padding:22px;color:var(--muted);font-size:14px;background:transparent}
@@ -581,6 +582,8 @@ function brl(n){var p=Math.abs(n).toFixed(2).split('.');p[0]=p[0].replace(/\B(?=
 function num(s){var n=parseFloat(String(s).replace(/\./g,'').replace(',','.'));return isNaN(n)?0:n;}
 function mkFull(k){var LG={ml:['/chat/img/mercadolivre.png','#FFE600',16],sp:['/chat/img/shopee.png','#EE4D2D',14],tt:['/chat/img/tiktokshop.png','#111111',11]}[k];return '<span class="mk mkimg" style="background:'+LG[1]+'"><img src="'+LG[0]+'" alt="'+esc(MK[k].nome)+'" style="height:'+LG[2]+'px;width:auto;display:block"></span>';}
 function mk(k,big){var IC={ml:'/img/marketplaces/mercadolivre-icone.png',sp:'/img/marketplaces/shopee-icone.jpg',tt:'/img/marketplaces/tiktokshop-icone.png'}[k];if(IC)return '<img class="mkic'+(big?' lg':'')+'" src="'+IC+'" alt="'+esc(MK[k].nome)+'" title="'+esc(MK[k].nome)+'">';return '<span class="mk'+(big?' lg':'')+'" style="background:'+MK[k].bg+';color:'+MK[k].fg+'">'+MK[k].sigla+'</span>';}
+function tico(n){return '<i class="ti ti-'+n+'" aria-hidden="true"></i>';}
+var ST_ICO={2:'file',3:'user',4:'truck',5:'shield',6:'check'};
 function classe(c){return (c.st===3||c.pergunta)?'voce':(c.st===6?'concluido':'andamento');}
 function prazoInfo(c){
   if(c.st>=6)return {t:'Encerrado',cls:'mute'};
@@ -621,7 +624,7 @@ function noGrupo(c,g){
   if(g==='todos')return grupoDe(c)!=='decididos'&&grupoDe(c)!=='arquivados';
   return grupoDe(c)===g;
 }
-function etapaTag(c){if(!c.etapa)return '';var n=Math.max(0,Math.floor((Date.now()-new Date(c.etapaEm).getTime())/86400000));var rot={despachar:'Não despachou',transito:'A caminho',chegou:'Chegou',conferido:'Conferido'}[c.etapa];return '<span class="tag mute">'+rot+' · '+(n===0?'hoje':'há '+n+(n===1?' dia':' dias'))+'</span>';}
+function etapaTag(c){if(!c.etapa)return '';var n=Math.max(0,Math.floor((Date.now()-new Date(c.etapaEm).getTime())/86400000));var rot={despachar:'Não despachou',transito:'A caminho',chegou:'Chegou',conferido:'Conferido'}[c.etapa];return '<span class="tag mute">'+tico({despachar:'send',transito:'truck',chegou:'box',conferido:'check'}[c.etapa])+rot+' · '+(n===0?'hoje':'há '+n+(n===1?' dia':' dias'))+'</span>';}
 function aplicar(lista,f){
   var q=f.q.trim().toLowerCase();
   return lista.filter(function(c){
@@ -852,7 +855,7 @@ function home(){
   var gt=GRUPOS.map(function(g){var n=base.filter(function(c){return noGrupo(c,g[0]);}).length;return '<button type="button" class="gt'+(g[0]==='voce'?' hot':'')+'" data-a="grupo" data-v="'+g[0]+'" aria-pressed="'+(gAtual===g[0])+'"><span>'+g[1]+'</span><b>'+n+'</b></button>';}).join('');
   var gSel=GRUPOS.filter(function(g){return g[0]===gAtual;})[0];
   var rows=lista.map(function(c){var p=prazoInfo(c);
-    return '<button type="button" class="caso" data-a="caso" data-v="'+c.id+'"><span class="cs-main">'+mk(c.mk)+'<span class="c1"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span></span><span class="c2">'+esc(c.problema)+(c.mkt?'<span class="sub" style="display:block;margin-top:2px">No marketplace: '+esc(c.mkt)+'</span>':'')+'</span>'+'<span class="cs-tags">'+etapaTag(c)+'<span class="tag '+stCls(c.st)+'">'+c.rot+'</span>'+(c.st<6?'<span class="tag '+p.cls+'">'+p.t+'</span>':'')+'</span><svg class="go" width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>';}).join('')||'<div class="empty">Nenhum caso com esses filtros.</div>';
+    return '<button type="button" class="caso" data-a="caso" data-v="'+c.id+'"><span class="cs-main">'+mk(c.mk)+'<span class="c1"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span></span><span class="c2">'+esc(c.problema)+(c.mkt?'<span class="sub" style="display:block;margin-top:2px">No marketplace: '+esc(c.mkt)+'</span>':'')+'</span>'+'<span class="cs-tags">'+etapaTag(c)+'<span class="tag '+stCls(c.st)+'">'+tico(ST_ICO[c.st]||'file')+c.rot+'</span>'+(c.st<6?'<span class="tag '+p.cls+'">'+tico(p.cls==='bad'?'alert':'clock')+p.t+'</span>':'')+'</span><svg class="go" width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>';}).join('')||'<div class="empty">Nenhum caso com esses filtros.</div>';
   var lojasDef=[['ml','Mercado Livre'],['sp','Shopee'],['tt','TikTok Shop']];
   var lojas=lojasDef.map(function(l){var cs=todos.filter(function(c){return c.mk===l[0];});var a=cs.filter(function(c){return c.st<=3;}).sort(function(x,y){return x.prazo-y.prazo;});var cr=cs.filter(function(c){return c.st===6;}).reduce(function(t,c){return t+(c.credito||0);},0);
     return '<div class="lrow"><span class="nm">'+mk(l[0])+l[1]+'</span><span class="r" data-l="Abertos">'+a.length+'</span><span class="r" data-l="Prazo">'+(a[0]?a[0].prazo+' h':'—')+'</span><span class="r" data-l="Enviados">'+cs.filter(function(c){return c.st>=4;}).length+'</span><span class="r good" data-l="Créditos">'+(cr?brl(cr):'—')+'</span></div>';}).join('');
