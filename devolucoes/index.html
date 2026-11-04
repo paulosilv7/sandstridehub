@@ -443,7 +443,7 @@ function adaptar(r){
   if(expirado)ph=null;
   var etapa=r.etapa_fisica||null,etapaEm=r.etapa_fisica_em||r.atualizado_em;
   if(!etapa&&mk==='tt'){var _t=String(r.situacao_mkt||'');if(/Aguardando o comprador enviar/i.test(_t))etapa='despachar';else if(/Comprador enviou/i.test(_t))etapa='transito';}
-  if(etapa==='chegou'&&(ANEXOS[r.id]||0)>0)etapa='conferido';if(etapa==='chegou'&&(Date.now()-new Date(etapaEm).getTime())>30*86400000)etapa=null;
+  if(/cancelad/i.test(r.situacao_mkt||'')||r.desfecho==='cancelado'||r.desfecho==='ganhamos')etapa=null;if(etapa==='chegou'&&(ANEXOS[r.id]||0)>0)etapa='conferido';if(etapa==='chegou'&&(Date.now()-new Date(etapaEm).getTime())>30*86400000)etapa=null;
   return {id:r.id,env:ENV[r.id]||null,msg:MSG[r.id]||null,thread:THR[r.id]||[],sug:SUG[r.id]||null,acoes:r.acoes_loja||[],rec:rec,decidir:decidir,expirado:expirado,etapa:etapa,etapaEm:etapaEm,mk:mk,loja:lj.apelido||'—',pedido:r.pedido?'#'+r.pedido:'sem pedido',produto:r.produto||('Pedido '+(r.pedido||r.solicitacao_id)),
     problema:problemaDe(r,mk),status:r.status,rot:decidir?'Sandy sugere não contestar':(expirado?'Prazo da loja encerrado':(ROT[r.status]||r.status)),st:st,prazo:ph===null?99999:ph,semPrazo:ph===null,fotos:ANEXOS[r.id]||0,
     mkt:r.situacao_mkt||'',desfecho:r.desfecho||null,reemb:r.valor_reembolsado==null?null:+r.valor_reembolsado,vped:+(r.valor_pedido||r.valor_em_risco)||0,cob:r.cobertura_ml===true,arq:!!r.arquivado_em,decEm:r.decidido_em||null,custoFrete:r.custo_frete==null?null:+r.custo_frete,freteLido:r.frete_lido===true,protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
