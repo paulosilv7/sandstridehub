@@ -843,7 +843,7 @@ function pillsRes(){
   return (m.aguard?'<span class="pill info">'+pl(m.aguard,'aguarda você','aguardam você')+'</span>':'')+(m.urg?'<span class="pill bad">'+m.urg+' com prazo em até 24 h</span>':'');
 }
 function acompStrip(){
-  var t=S.casos,cred=t.filter(function(c){return c.st===6;}).reduce(function(s,c){return s+(c.credito||0);},0);
+  var t=S.casos.filter(function(c){return !c.arq;}),cred=t.filter(function(c){return c.st===6;}).reduce(function(s,c){return s+(c.credito||0);},0);
   return '<section class="strip"><div class="tiles"><div class="tile"><div class="k">Em acompanhamento</div><div class="v">'+t.filter(function(c){return c.st===4||c.st===5;}).length+'</div><div class="s">Enviados, sem decisão</div></div><div class="tile"><div class="k">Decididos</div><div class="v">'+t.filter(function(c){return c.st===6;}).length+'</div><div class="s">Com resposta final</div></div><div class="tile exp" style="grid-column:span 2"><div class="k">Créditos a conciliar</div><div class="v good">'+brl(cred)+'</div><div class="s">Dinheiro que o marketplace já decidiu devolver, mas que ainda não foi conferido no extrato da loja. Só vira ressarcimento depois dessa conferência.</div></div></div></section>';
 }
 
@@ -1034,10 +1034,10 @@ function aprov(){
 }
 
 function acomp(){
-  var l=aplicar(S.casos.filter(function(c){return c.st>=4;}),S.f.acomp);
+  var l=aplicar(S.casos.filter(function(c){return (c.st===4||c.st===5||(c.st===6&&c.credito>0))&&!c.arq;}),S.f.acomp);
   var linhas=l.map(function(c){var d=c.rot;var cls=stCls(c.st);
     return '<button type="button" class="cardrow" style="width:100%" data-a="caso" data-v="'+c.id+'"><span class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span></span><span class="cr-mid"><span class="kv"><span class="lab">Protocolo</span><b>'+(c.protocolo||'—')+'</b></span><span class="tag '+cls+'">'+d+'</span><span class="kv r"><span class="lab">Crédito</span><b style="'+(c.credito?'color:var(--good)':'color:var(--muted)')+'">'+(c.credito?brl(c.credito):'—')+'</b></span></span></button>';}).join('');
-  var vazio=S.casos.filter(function(c){return c.st>=4;}).length===0?'Nenhuma contestação enviada ainda.':'Nenhuma contestação com esses filtros.';
+  var vazio=S.casos.filter(function(c){return (c.st===4||c.st===5||(c.st===6&&c.credito>0))&&!c.arq;}).length===0?'Nenhuma contestação enviada ainda.':'Nenhuma contestação com esses filtros.';
   return head()+acompStrip()+'<section class="card tight">'+toolbar('acomp','Buscar por produto, pedido ou protocolo')+'</section><p class="sub" style="margin:0 6px">Contestações enviadas. Um caso só vira ressarcimento depois que a decisão e o crédito forem confirmados.</p>'+(linhas||'<div class="empty">'+vazio+'</div>');
 }
 
