@@ -351,7 +351,7 @@ button.kpi:hover{background:var(--hover)}
 
 .al .top2 small{font-size:11.5px;font-weight:500;color:var(--mut);min-width:64px;text-align:right;white-space:nowrap}
 .t-painel .grow1 .ch h2{white-space:nowrap}
-.pill.neu{background:#EDEDEA;color:#6B6B66}.brv{grid-column:2/-1;display:flex;justify-content:flex-end}@media (max-width:700px){.brv{grid-column:1/-1;justify-content:flex-start}.cd .cv{display:none}}</style></head><body>
+.dock .soon{opacity:.45}.dbars{flex:1;min-height:120px;display:flex;align-items:flex-end;gap:4px}.dbar{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px}.dbar i{display:block;border-radius:5px 5px 2px 2px;background:var(--rec);min-height:3px}.dbar:hover i{opacity:.7}.dbar.hj i{background:var(--pago)}.dbar em{font-style:normal;font-size:11px;color:#6B6B66;text-align:center}.card .btn.sm{height:34px;padding:0 14px;font-size:13px}.pill.neu{background:#EDEDEA;color:#6B6B66}.brv{grid-column:2/-1;display:flex;justify-content:flex-end}@media (max-width:700px){.brv{grid-column:1/-1;justify-content:flex-start}.cd .cv{display:none}}</style></head><body>
 <div id="app"></div><div id="ctip" hidden></div><div id="toast" role="status" hidden></div>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
@@ -429,7 +429,11 @@ function big(v,cls){var a=Math.abs(v),i=Math.floor(a),c=Math.round((a-i)*100);if
 
 // ===== Financeiro > Recebimentos (dados reais do Mercado Livre) =====
 var MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-var S={d:null,erro:null,carregando:true,per:'7',mes:0,nome:'',cancelado:false};
+var S={d:null,erro:null,carregando:true,per:'7',mes:0,nome:'',fotoUrl:'',v:null,verro:false,vcarregando:true};
+var TELAS=[['visao','Visão geral','grid'],['recebimentos','Recebimentos','cardin'],['vendas','Vendas','cart']];
+var EMBREVE=[['Despesas','receipt'],['Contas fixas','cal'],['Resultado do mês','chart']];
+function rota(){var h=location.hash.slice(1);return h==='recebimentos'||h==='vendas'?h:'visao'}
+function mesAtual(){return hojeSP().slice(0,7)}
 function hojeSP(){return new Date(Date.now()-3*3600e3).toISOString().slice(0,10)}
 function lojas(){return (S.d&&S.d.mercado_livre)||[]}
 function ok(){return lojas().filter(function(l){return !l.erro})}
@@ -443,23 +447,25 @@ function meses(){ // meses (aaaa-mm) do mês atual até o último mês com liber
   return r;
 }
 function milhar(v){return v>=1000?(new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(v/1000)+' mil'):brl0(v)}
-function head(){
+function head(t){
   var atu=S.d?new Date(S.d.gerado_em):null;
   var hora=atu?atu.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}):'';
-  return '<header class="head"><img class="hlogo" alt="Sandstride" src="'+LOGO+'"><span class="hsep" aria-hidden="true"></span><h1>Recebimentos</h1>'+(hora?pill('rec','clock','Atualizado às '+hora):'')+'<div class="sp"></div></header>';
+  return '<header class="head"><img class="hlogo" alt="Sandstride" src="'+LOGO+'"><span class="hsep" aria-hidden="true"></span><h1>'+t+'</h1>'+(hora&&t!=='Vendas'?pill('rec','clock','Atualizado às '+hora):'')+'<div class="sp"></div></header>';
 }
 function dock(){
-  var ini=S.nome?esc(S.nome.charAt(0).toUpperCase()):'';
-  return '<nav class="dock" aria-label="Menu do financeiro"><button type="button" data-hub aria-label="Voltar para a Central">'+ic('back')+'<span class="tipd">Central</span></button>'+(ini?'<div class="av" title="'+esc(S.nome)+'">'+ini+'</div>':'')+'<span class="s1"></span>'+
-   '<button type="button" aria-current="page" aria-label="Recebimentos">'+ic('cardin')+'<span class="tipd">Recebimentos</span></button>'+
-   '<button type="button" data-atu aria-label="Atualizar">'+ic('repeat')+'<span class="tipd">Atualizar</span></button></nav>';
+  var at=rota(),ini=S.nome?esc(S.nome.charAt(0).toUpperCase()):'';
+  var av=S.fotoUrl?'<div class="av" title="'+esc(S.nome)+'"><img alt="" src="'+esc(S.fotoUrl)+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block"></div>':(ini?'<div class="av" title="'+esc(S.nome)+'">'+ini+'</div>':'');
+  var h='<nav class="dock" aria-label="Menu do financeiro"><button type="button" data-hub aria-label="Voltar para a Central">'+ic('back')+'<span class="tipd">Central</span></button>'+av+'<span class="s1"></span>';
+  TELAS.forEach(function(t){h+='<button type="button" data-go="'+t[0]+'" aria-label="'+t[1]+'"'+(at===t[0]?' aria-current="page"':'')+'>'+ic(t[2])+'<span class="tipd">'+t[1]+'</span></button>'});
+  EMBREVE.forEach(function(t){h+='<button type="button" class="soon" data-soon="'+t[0]+'" aria-label="'+t[0]+' (em breve)">'+ic(t[1])+'<span class="tipd">'+t[0]+' · em breve</span></button>'});
+  return h+'<span class="s1"></span><button type="button" data-atu aria-label="Atualizar">'+ic('repeat')+'<span class="tipd">Atualizar</span></button></nav>';
 }
-function carregando(){return head()+'<section class="card" style="align-items:center;justify-content:center;gap:10px;min-height:300px;text-align:center">'+chip('clock','rec')+'<h2>Lendo os valores no Mercado Livre</h2><p class="sub">Leva alguns segundos. Os números vêm direto do marketplace.</p></section>'}
-function falha(){return head()+'<section class="card" style="align-items:center;justify-content:center;gap:10px;min-height:300px;text-align:center">'+chip('alert','disp')+'<h2>'+esc(S.erro.titulo)+'</h2><p class="sub">'+esc(S.erro.msg)+'</p>'+(S.erro.tentar?'<button type="button" class="btn" data-atu>Tentar de novo</button>':'')+'</section>'}
-function tela(){
+function carregando(t){return head(t)+'<section class="card" style="align-items:center;justify-content:center;gap:10px;min-height:300px;text-align:center">'+chip('clock','rec')+'<h2>Lendo os valores no Mercado Livre</h2><p class="sub">Leva alguns segundos. Os números vêm direto do marketplace.</p></section>'}
+function falha(t){return head(t)+'<section class="card" style="align-items:center;justify-content:center;gap:10px;min-height:300px;text-align:center">'+chip('alert','disp')+'<h2>'+esc(S.erro.titulo)+'</h2><p class="sub">'+esc(S.erro.msg)+'</p>'+(S.erro.tentar?'<button type="button" class="btn" data-atu>Tentar de novo</button>':'')+'</section>'}
+function telaReceb(){
   var L=ok(),arec=sum(L,'a_receber'),disp=sum(L,function(l){return l.disputa.valor}),ndisp=sum(L,function(l){return l.disputa.qtd}),pago=sum(L,pagoDe);
   var ml={ml:1};
-  var h=head();
+  var h=head('Recebimentos');
   h+='<section class="g3 heroes">'+
    '<div class="card hc"><div class="ch">'+chip('check','pago')+'<span class="k">Pago pelo Mercado Livre</span></div><div class="val pos">'+brl(pago)+'</div>'+
      '<div class="seg" role="group" aria-label="Período">'+[['7','Últimos 7 dias'],['30','30 dias']].map(function(p){return '<button type="button" data-per="'+p[0]+'" aria-pressed="'+(S.per===p[0])+'">'+p[1]+'</button>'}).join('')+'</div>'+
@@ -504,13 +510,82 @@ function dica(el){
   else tip.innerHTML='<div class="t">'+dd+(k===hj?' · hoje':'')+' · Mercado Livre</div><div class="b">'+brl(x.t)+'</div>'+Object.keys(x.v).map(function(l){return '<div class="row"><span>'+esc(l)+'</span><span>'+brl(x.v[l])+'</span></div>'}).join('');
   tip.hidden=false;var r=el.getBoundingClientRect();tip.style.left=Math.max(8,Math.min(r.left,innerWidth-220))+'px';tip.style.top=Math.max(8,r.top-tip.offsetHeight-8)+'px';
 }
-function render(){
-  var fit=!S.carregando&&!S.erro;document.body.classList.toggle('fit',fit);
-  $('app').innerHTML='<main class="page'+(fit?' fit':'')+(render.ja?' sem-anim':'')+' t-recebimentos">'+(S.carregando?carregando():S.erro?falha():tela())+'</main>'+dock();
-  $('ctip').hidden=true;render.ja=true;
+
+// ---------- Vendas (Lucro ao Vivo) ----------
+function agreg(){
+  var R=(S.v&&S.v.rows)||[],L=(S.v&&S.v.lojas)||{},por={},t={fat:0,ped:0,pares:0,tax:0,fr:0,luc:0,pend:0,imp:0,cus:0},dias={};
+  R.forEach(function(r){
+    var f=+r.faturamento,l=L[r.loja_id]||{nome:'Loja',mkt:'ml'};
+    var o=por[r.loja_id]=por[r.loja_id]||{id:r.loja_id,nome:l.nome,mkt:l.mkt,fat:0,ped:0,pares:0,tax:0,fr:0,luc:0};
+    o.fat+=f;o.ped+=r.pedidos;o.pares+=r.pares;o.tax+=+r.taxas;o.fr+=+r.frete;o.luc+=+r.lucro;
+    t.fat+=f;t.ped+=r.pedidos;t.pares+=r.pares;t.tax+=+r.taxas;t.fr+=+r.frete;t.luc+=+r.lucro;t.pend+=r.pendente_pedidos||0;
+    dias[r.dia]=(dias[r.dia]||0)+f;
+  });
+  return {t:t,lojas:Object.keys(por).map(function(k){return por[k]}).sort(function(a,b){return b.fat-a.fat}),dias:dias};
 }
-async function carregar(){
-  S.carregando=true;S.erro=null;render();
+function mkcod(m){return m==='mercado_livre'?'ml':m==='shopee'?'sp':'tt'}
+function mesTxt(){var m=+mesAtual().slice(5,7);return MESES[m-1]}
+function ddmm(k){return k.slice(8)+'/'+k.slice(5,7)}
+function kpi(tone,icon,label,value,sub,vcls){return '<div class="kpi">'+chip(icon,tone)+'<span class="k">'+label+'</span><span class="val'+(vcls?' '+vcls:'')+'">'+value+'</span><span class="sub">'+sub+'</span></div>'}
+function aviso(a){return a.t.pend?pill('disp','alert',a.t.pend+' pedidos sem custo cadastrado'):''}
+function telaVendas(){
+  var h=head('Vendas');
+  if(S.vcarregando)return carregando('Vendas');
+  if(S.verro)return falha('Vendas');
+  var a=agreg(),t=a.t,mf=Math.max.apply(null,a.lojas.map(function(x){return x.fat}).concat([1]));
+  var tk=t.ped?t.fat/t.ped:0;
+  h+='<section class="kpis k5">'+
+   kpi('pago','cart','Faturamento',brl0(t.fat),n0(t.ped)+' pedidos')+
+   kpi('neu','box','Pares vendidos',n0(t.pares),(t.ped?(t.pares/t.ped).toFixed(2).replace('.',','):'0')+' por pedido')+
+   kpi('neu','tag','Ticket médio',brl(tk),'por pedido')+
+   kpi('sai','truck','Taxas e frete',brl0(t.tax+t.fr),(t.fat?pct((t.tax+t.fr)/t.fat):'0%')+' do faturamento')+
+   kpi('pago','trend','Lucro das vendas',brl0(t.luc),(t.fat?pct(t.luc/t.fat):'0%')+' do faturamento','pos')+
+  '</section>';
+  h+='<section class="card"><div class="ch">'+chip('store','neu',1)+'<h2>Vendas por loja · '+mesTxt()+'</h2><div class="sp"></div>'+aviso(a)+'</div>'+
+   '<div class="tbl" style="--cols:minmax(0,1.5fr) .6fr .6fr minmax(0,1.3fr) .8fr .8fr .9fr"><div class="th"><span>Loja</span><span class="r">Pedidos</span><span class="r">Pares</span><span class="r">Faturamento</span><span class="r">Taxas</span><span class="r">Frete</span><span class="r">Lucro</span></div>'+
+   a.lojas.map(function(v){var k=mkcod(v.mkt);return '<div class="tr"><div class="nm">'+mk(k)+'<span>'+esc(v.nome)+'</span></div><div class="r" data-l="Pedidos">'+n0(v.ped)+'</div><div class="r" data-l="Pares">'+n0(v.pares)+'</div><div class="cell" data-l="Faturamento"><b>'+brl(v.fat)+'</b><div class="bar1"><span style="width:'+(v.fat/mf*100).toFixed(0)+'%;background:'+MKC[k]+'"></span></div></div><div class="r" data-l="Taxas">'+brl(v.tax)+'</div><div class="r" data-l="Frete">'+brl(v.fr)+'</div><div class="r pos" data-l="Lucro">'+brl(v.luc)+'</div></div>'}).join('')+
+   '<div class="tr tot"><span>Total</span><span class="r">'+n0(t.ped)+'</span><span class="r">'+n0(t.pares)+'</span><span class="r">'+brl(t.fat)+'</span><span class="r">'+brl(t.tax)+'</span><span class="r">'+brl(t.fr)+'</span><span class="r pos">'+brl(t.luc)+'</span></div></div></section>';
+  return h;
+}
+// ---------- Visão geral ----------
+function telaPainel(){
+  if(S.carregando||S.vcarregando)return carregando('Financeiro');
+  if(S.erro)return falha('Financeiro');
+  var a=S.verro?null:agreg(),L=ok(),arec=sum(L,'a_receber'),pg7=sum(L,function(l){return l.pago_7d}),disp=sum(L,function(l){return l.disputa.valor}),ndisp=sum(L,function(l){return l.disputa.qtd});
+  var hj=hojeSP(),amanha=new Date(Date.parse(hj+'T12:00:00Z')+864e5).toISOString().slice(0,10);
+  var barras=[],mx=1,i,dd;for(i=0;i<14;i++){dd=new Date(Date.parse(hj+'T12:00:00Z')+i*864e5).toISOString().slice(0,10);var x=totalDia(dd).t;barras.push({k:dd,v:x});mx=Math.max(mx,x)}
+  var h=head('Financeiro');
+  if(a){var t=a.t;
+  h+='<section class="palco"><div><div class="top">'+chip('wallet','p')+'<span class="k">Lucro das vendas em '+mesTxt().toLowerCase()+'</span>'+pill('dark','','até hoje, '+ddmm(hj))+'</div>'+big(t.luc,t.luc<0?' neg':'')+
+    '<div class="trio"><div>'+chip('cart','p',1)+'<div class="t"><span class="k">Faturamento</span><b>'+brl(t.fat)+'</b></div></div><div>'+chip('box','p',1)+'<div class="t"><span class="k">Pedidos</span><b>'+n0(t.ped)+'</b></div></div><div>'+chip('tag','p',1)+'<div class="t"><span class="k">Ticket médio</span><b>'+brl(t.ped?t.fat/t.ped:0)+'</b></div></div></div></div>';
+  }else h+='<section class="palco"><div><div class="top">'+chip('wallet','p')+'<span class="k">Vendas</span></div><p class="sub" style="color:#fff">Não consegui ler as vendas agora.</p></div>';
+  h+='<div class="inset"><div class="top"><span class="k">A receber do Mercado Livre</span></div><div class="big2">'+brl(arec)+'</div>'+
+    '<div class="bars" role="img" aria-label="Liberações do Mercado Livre nos próximos 14 dias">'+barras.map(function(b){return '<button type="button" class="bar'+(b.k===hj?' hj':'')+'" data-k="'+b.k+'"><i style="height:'+Math.max(4,b.v/mx*100).toFixed(0)+'%"></i><em>'+b.k.slice(8)+'</em></button>'}).join('')+'</div>'+
+    '<span class="k">Libera por dia, pela data que o Mercado Livre informa</span></div></section>';
+  h+='<section class="kpis">'+
+    kpi('pago','check','Pago · 7 dias',brl0(pg7),'Mercado Livre','pos')+
+    kpi('rec','clock','Libera amanhã',brl0(totalDia(amanha).t),'Mercado Livre','azul')+
+    kpi('disp','alert','Em disputa',brl0(disp),n0(ndisp)+' casos no Mercado Livre','amb')+
+    kpi('pago','check','Pago · 30 dias',brl0(sum(L,function(l){return l.pago_30d})),'Mercado Livre','pos')+
+  '</section>';
+  if(a){var mf=Math.max.apply(null,a.lojas.map(function(x){return x.fat}).concat([1])),dk=Object.keys(a.dias).sort(),md=Math.max.apply(null,dk.map(function(k){return a.dias[k]}).concat([1]));
+  h+='<div class="g2 grow1"><section class="card"><div class="ch">'+chip('store','neu',1)+'<h2>Vendas por loja</h2><div class="sp"></div>'+aviso(a)+'<button class="btn sec sm" data-go="vendas">Ver detalhes</button></div><div class="adl">'+
+    a.lojas.map(function(v){var k=mkcod(v.mkt);return '<div class="al"><div class="top2">'+mk(k).replace('class="mkic"','class="mkic sm"')+'<span>'+esc(v.nome)+'</span><b>'+brl0(v.fat)+'</b><small>'+n0(v.ped)+' pedidos</small></div><div class="bar1"><span style="width:'+(v.fat/mf*100).toFixed(0)+'%;background:'+MKC[k]+'"></span></div></div>'}).join('')+'</div></section>'+
+    '<section class="card"><div class="ch">'+chip('trend','neu',1)+'<h2>Faturamento por dia</h2></div><div class="dbars" role="img" aria-label="Faturamento por dia">'+
+    dk.map(function(k){return '<button type="button" class="dbar'+(k===hj?' hj':'')+'" data-tip="'+ddmm(k)+'|'+brl(a.dias[k])+'"><i style="height:'+Math.max(3,a.dias[k]/md*100).toFixed(0)+'%"></i><em>'+k.slice(8)+'</em></button>'}).join('')+'</div></section></div>';}
+  return h;
+}
+function telaAtual(){var r=rota();return r==='vendas'?telaVendas():r==='recebimentos'?(S.carregando?carregando('Recebimentos'):S.erro?falha('Recebimentos'):telaReceb()):telaPainel()}
+function render(){
+  var r=rota(),fit=r!=='vendas'&&!S.carregando&&!S.erro&&!S.vcarregando;
+  if(r==='recebimentos')fit=!S.carregando&&!S.erro;
+  document.body.classList.toggle('fit',fit);
+  $('app').innerHTML='<main class="page'+(fit?' fit':'')+(render.ja&&render.r===r?' sem-anim':'')+' t-'+(r==='visao'?'painel':r)+'">'+telaAtual()+'</main>'+dock();
+  $('ctip').hidden=true;render.ja=true;render.r=r;
+}
+function seguro(){try{render()}catch(e){S.erro={titulo:'Não consegui montar a tela',msg:'Detalhe técnico: '+String((e&&e.message)||e).slice(0,120),tentar:true};try{render()}catch(x){}}}
+async function carregarML(){
+  S.carregando=true;S.erro=null;seguro();
   try{
     var r=await SB.functions.invoke('financeiro-recebimentos',{method:'POST',body:{}});
     if(r.error){
@@ -520,27 +595,46 @@ async function carregar(){
     }else if(!r.data||!r.data.ok){S.erro={titulo:'Não consegui ler os valores',msg:'O Mercado Livre não respondeu agora. Tente de novo em instantes.',tentar:true}}
     else{S.d=r.data;S.mes=0}
   }catch(e){S.erro={titulo:'Não consegui ler os valores',msg:'Verifique a internet e tente de novo.',tentar:true}}
-  S.carregando=false;
-  try{render()}catch(e){S.erro={titulo:'Não consegui montar a tela',msg:'Detalhe técnico: '+String((e&&e.message)||e).slice(0,120),tentar:true};render()}
+  S.carregando=false;seguro();
 }
-document.addEventListener('mouseover',function(e){var c=e.target.closest('.cd');if(c)dica(c)});
-document.addEventListener('mouseout',function(e){if(e.target.closest('.cd'))$('ctip').hidden=true});
+async function carregarVendas(){
+  S.vcarregando=true;S.verro=false;seguro();
+  try{
+    var ini=mesAtual()+'-01',rows=[],from=0,rr;
+    var lj=await SB.from('lojas').select('id,apelido,marketplace');if(lj.error)throw lj.error;
+    var L={};(lj.data||[]).forEach(function(l){L[l.id]={nome:l.apelido,mkt:l.marketplace}});
+    while(true){rr=await SB.from('lucro_resumo_dia').select('dia,loja_id,faturamento,pedidos,pares,taxas,frete,lucro,pendente_pedidos').gte('dia',ini).order('dia').range(from,from+999);if(rr.error)throw rr.error;rows=rows.concat(rr.data||[]);if((rr.data||[]).length<1000)break;from+=1000}
+    S.v={rows:rows,lojas:L};
+  }catch(e){S.verro=true}
+  S.vcarregando=false;seguro();
+}
+function carregar(){carregarML();carregarVendas()}
+document.addEventListener('mouseover',function(e){var c=e.target.closest('.cd,.bar');if(c)return dica(c);var d=e.target.closest('.dbar');if(d)dicaDia(d)});
+document.addEventListener('mouseout',function(e){if(e.target.closest('.cd,.bar,.dbar'))$('ctip').hidden=true});
+function dicaDia(el){var p=el.dataset.tip.split('|'),tip=$('ctip');tip.innerHTML='<div class="t">'+p[0]+' · Faturamento</div><div class="b">'+p[1]+'</div>';tip.hidden=false;var r=el.getBoundingClientRect();tip.style.left=Math.max(8,Math.min(r.left,innerWidth-220))+'px';tip.style.top=Math.max(8,r.top-tip.offsetHeight-8)+'px'}
 document.addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;var d=b.dataset;
   if(b.hasAttribute('data-hub')){location.href='../';return}
   if(b.hasAttribute('data-atu'))return carregar();
+  if(d.go){if(location.hash.slice(1)===d.go)return render();location.hash=d.go;return scrollTo({top:0})}
+  if(d.soon){var t=$('toast');t.textContent=d.soon+' ainda não está pronto.';t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(function(){t.hidden=true},2400);return}
   if(d.per){S.per=d.per;return render()}
   if(d.cal!=null){S.mes=+d.cal;return render()}
-  if(b.classList.contains('cd'))return dica(b);
+  if(b.classList.contains('cd')||b.classList.contains('bar'))return dica(b);
+  if(b.classList.contains('dbar'))return dicaDia(b);
 });
+addEventListener('hashchange',function(){render.ja=false;seguro();scrollTo({top:0})});
 async function iniciar(){
   $('app').innerHTML='';
   try{
     var s=await SB.auth.getSession(),user=s.data&&s.data.session&&s.data.session.user;
     if(!user){location.replace('../?next='+encodeURIComponent(location.pathname));return}
-    try{var eq=await SB.from('equipe').select('nome').eq('usuario_id',user.id).maybeSingle();S.nome=String((eq.data&&eq.data.nome)||'').trim().split(/\s+/)[0]||''}catch(x){}
+    try{var eq=await SB.from('equipe').select('nome,foto_path').eq('usuario_id',user.id).maybeSingle();
+      S.nome=String((eq.data&&eq.data.nome)||'').trim().split(/\s+/)[0]||'';
+      if(eq.data&&eq.data.foto_path)S.fotoUrl=SB.storage.from('avatares').getPublicUrl(eq.data.foto_path).data.publicUrl||'';
+    }catch(x){}
     carregar();
-  }catch(e){S.carregando=false;S.erro={titulo:'Não consegui abrir',msg:'Tente recarregar a página.',tentar:true};render()}
+  }catch(e){S.carregando=false;S.vcarregando=false;S.erro={titulo:'Não consegui abrir',msg:'Tente recarregar a página.',tentar:true};seguro()}
 }
 if(window.SB)iniciar();else window.addEventListener('sb-pronto',iniciar,{once:true});
 </script></body></html>
