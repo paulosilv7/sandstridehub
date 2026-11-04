@@ -459,7 +459,7 @@ function dock(){
   TELAS.forEach(function(t){h+='<button type="button" data-go="'+t[0]+'" aria-label="'+t[1]+'"'+(at===t[0]?' aria-current="page"':'')+'>'+ic(t[2])+'<span class="tipd">'+t[1]+'</span></button>'});
   return h+'<span class="s1"></span><button type="button" data-go="config" aria-label="Configurações"'+(at==='config'?' aria-current="page"':'')+'>'+ic('gear')+'<span class="tipd">Configurações</span></button><button type="button" data-atu aria-label="Atualizar">'+ic('repeat')+'<span class="tipd">Atualizar</span></button></nav>';
 }
-function carregando(t){return head(t)+'<section class="card" style="align-items:center;justify-content:center;gap:10px;min-height:300px;text-align:center">'+chip('clock','rec')+'<h2>Lendo os valores no Mercado Livre</h2><p class="sub">Leva alguns segundos. Os números vêm direto do marketplace.</p></section>'}
+function carregando(t,ml){return head(t)+'<section class="card" style="align-items:center;justify-content:center;gap:10px;min-height:300px;text-align:center">'+chip('clock','rec')+'<h2>'+(ml?'Lendo os valores no Mercado Livre':'Carregando')+'</h2><p class="sub">'+(ml?'Leva alguns segundos. Os números vêm direto do marketplace.':'Só um instante.')+'</p></section>'}
 function falha(t){return head(t)+'<section class="card" style="align-items:center;justify-content:center;gap:10px;min-height:300px;text-align:center">'+chip('alert','disp')+'<h2>'+esc(S.erro.titulo)+'</h2><p class="sub">'+esc(S.erro.msg)+'</p>'+(S.erro.tentar?'<button type="button" class="btn" data-atu>Tentar de novo</button>':'')+'</section>'}
 function telaReceb(){
   var L=ok(),arec=sum(L,'a_receber'),disp=sum(L,function(l){return l.disputa.valor}),ndisp=sum(L,function(l){return l.disputa.qtd}),pago=sum(L,pagoDe);
@@ -628,7 +628,7 @@ async function confirmarComp(id,el){
     var termo=normT(x.favorecido);
     if(termo.length>=4){await SB.from('financeiro_regras').upsert({termo:termo,categoria:cat,origem:'confirmacao'},{onConflict:'termo'})}
     toast('Despesa lançada'+(c?' e '+c.nome+' marcada como paga.':'.'));
-    carregarMes();
+    carregarMes(1);
   }catch(e){console.error(e);toast('Não consegui lançar. Tente de novo.');el.disabled=false}
 }
 async function descartarComp(id,el){
@@ -690,7 +690,7 @@ function telaConfig(){
 
 // ---------- Visão geral ----------
 function telaPainel(){
-  if(S.vcarregando||(S.carregando&&!S.verro))return carregando('Financeiro');
+  if(S.vcarregando&&!S.v)return carregando('Financeiro');
   var L=ok(),mlOk=!S.erro&&S.d;
   var arec=sum(L,'a_receber'),pg7=sum(L,function(l){return l.pago_7d}),disp=sum(L,function(l){return l.disputa.valor}),ndisp=sum(L,function(l){return l.disputa.qtd});
   var hj=hojeSP(),amanha=new Date(Date.parse(hj+'T12:00:00Z')+864e5).toISOString().slice(0,10),lim=new Date(Date.parse(hj+'T12:00:00Z')+7*864e5).toISOString().slice(0,10);
@@ -725,7 +725,7 @@ function telaAtual(){
   if(r==='contas')return telaContas();
   if(r==='resultado')return telaResultado();
   if(r==='config')return telaConfig();
-  if(r==='recebimentos')return S.carregando?carregando('Recebimentos'):S.erro?falha('Recebimentos'):telaReceb();
+  if(r==='recebimentos')return S.carregando?carregando('Recebimentos',1):S.erro?falha('Recebimentos'):telaReceb();
   return telaPainel();
 }
 var FIT={visao:1,recebimentos:1,contas:1};
@@ -757,8 +757,8 @@ async function carregarBase(){
   var lj=await SB.from('lojas').select('id,apelido,marketplace');if(lj.error)throw lj.error;
   var L={};(lj.data||[]).forEach(function(l){L[l.id]={nome:l.apelido,mkt:l.marketplace}});S.lojasMap=L;
 }
-async function carregarMes(){
-  S.vcarregando=true;S.verro=false;seguro();
+async function carregarMes(sil){
+  if(!sil||!S.v){S.vcarregando=true;S.verro=false;seguro()}
   try{
     if(!S.cats.length)await carregarBase();
     var ini=S.ym+'-01',fim=ymSomar(S.ym,1)+'-01',rows=[],from=0,rr;
@@ -791,7 +791,7 @@ function modalNovaConta(){
   [{t:'Salvar',fn:async function(m){var n=mv(m,'n').trim(),d=parseInt(mv(m,'d'),10),v=parseBR(mv(m,'v')),c=mv(m,'c');
     if(!n||!(d>=1&&d<=31)||!c){toast('Preencha nome, dia (1 a 31) e categoria.');return false}
     var r=await SB.from('financeiro_contas_fixas').insert({nome:n,dia:d,valor:v,categoria:c,variavel:mv(m,'t')==='v'});if(r.error)throw r.error;
-    toast('Conta fixa criada.');await carregarBase();S.cats.length&&carregarMes()}}]);
+    toast('Conta fixa criada.');await carregarBase();S.cats.length&&carregarMes(1)}}]);
 }
 function modalConta(id){
   var c=S.contas.filter(function(x){return x.id===id})[0];if(!c)return;var p=pagaDe(c),v=vencIso(c);
@@ -801,11 +801,11 @@ function modalConta(id){
     bt.push({t:'Marcar como paga',fn:async function(m){var val=parseBR(mv(m,'v')),dt=mv(m,'d');if(!(val>0)||!dt){toast('Informe valor e data.');return false}
       var de=await SB.from('financeiro_despesas').insert({data:dt,descricao:c.nome,valor:val,categoria:c.categoria,origem:'manual',conta_fixa_id:c.id,mes_conta:S.ym+'-01'}).select('id').single();if(de.error)throw de.error;
       var pg=await SB.from('financeiro_contas_pagas').insert({conta_id:c.id,mes:S.ym+'-01',despesa_id:de.data.id,valor_pago:val,pago_em:dt});if(pg.error){await SB.from('financeiro_despesas').delete().eq('id',de.data.id);throw pg.error}
-      toast('Conta paga e lançada nas despesas.');carregarMes()}});
+      toast('Conta paga e lançada nas despesas.');carregarMes(1)}});
   }else{corpo+='<p>Paga em '+ddmm(p.pago_em)+': <b>'+brl(+p.valor_pago)+'</b></p>';
     bt.push({t:'Desfazer pagamento',fn:async function(){if(p.despesa_id){var r1=await SB.from('financeiro_despesas').delete().eq('id',p.despesa_id);if(r1.error)throw r1.error}
-      var r2=await SB.from('financeiro_contas_pagas').delete().eq('conta_id',c.id).eq('mes',S.ym+'-01');if(r2.error)throw r2.error;toast('Pagamento desfeito.');carregarMes()}});}
-  bt.push({t:'Desativar conta',fn:async function(){var r=await SB.from('financeiro_contas_fixas').update({ativa:false}).eq('id',c.id);if(r.error)throw r.error;toast('Conta desativada.');await carregarBase();carregarMes()}});
+      var r2=await SB.from('financeiro_contas_pagas').delete().eq('conta_id',c.id).eq('mes',S.ym+'-01');if(r2.error)throw r2.error;toast('Pagamento desfeito.');carregarMes(1)}});}
+  bt.push({t:'Desativar conta',fn:async function(){var r=await SB.from('financeiro_contas_fixas').update({ativa:false}).eq('id',c.id);if(r.error)throw r.error;toast('Conta desativada.');await carregarBase();carregarMes(1)}});
   modal(c.nome,corpo,bt);
 }
 function modalNovaCat(){
@@ -821,7 +821,7 @@ async function modalDesp(id){
     if(d.conta_fixa_id){await SB.from('financeiro_contas_pagas').delete().eq('conta_id',d.conta_fixa_id).eq('mes',d.mes_conta)}
     var r=await SB.from('financeiro_despesas').delete().eq('id',id);if(r.error)throw r.error;
     if(d.comprovante_path)await SB.storage.from('financeiro-comprovantes').remove([d.comprovante_path]);
-    toast('Despesa excluída.');carregarMes()}}]);
+    toast('Despesa excluída.');carregarMes(1)}}]);
 }
 
 // ---------- Eventos ----------
@@ -847,7 +847,7 @@ document.addEventListener('submit',async function(e){
     if(r.error){if(path)await SB.storage.from('financeiro-comprovantes').remove([path]);throw r.error}
     toast('Despesa lançada.');
     if(f.d.value.slice(0,7)!==S.ym){S.ym=f.d.value.slice(0,7)}
-    carregarMes();
+    carregarMes(1);
   }catch(x){console.error(x);toast('Não consegui lançar. Tente de novo.');btn.disabled=false}
 });
 document.addEventListener('click',async function(e){
