@@ -46,4 +46,16 @@ O formulário de pagamento aceita um PDF, JPG ou PNG opcional, de até 5 MB, val
 
 O cabeçalho usa ícones de Central, Atualizar e Sair, com rótulos ao passar o mouse ou focar pelo teclado e avatar da conta no desktop. Os rótulos acessíveis permanecem nos botões.
 
+## Retenção de 90 dias — preparada, aguardando ativação
+
+As migrações 004 e 005 e a função `fin-comprovantes-limpar` preparam a limpeza diária às 06:00 UTC. O job `fin-comprovantes-retencao90d` é criado **inativo** e `fin_receipt_retention.enabled` inicia em **false**. A função valida uma chave exclusiva gerada no servidor e guardada no Vault; nenhuma chave é gravada no repositório. A verificação JWT da plataforma permanece habilitada.
+
+A rotina seleciona até 100 comprovantes vinculados por execução, com 90 dias completos desde `created_at`, usa a API de Storage somente no bucket `fin-comprovantes` e marca `deleted_at` apenas após a remoção confirmada. O nome, data, autor e vínculo continuam no histórico. Pagamentos, valores, saldos e demais ferramentas não são alterados. Falhas mantêm o registro elegível para nova tentativa; uma consulta malsucedida impede exclusões. Arquivos órfãos sem vínculo não entram nesta rotina.
+
+`select public.fin_receipt_cleanup_request(true);` dispara uma simulação. O ID retornado permite conferir `status_code`, `content` e `error_msg` em `net._http_response`. A função registra o resumo nos logs do Supabase. Uma execução definitiva solicitada com o controle desativado é recusada com HTTP 409; chamadas com chave incorreta retornam 401.
+
+Após confirmação explícita da exclusão definitiva, a ativação consiste em uma transação que atualiza `fin_receipt_retention.enabled=true` e executa `cron.alter_job` com `active:=true` para este job. Não executar esta etapa como parte das migrações de preparação. Para impedir novas execuções, desativar o job e o controle na mesma transação.
+
+Verificações: 24 testes Node; PostgreSQL local para autenticação, preservação de metadados e bloqueio de reutilização de caminhos removidos; função implantada e simulação real com HTTP 200, zero candidatos/removidos/falhas. A interface mostra o aviso de remoção e não oferece download para arquivos expirados, conferida localmente com dados fictícios. Não foi executada exclusão física real nos testes.
+
 Agora são 17 testes Node, incluindo validação de arquivo, limites, resposta perdida, falha e envio simultâneo. A migração foi testada em PostgreSQL local e aplicada no Supabase; privacidade e negação de acesso foram conferidas remotamente sem anexar documentos reais. O fluxo de seleção, gravação, consulta e download foi conferido em ambiente local isolado com PDF fictício. Exclusão automática após seis meses ainda não está ativada.
