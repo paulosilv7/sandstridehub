@@ -494,7 +494,7 @@ async function carregarCaso(id){
     var r=await Promise.all([
       SB.from('devol_eventos').select('tipo,dados,criado_em').eq('caso_id',id).order('id',{ascending:false}).limit(40),
       SB.from('devol_anexos').select('caminho,tipo,estado,bytes').eq('caso_id',id).neq('estado','excluido'),
-      SB.from('devol_relatos').select('recomendacao,motivo,relato,pedido_financeiro,provas,alertas,categoria,criado_em').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1)
+      SB.from('devol_relatos').select('recomendacao,motivo,relato,pedido_financeiro,provas,alertas,categoria,criado_em,visao').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1)
     ]);
     var anexos=r[1].data||[],imgs=anexos.filter(function(a){return a.tipo!=='video';});
     var urls={};
@@ -909,6 +909,7 @@ function detalhe(){
   return head()+'<div><button type="button" class="pbk" data-a="voltar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Voltar para '+TITULOS[destino]+'</button></div>'+
   '<section class="stage"><div style="min-width:0;flex:1 1 360px"><div class="lbl">'+mk(c.mk)+esc(MK[c.mk].nome+' · '+c.loja)+'</div><div class="tt">'+esc(c.problema)+'</div><div class="sub" style="color:var(--on-dark-muted);margin-top:6px">'+esc(c.pedido+' · solicitação '+c.solicitacao)+'</div></div><div class="sr"><div class="k">Prazo</div><div class="pv">'+(c.st>=6?'Encerrado':(c.semPrazo?'—':(c.prazo<=0?'Vencido':c.prazo+' h')))+'</div></div>'+proxPasso(c)+'</section>'+
   '<div class="cols"><div style="flex:1 1 440px">'+
+    itensHtml(r.itens_pedido)+
     '<section class="card" style="gap:10px"><h2 class="sech">Situação no marketplace</h2>'+
       (c.mkt?kv('Resposta do marketplace','<b>'+esc(c.mkt)+'</b>'):'')+
       kv('Situação','<span class="tag '+stCls(c.st)+'">'+esc(c.rot)+'</span>'+(c.st<6?' <span class="tag '+p.cls+'">'+p.t+'</span>':''))+
@@ -918,9 +919,16 @@ function detalhe(){
     '</section>'+
     '<section class="card" style="gap:10px"><h2 class="sech">Histórico</h2>'+(cx.carregando?'<p class="sub">Carregando…</p>':(evs||'<div class="empty">Sem registros ainda.</div>'))+'</section></div>'+
   '<div style="flex:1 1 380px"><section class="card"><h2 class="sech">Fotos do caso</h2>'+(fotos?'<div class="slots">'+fotos+'</div><p class="sub">As fotos saem automaticamente quando o caso fica conciliado ou encerrado e o prazo de retenção passa.</p>':'<div class="empty">Nenhuma foto ligada a este caso. Lotes recebidos entram aqui depois de identificados.</div>')+'</section>'+
-    '<section class="card" style="gap:10px"><h2 class="sech">Relato da Sandy</h2>'+relatoHtml(cx.relato)+'</section></div></div>';
+    '<section class="card" style="gap:10px"><h2 class="sech">Análise da Sandy</h2>'+relatoHtml(cx.relato)+'</section></div></div>';
 }
 
+function itensHtml(it){
+  if(!it||!Array.isArray(it.comprados)||!it.comprados.length)return '';
+  var lin=function(a){return a.map(function(x){return '<li>'+esc((x.qtd||1)+'× '+(x.nome||'Item')+(x.variacao?' · '+x.variacao:'')+(x.sku?' ('+x.sku+')':''))+'</li>';}).join('');};
+  var qc=it.comprados.reduce(function(s,x){return s+(+x.qtd||1);},0),dv=Array.isArray(it.devolvidos)?it.devolvidos:[],qd=dv.reduce(function(s,x){return s+(+x.qtd||1);},0);
+  var aviso=(dv.length&&qd<qc)?'<div class="tag warn" style="align-self:flex-start">O cliente pediu para devolver só '+qd+' de '+qc+' itens do pedido</div>':'';
+  return '<section class="card" style="gap:10px"><h2 class="sech">O pedido</h2>'+aviso+'<div class="idrow"><span class="a">Comprou</span><span class="b"><ul style="margin:0;padding-left:18px">'+lin(it.comprados)+'</ul></span></div>'+(dv.length?'<div class="idrow"><span class="a">Está devolvendo</span><span class="b"><ul style="margin:0;padding-left:18px">'+lin(dv)+'</ul></span></div>':'')+(it.motivo_comprador?'<div class="idrow"><span class="a">O cliente disse</span><span class="b">'+esc(it.motivo_comprador)+'</span></div>':'')+'</section>';
+}
 function proxPasso(c){
   if(c.expirado)return '<div style="flex:1 1 100%;font-size:16px;line-height:1.4;margin-top:4px">A devolução foi aceita e já voltou. O prazo da loja na Shopee <b>já encerrou</b>, então não há mais o que fazer neste caso.</div>';
   var ini=['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS'].indexOf(c.status)>-1,txt,btn='';
@@ -933,16 +941,24 @@ function proxPasso(c){
   return '<div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;margin-top:4px"><div style="flex:1 1 280px;font-size:16px;line-height:1.4">'+txt+'</div>'+btn+'</div>';
 }
 function relatoHtml(r){
-  if(!r)return '<p class="sub" style="font-size:13.5px">Ainda sem relato. Quando um lote de fotos for ligado a este caso, a Sandy lê, analisa e deixa o relato aqui para você aprovar. Modo sombra: nada é enviado ao marketplace.</p>';
-  var rec={contestar:['Contestar','good'],nao_contestar:['Não contestar','warn'],pedir_informacao:['Falta informação','info']}[r.recomendacao]||['',''];
+  if(!r)return '<p class="sub" style="font-size:13.5px">Ainda sem análise. Quando um lote de fotos for ligado a este caso, a Sandy compara o pedido com o que voltou e deixa a indicação aqui.</p>';
+  var cs=caso(S.casoId)||{};
+  var rec={contestar:['Sugere contestar','good'],nao_contestar:['Sugere aceitar a devolução','warn'],pedir_informacao:['Falta informação','info']}[r.recomendacao]||['',''];
+  var ci=(r.visao&&r.visao.comparacao_itens)||'';
   var al=(r.alertas||[]).map(function(a){return '<div class="idrow"><span class="a">Atenção</span><span class="b">'+esc(a)+'</span></div>';}).join('');
   var pv=(r.provas||[]).map(function(a){return '<li>'+esc(a)+'</li>';}).join('');
-  return '<div class="row" style="gap:8px"><span class="tag '+rec[1]+'">'+rec[0]+'</span>'+(r.categoria?'<span class="tag">'+esc(r.categoria)+'</span>':'')+'</div><p style="font-size:14px">'+esc(r.motivo||'')+'</p>'+
-    (r.relato?'<div class="box"><div class="kk">Relato para o marketplace</div><div class="vl" style="white-space:pre-wrap;font-weight:400">'+esc(r.relato)+'</div></div>':'')+
-    (r.pedido_financeiro?'<div class="box az"><div class="kk">Pedido financeiro</div><div class="vl" style="font-weight:400">'+esc(r.pedido_financeiro)+'</div></div>':'')+
-    (pv?'<div><div class="kk" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Provas sugeridas</div><ul style="margin:6px 0 0;padding-left:18px;font-size:14px">'+pv+'</ul></div>':'')+al+
-    (r.recomendacao==='nao_contestar'&&caso(S.casoId)&&caso(S.casoId).decidir?'<div class="row" style="gap:10px"><button type="button" class="btn" data-a="concordar" data-v="'+S.casoId+'">Concordo, não contestar</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+S.casoId+'">Contestar mesmo assim</button></div><p class="sub" style="font-size:12.5px">Concordando, o caso é encerrado sem contestação e nada é enviado ao marketplace. Contestando mesmo assim, a Sandy prepara o relato com alertas para você aprovar.</p>':'')+
-    (r.recomendacao==='contestar'?'<button type="button" class="btn lg off" disabled>Aprovar e enviar (envio desligado)</button><p class="sub" style="font-size:12.5px">O envio aos marketplaces está desligado. Quando for ligado, a aprovação grava a intenção, confere o histórico oficial e só então envia, sem duplicar.</p>':'');
+  var nm=NOME_MK[cs.mk]||'marketplace';
+  var ind='<div style="display:flex;gap:12px;align-items:flex-start;background:#eef6ff;border:1px solid #cfe3fb;border-radius:16px;padding:14px"><img src="/chat/img/sandy-telegram.jpg" alt="Sandy" width="52" height="52" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex:none;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.15)"><div style="min-width:0;display:flex;flex-direction:column;gap:8px"><div class="row" style="gap:8px;flex-wrap:wrap"><b style="font-size:14px">Indicação da Sandy para vocês</b><span class="tag '+rec[1]+'">'+rec[0]+'</span>'+(r.categoria?'<span class="tag">'+esc(r.categoria)+'</span>':'')+'</div><p style="font-size:14.5px;line-height:1.45;margin:0">'+esc(r.motivo||'')+'</p>'+(ci?'<div style="font-size:13.5px;line-height:1.4"><b>Comprado × voltou:</b> '+esc(ci)+'</div>':'')+(pv?'<div><div class="kk" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Provas sugeridas</div><ul style="margin:4px 0 0;padding-left:18px;font-size:13.5px">'+pv+'</ul></div>':'')+al+'<div class="sub" style="font-size:12px">Isto é só para a equipe. Não vai para o marketplace.</div></div></div>';
+  var mkt=r.relato?'<div style="border:1.5px dashed var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px"><div class="kk" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Texto que a Sandy escreveu para o '+esc(nm)+' (é isto que será enviado)</div><div style="white-space:pre-wrap;font-size:14px;line-height:1.5">'+esc(r.relato)+'</div>'+(r.pedido_financeiro?'<div class="box az"><div class="kk">Pedido financeiro</div><div class="vl" style="font-weight:400">'+esc(r.pedido_financeiro)+'</div></div>':'')+'</div>':'';
+  var fim=cs.status&&['ENVIADO','EM_ANALISE','DECIDIDO'].indexOf(cs.status)>-1;
+  var ac='';
+  if(!fim&&!cs.expirado&&cs.st<6){
+    var b=[];
+    if(r.recomendacao==='contestar')b.push('<button type="button" class="btn lg" data-a="aprovar" data-v="'+S.casoId+'">Revisar e contestar no '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução</button>');
+    else if(r.recomendacao==='nao_contestar')b.push('<button type="button" class="btn lg" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução no '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+S.casoId+'">Contestar mesmo assim</button>'+(cs.decidir?'<button type="button" class="btn ghost" data-a="concordar" data-v="'+S.casoId+'">Só encerrar aqui</button>':''));
+    if(b.length)ac='<div class="row" style="gap:10px;flex-wrap:wrap">'+b.join('')+'</div><p class="sub" style="font-size:12.5px">Nada é enviado sem o seu toque e a sua confirmação. Depois de enviado, não dá para desfazer.</p>';
+  }
+  return ind+mkt+ac;
 }
 function custos(){
   var e=ecoCalc(),admin=S.papelAdmin;
@@ -1184,52 +1200,73 @@ function lerHash(){
   if(!r)r='home';
   if(S.tela!==r){S.tela=r;render(false,true);}
 }
-var MOTIVO_SP={46:'Não recebi a devolução',47:'Produto voltou danificado ou com problema',48:'Pacote vazio ou faltando itens',49:'Produto devolvido é diferente do enviado',50:'Outro motivo',56:'Produto voltou com sinais de uso'};
-async function aprovar(id){
-  var c=caso(id);if(!c)return;
-  if(c.mk!=='sp'){toast('O envio automático por enquanto é só da Shopee. Conteste este caso pelo painel do marketplace.');return;}
-  if(S.contestando)return;
-  S.contestando=true;toast('Consultando a Shopee…');
-  var d;
-  try{
-    var r=await SB.functions.invoke('devol-contestar',{body:{modo:'opcoes',caso_id:id}});
-    d=r.data||{};if(r.error&&!d.mensagem){d=await corpoErro(r.error);}
-    if(!d.ok)throw new Error(d.mensagem||'erro');
-  }catch(e){S.contestando=false;toast('Não consegui consultar a Shopee: '+((e&&e.message)||'erro'));return;}
-  S.contestando=false;
-  var lista=Array.isArray(d.motivos)?d.motivos:[];
-  var st=String((d.detalhe&&d.detalhe.status)||'');
-  if(!lista.length||['REQUESTED','PROCESSING','ACCEPTED'].indexOf(st)<0){toast('A Shopee não aceita mais contestação neste caso: o prazo da loja terminou ou o caso já mudou de fase.');return;}
-  var texto='';try{var rr=await SB.from('devol_relatos').select('relato').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1);texto=(rr.data&&rr.data[0]&&rr.data[0].relato)||'';}catch(e){}
-  var nf=ANEXOS[id]||0;
-  var opts=lista.map(function(m){var k=Number(m.dispute_reason);return '<option value="'+k+'">'+esc(MOTIVO_SP[k]||('Motivo '+k))+'</option>';}).join('');
-  var reqs={};lista.forEach(function(m){var mods=(m.evidence_module_list||[]).map(function(x){return x.requirement;}).filter(Boolean);reqs[m.dispute_reason]=mods.join(' ')||'Não exige fotos.';});
+var NOME_MK={sp:'Shopee',ml:'Mercado Livre',tt:'TikTok Shop'};
+function modalMk(html,aoClicar){
   var m=document.createElement('div');m.className='mdl';
-  m.innerHTML='<div class="mdl-c" role="dialog" aria-modal="true" aria-label="Contestar na Shopee" style="max-width:520px"><h3>Contestar na Shopee</h3><p>Pedido '+esc(c.pedido)+'. Vão junto '+nf+' foto'+(nf===1?'':'s')+' da conferência. Depois de enviado, não dá para desfazer.</p>'+
-    '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Motivo</b><select class="ct-m" style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14.5px;background:#fff">'+opts+'</select></label>'+
-    '<p class="ct-r" style="font-size:13px"></p>'+
-    '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Texto para a Shopee</b><textarea class="ct-t" rows="6" style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;line-height:1.45;resize:vertical">'+esc(texto)+'</textarea></label>'+
-    '<div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">Enviar à Shopee</button></div></div>';
-  var sel=m.querySelector('.ct-m'),req=m.querySelector('.ct-r');
-  function upd(){req.textContent='A Shopee pede: '+(reqs[sel.value]||'');}
-  sel.addEventListener('change',upd);upd();
+  m.innerHTML='<div class="mdl-c" role="dialog" aria-modal="true" style="max-width:540px;max-height:90vh;overflow:auto">'+html+'</div>';
   function fim(){document.removeEventListener('keydown',kd);m.remove();}
   function kd(e){if(e.key==='Escape')fim();}
-  m.addEventListener('click',async function(e){
-    var b=e.target.closest('[data-r]');
-    if(!b){if(e.target===m)fim();return;}
-    if(b.getAttribute('data-r')==='0'){fim();return;}
+  m.addEventListener('click',function(e){var b=e.target.closest('[data-r]');if(!b){if(e.target===m)fim();return;}if(b.getAttribute('data-r')==='0'){fim();return;}aoClicar(b,m,fim);});
+  document.addEventListener('keydown',kd);document.body.appendChild(m);return m;
+}
+async function consultarMk(id){
+  var nome=NOME_MK[(caso(id)||{}).mk]||'o marketplace';
+  toast('Consultando '+nome+'…');
+  try{
+    var r=await SB.functions.invoke('devol-contestar',{body:{modo:'opcoes',caso_id:id}});
+    var d=r.data||{};if(r.error&&!d.mensagem){d=await corpoErro(r.error);}
+    if(!d.ok)throw new Error(d.mensagem||'erro');
+    return d;
+  }catch(e){toast('Não consegui consultar '+nome+': '+((e&&e.message)||'erro'));return null;}
+}
+async function aprovar(id){
+  var c=caso(id);if(!c||S.contestando)return;
+  var nome=NOME_MK[c.mk]||'o marketplace';
+  S.contestando=true;var d=await consultarMk(id);S.contestando=false;if(!d)return;
+  var lista=Array.isArray(d.motivos)?d.motivos:[];
+  if(!d.aberto||!lista.length){toast(nome+' não aceita mais contestação neste caso: o prazo da loja terminou ou o caso já mudou de fase.');return;}
+  var texto='';try{var rr=await SB.from('devol_relatos').select('relato').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1);texto=(rr.data&&rr.data[0]&&rr.data[0].relato)||'';}catch(e){}
+  var nf=ANEXOS[id]||0;
+  var opts=lista.map(function(m){return '<option value="'+esc(m.id)+'">'+esc(m.rotulo)+'</option>';}).join('');
+  var pede={};lista.forEach(function(m){pede[m.id]=m.pede||'';});
+  var est='border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;background:#fff';
+  var emailCampo=(c.mk==='sp'&&!d.email_ok)?'<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>E-mail de contato da loja (a Shopee exige)</b><input type="email" class="ct-e" placeholder="contato@sualoja.com.br" style="'+est+'"><small style="color:var(--muted)">Pedimos uma vez só e guardamos para os próximos casos.</small></label>':'';
+  var html='<h3>Contestar no '+esc(nome)+'</h3><p>Pedido '+esc(c.pedido)+'. Vão junto '+nf+' foto'+(nf===1?'':'s')+' da conferência. Depois de enviado, não dá para desfazer.</p>'+
+    '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Motivo</b><select class="ct-m" style="'+est+'">'+opts+'</select></label><p class="ct-r" style="font-size:13px"></p>'+emailCampo+
+    '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Texto que vai ao '+esc(nome)+'</b><textarea class="ct-t" rows="6" style="'+est+';line-height:1.45;resize:vertical">'+esc(texto)+'</textarea></label>'+
+    '<div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">Enviar ao '+esc(nome)+'</button></div>';
+  var m=modalMk(html,async function(b,m,fim){
     var t=String(m.querySelector('.ct-t').value||'').trim();
     if(t.length<20){toast('Escreva o texto da contestação.');return;}
+    var corpo={modo:'contestar',caso_id:id,confirmado:true,motivo_id:m.querySelector('.ct-m').value,texto:t};
+    var em=m.querySelector('.ct-e');if(em){corpo.email=String(em.value||'').trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(corpo.email)){toast('Digite um e-mail válido da loja.');return;}}
     b.disabled=true;b.textContent='Enviando…';
     try{
-      var r=await SB.functions.invoke('devol-contestar',{body:{modo:'contestar',caso_id:id,confirmado:true,motivo_id:Number(sel.value),texto:t}});
+      var r=await SB.functions.invoke('devol-contestar',{body:corpo});
       var x=r.data||{};if(r.error&&!x.mensagem){x=await corpoErro(r.error);}
       toast(x.mensagem||(x.ok?'Enviado.':'Não foi possível enviar.'));
-      if(x.ok){fim();await carregar();render(true,false);}else{b.disabled=false;b.textContent='Enviar à Shopee';}
-    }catch(err){toast('Não consegui enviar: '+((err&&err.message)||'erro'));b.disabled=false;b.textContent='Enviar à Shopee';}
+      if(x.ok){fim();await carregar();render(true,false);}else{b.disabled=false;b.textContent='Enviar ao '+nome;}
+    }catch(err){toast('Não consegui enviar: '+((err&&err.message)||'erro'));b.disabled=false;b.textContent='Enviar ao '+nome;}
   });
-  document.addEventListener('keydown',kd);document.body.appendChild(m);sel.focus();
+  var sel=m.querySelector('.ct-m'),req=m.querySelector('.ct-r');
+  function upd(){req.textContent=nome+' pede: '+(pede[sel.value]||'');}
+  sel.addEventListener('change',upd);upd();
+}
+async function aceitarDev(id){
+  var c=caso(id);if(!c||S.contestando)return;
+  var nome=NOME_MK[c.mk]||'o marketplace';
+  if(c.mk==='tt'){toast('No TikTok Shop, se a loja não recusar, a devolução é aprovada sozinha no prazo.');return;}
+  S.contestando=true;var d=await consultarMk(id);S.contestando=false;if(!d)return;
+  if(!d.pode_aceitar){toast(nome+' não oferece mais essa ação neste caso (prazo encerrado ou já respondido).');return;}
+  modalMk('<h3>Aceitar a devolução no '+esc(nome)+'</h3><p>Pedido '+esc(c.pedido)+'. O cliente recebe o reembolso e a loja não contesta. Depois de enviado, não dá para desfazer.</p><div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">Aceitar a devolução</button></div>',async function(b,m,fim){
+    b.disabled=true;b.textContent='Enviando…';
+    try{
+      var r=await SB.functions.invoke('devol-contestar',{body:{modo:'aceitar',caso_id:id,confirmado:true}});
+      var x=r.data||{};if(r.error&&!x.mensagem){x=await corpoErro(r.error);}
+      toast(x.mensagem||(x.ok?'Devolução aceita.':'Não foi possível aceitar.'));
+      if(x.ok){fim();await carregar();render(true,false);}else{b.disabled=false;b.textContent='Aceitar a devolução';}
+    }catch(err){toast('Não consegui enviar: '+((err&&err.message)||'erro'));b.disabled=false;b.textContent='Aceitar a devolução';}
+  });
 }
 
 async function decidirCaso(id,acao){
@@ -1259,6 +1296,7 @@ document.addEventListener('click',function(e){
   else if(a==='grupo'){S.f.home.grupo=v;render(true,false);}
   else if(a==='mais'){S.mais=!S.mais;render(true,false);}
       else if(a==='aprovar'){aprovar(v);}
+  else if(a==='aceitarDev'){aceitarDev(v);}
   else if(a==='fotosCaso'){var cc=caso(v);if(cc){S.lote.pedido=String(cc.raw.pedido||cc.raw.solicitacao_id||'');ir('receber');}}
   else if(a==='mesCusto'){S.mesCusto=v;render(true,false);}
   else if(a==='baixarMes'){baixarRelatorio(v);}
