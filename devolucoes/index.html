@@ -1184,7 +1184,54 @@ function lerHash(){
   if(!r)r='home';
   if(S.tela!==r){S.tela=r;render(false,true);}
 }
-function aprovar(){toast('Modo sombra: a Sandy ainda não envia contestações.');}
+var MOTIVO_SP={46:'Não recebi a devolução',47:'Produto voltou danificado ou com problema',48:'Pacote vazio ou faltando itens',49:'Produto devolvido é diferente do enviado',50:'Outro motivo',56:'Produto voltou com sinais de uso'};
+async function aprovar(id){
+  var c=caso(id);if(!c)return;
+  if(c.mk!=='sp'){toast('O envio automático por enquanto é só da Shopee. Conteste este caso pelo painel do marketplace.');return;}
+  if(S.contestando)return;
+  S.contestando=true;toast('Consultando a Shopee…');
+  var d;
+  try{
+    var r=await SB.functions.invoke('devol-contestar',{body:{modo:'opcoes',caso_id:id}});
+    d=r.data||{};if(r.error&&!d.mensagem){d=await corpoErro(r.error);}
+    if(!d.ok)throw new Error(d.mensagem||'erro');
+  }catch(e){S.contestando=false;toast('Não consegui consultar a Shopee: '+((e&&e.message)||'erro'));return;}
+  S.contestando=false;
+  var lista=Array.isArray(d.motivos)?d.motivos:[];
+  var st=String((d.detalhe&&d.detalhe.status)||'');
+  if(!lista.length||['REQUESTED','PROCESSING','ACCEPTED'].indexOf(st)<0){toast('A Shopee não aceita mais contestação neste caso: o prazo da loja terminou ou o caso já mudou de fase.');return;}
+  var texto='';try{var rr=await SB.from('devol_relatos').select('relato').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1);texto=(rr.data&&rr.data[0]&&rr.data[0].relato)||'';}catch(e){}
+  var nf=ANEXOS[id]||0;
+  var opts=lista.map(function(m){var k=Number(m.dispute_reason);return '<option value="'+k+'">'+esc(MOTIVO_SP[k]||('Motivo '+k))+'</option>';}).join('');
+  var reqs={};lista.forEach(function(m){var mods=(m.evidence_module_list||[]).map(function(x){return x.requirement;}).filter(Boolean);reqs[m.dispute_reason]=mods.join(' ')||'Não exige fotos.';});
+  var m=document.createElement('div');m.className='mdl';
+  m.innerHTML='<div class="mdl-c" role="dialog" aria-modal="true" aria-label="Contestar na Shopee" style="max-width:520px"><h3>Contestar na Shopee</h3><p>Pedido '+esc(c.pedido)+'. Vão junto '+nf+' foto'+(nf===1?'':'s')+' da conferência. Depois de enviado, não dá para desfazer.</p>'+
+    '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Motivo</b><select class="ct-m" style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14.5px;background:#fff">'+opts+'</select></label>'+
+    '<p class="ct-r" style="font-size:13px"></p>'+
+    '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Texto para a Shopee</b><textarea class="ct-t" rows="6" style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;line-height:1.45;resize:vertical">'+esc(texto)+'</textarea></label>'+
+    '<div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">Enviar à Shopee</button></div></div>';
+  var sel=m.querySelector('.ct-m'),req=m.querySelector('.ct-r');
+  function upd(){req.textContent='A Shopee pede: '+(reqs[sel.value]||'');}
+  sel.addEventListener('change',upd);upd();
+  function fim(){document.removeEventListener('keydown',kd);m.remove();}
+  function kd(e){if(e.key==='Escape')fim();}
+  m.addEventListener('click',async function(e){
+    var b=e.target.closest('[data-r]');
+    if(!b){if(e.target===m)fim();return;}
+    if(b.getAttribute('data-r')==='0'){fim();return;}
+    var t=String(m.querySelector('.ct-t').value||'').trim();
+    if(t.length<20){toast('Escreva o texto da contestação.');return;}
+    b.disabled=true;b.textContent='Enviando…';
+    try{
+      var r=await SB.functions.invoke('devol-contestar',{body:{modo:'contestar',caso_id:id,confirmado:true,motivo_id:Number(sel.value),texto:t}});
+      var x=r.data||{};if(r.error&&!x.mensagem){x=await corpoErro(r.error);}
+      toast(x.mensagem||(x.ok?'Enviado.':'Não foi possível enviar.'));
+      if(x.ok){fim();await carregar();render(true,false);}else{b.disabled=false;b.textContent='Enviar à Shopee';}
+    }catch(err){toast('Não consegui enviar: '+((err&&err.message)||'erro'));b.disabled=false;b.textContent='Enviar à Shopee';}
+  });
+  document.addEventListener('keydown',kd);document.body.appendChild(m);sel.focus();
+}
+
 async function decidirCaso(id,acao){
   if(S.decidindo)return;S.decidindo=true;
   try{
@@ -1211,7 +1258,7 @@ document.addEventListener('click',function(e){
   else if(a==='fmk'){var f=S.f[k];f.mk=v;if(f.loja!=='todas'&&lojasDe(v).indexOf(f.loja)===-1)f.loja='todas';render(true,false);}
   else if(a==='grupo'){S.f.home.grupo=v;render(true,false);}
   else if(a==='mais'){S.mais=!S.mais;render(true,false);}
-      else if(a==='aprovar'){aprovar();}
+      else if(a==='aprovar'){aprovar(v);}
   else if(a==='fotosCaso'){var cc=caso(v);if(cc){S.lote.pedido=String(cc.raw.pedido||cc.raw.solicitacao_id||'');ir('receber');}}
   else if(a==='mesCusto'){S.mesCusto=v;render(true,false);}
   else if(a==='baixarMes'){baixarRelatorio(v);}
