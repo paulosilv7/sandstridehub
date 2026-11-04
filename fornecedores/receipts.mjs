@@ -25,5 +25,5 @@ export class ReceiptStore{
    if(error)throw uploadError||error;return data;
   }finally{this.busy=false;}
  }
- async download(receipt){const{data,error}=await this.client.storage.from(RECEIPT_BUCKET).download(receipt.path);if(error)throw error;return data;}
+ async download(receipt){if(receipt.deletedAt)throw new Error('Comprovante removido após o prazo de retenção.');const{data,error}=await this.client.storage.from(RECEIPT_BUCKET).download(receipt.path);if(error)throw error;return data;}
 }
