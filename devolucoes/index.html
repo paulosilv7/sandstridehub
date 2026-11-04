@@ -615,7 +615,7 @@ function grupoDe(c){
 }
 var ETAPAS_G=['despachar','transito','chegou','conferido'];
 function noGrupo(c,g){
-  if(ETAPAS_G.indexOf(g)>-1)return c.etapa===g&&!c.arq;
+  if(ETAPAS_G.indexOf(g)>-1)return c.etapa===g&&(c.etapa==='chegou'||c.etapa==='conferido'||!c.arq);
   if(g==='todos')return grupoDe(c)!=='decididos'&&grupoDe(c)!=='arquivados';
   return grupoDe(c)===g;
 }
