@@ -724,7 +724,7 @@ function telaConfig(){
 function telaPainel(){
   if(S.vcarregando&&!S.v)return carregando('Financeiro');
   var L=ok(),mlOk=!S.erro&&S.d;
-  var arec=sum(L,'a_receber'),pg7=sum(L,function(l){return l.pago_7d}),disp=sum(L,function(l){return l.disputa.valor}),ndisp=sum(L,function(l){return l.disputa.qtd});
+  var T=okT(),arec=sum(T,function(l){return l.a_receber||0}),pg7=sum(T,function(l){return l.pago_7d||0}),disp=sum(T,function(l){return l.disputa?l.disputa.valor:0}),ndisp=sum(T,function(l){return l.disputa?l.disputa.qtd:0});
   var hj=hojeSP(),amanha=new Date(Date.parse(hj+'T12:00:00Z')+864e5).toISOString().slice(0,10),lim=new Date(Date.parse(hj+'T12:00:00Z')+7*864e5).toISOString().slice(0,10);
   var barras=[],mx=1,i,dd;for(i=0;i<14;i++){dd=new Date(Date.parse(hj+'T12:00:00Z')+i*864e5).toISOString().slice(0,10);var x=mlOk?totalDia(dd).t:0;barras.push({k:dd,v:x});mx=Math.max(mx,x)}
   var h=head('Financeiro',mesSel());
@@ -733,11 +733,11 @@ function telaPainel(){
   var C=S.contas.filter(function(x){return x.ativa}),prox=C.filter(function(x){var v=vencIso(x);return !pagaDe(x)&&v>=hj&&v<=lim}).sort(function(a,b){return vencIso(a)<vencIso(b)?-1:1});
   h+='<section class="palco"><div><div class="top">'+chip('wallet','p')+'<span class="k">Resultado de '+mesNome(S.ym).toLowerCase()+'</span>'+pill('dark','',ehAtual()?'até hoje, '+ddmm(hj):'mês fechado')+'</div>'+big(c.res,c.res<0?' neg':'')+
     '<div class="trio"><div>'+chip('cart','p',1)+'<div class="t"><span class="k">Faturamento</span><b>'+brl(c.fat)+'</b></div></div><div>'+chip('trend','p',1)+'<div class="t"><span class="k">Sobra das vendas</span><b>'+brl(c.sobra)+'</b></div></div><div>'+chip('receipt','p',1)+'<div class="t"><span class="k">Despesas</span><b>'+brl(c.desp)+'</b></div></div></div></div>'+
-    '<div class="inset"><div class="top"><span class="k">A receber do Mercado Livre</span></div><div class="big2">'+(mlOk?brl(arec):'—')+'</div>'+
+    '<div class="inset"><div class="top"><span class="k">A receber dos marketplaces</span></div><div class="big2">'+(mlOk?brl(arec):'—')+'</div>'+
     '<div class="bars" role="img" aria-label="Liberações do Mercado Livre nos próximos 14 dias">'+barras.map(function(b){return '<button type="button" class="bar'+(b.k===hj?' hj':'')+'" data-k="'+b.k+'"><i style="height:'+Math.max(4,b.v/mx*100).toFixed(0)+'%"></i><em>'+b.k.slice(8)+'</em></button>'}).join('')+'</div>'+
-    '<span class="k">'+(mlOk?'Libera por dia, pela data que o Mercado Livre informa':'Não consegui ler o Mercado Livre agora')+'</span></div></section>';
+    '<span class="k">'+(mlOk?'Mercado Livre libera por dia, pela data que ele informa':'Não consegui ler o Mercado Livre agora')+'</span></div></section>';
   h+='<section class="kpis">'+
-    kpi('pago','check','Pago · 7 dias',mlOk?brl0(pg7):'—','Mercado Livre','pos','recebimentos')+
+    kpi('pago','check','Pago · 7 dias',mlOk?brl0(pg7):'—','Mercado Livre, Shopee e TikTok','pos','recebimentos')+
     kpi('rec','clock','Libera amanhã',mlOk?brl0(totalDia(amanha).t):'—','Mercado Livre','azul','recebimentos')+
     kpi('sai','cal','Contas em 7 dias',brl0(sum(prox,function(x){return +x.valor})),prox.length+' contas a pagar','','contas')+
     kpi('disp','receipt','Comprovantes para confirmar',String(npend()),'Enviados no grupo do Telegram',npend()?'amb':'','despesas')+
@@ -769,10 +769,10 @@ function render(){
 function seguro(){try{render()}catch(e){S.erro={titulo:'Não consegui montar a tela',msg:'Detalhe técnico: '+String((e&&e.message)||e).slice(0,120),tentar:true};try{render()}catch(x){}}}
 
 // ---------- Dados ----------
-async function carregarML(){
-  S.carregando=true;S.erro=null;seguro();
+async function carregarML(force){
+  S.carregando=!S.d||!!force;S.erro=null;seguro();
   try{
-    var r=await SB.functions.invoke('financeiro-recebimentos',{method:'POST',body:{}});
+    var r=await SB.functions.invoke('financeiro-recebimentos',{method:'POST',body:{force:!!force}});
     if(r.error){
       var st=r.error.context&&r.error.context.status;
       if(st===403)S.erro={titulo:'Sem acesso ao Financeiro',msg:'Esta área é só para Paulo e Lucas.',tentar:false};
@@ -805,7 +805,7 @@ async function carregarMes(sil){
   }catch(e){S.verro=true;console.error(e)}
   S.vcarregando=false;seguro();
 }
-function carregar(){carregarML();carregarMes()}
+function carregar(force){carregarML(force);carregarMes()}
 
 // ---------- Janelas ----------
 function modal(t,corpo,botoes){
@@ -888,7 +888,7 @@ document.addEventListener('click',async function(e){
   var er=e.target.closest('[data-desp]');if(er)return modalDesp(er.dataset.desp);
   var b=e.target.closest('button');if(!b)return;var d=b.dataset;
   if(b.hasAttribute('data-hub')){location.href='../';return}
-  if(b.hasAttribute('data-atu'))return carregar();
+  if(b.hasAttribute('data-atu'))return carregar(true);
   if(d.go){if(location.hash.slice(1)===d.go)return seguro();location.hash=d.go;return scrollTo({top:0})}
   if(d.mes){var n=ymSomar(S.ym,+d.mes);if(n>mesAtual())return;S.ym=n;return carregarMes()}
   if(d.fd){S.filtro=d.fd;return seguro()}
