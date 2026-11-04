@@ -529,3 +529,38 @@ body:has(#vista[data-v="custos"]) .main,body:has(#vista[data-v="custos"]) .vista
   .custos-grid{flex:1 1 0;height:auto;min-height:0}
   .custos-dados{padding:0}
 }
+
+/* ===== Ícones nas tags (04/11/2026) ===== */
+.ti{display:inline-block;flex:none;width:12px;height:12px;margin-right:4px;vertical-align:-1.5px;background:currentColor;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.ti-clock{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 6v6l4 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z%22/%3E%3C/svg%3E")}
+.ti-check{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M22 11.1V12a10 10 0 1 1-5.9-9.1M22 4 12 14l-3-3%22/%3E%3C/svg%3E")}
+.ti-alert{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0ZM12 9v4M12 17h.01%22/%3E%3C/svg%3E")}
+.ti-x{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M18 6 6 18M6 6l12 12%22/%3E%3C/svg%3E")}
+.ti-repeat{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3%22/%3E%3C/svg%3E")}
+.ti-shield{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z%22/%3E%3C/svg%3E")}
+.ti-lock{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4%22/%3E%3C/svg%3E")}
+.ti-bot{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 8V4H8M4 8h16v12H4zM2 14h2M20 14h2M9 13v2M15 13v2%22/%3E%3C/svg%3E")}
+.ti-user{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z%22/%3E%3C/svg%3E")}
+.ti-users{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8%22/%3E%3C/svg%3E")}
+.ti-inbox{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M22 12h-6l-2 3h-4l-2-3H2M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1Z%22/%3E%3C/svg%3E")}
+.ti-send{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13%22/%3E%3C/svg%3E")}
+.ti-store{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 9l1-5h16l1 5M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 12v8h14v-8%22/%3E%3C/svg%3E")}
+.tg{display:inline-flex;align-items:center}
+.resp{display:inline-flex;align-items:center}.resp .ti{width:13px;height:13px;margin-right:5px}
+.sn span{display:inline-flex;align-items:center}.sn span .ti{width:13px;height:13px;margin-right:5px}
+/* contadores com cor de significado único: vermelho = pendente, âmbar = com o marketplace, verde = respondidas */
+.seg-b[data-v="aguardando"]:not([aria-pressed="true"]) .seg-n{color:var(--bad)}
+.seg-b[data-v="marketplace"]:not([aria-pressed="true"]) .seg-n{color:var(--warn)}
+.seg-b[data-v="respondidas"]:not([aria-pressed="true"]) .seg-n{color:var(--good)}
+.seg-b[data-n="0"]:not([aria-pressed="true"]) .seg-n{color:var(--muted)}
+.seg-b .seg-l{font-weight:500}
+.sn.pend b{color:var(--bad)}.sn.pend0 b{color:var(--good)}
+.ti-trend{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m22 7-8.5 8.5-5-5L2 17M16 7h6v6%22/%3E%3C/svg%3E")}
+@media (max-width:700px){
+  .sandy{padding:16px 18px;gap:12px 14px}
+  .sandy-fig{flex:0 0 64px;width:64px}
+  .sandy-txt{flex:1 1 180px}
+  .sandy-nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}
+  .sn,.sn:first-child{border-left:0;padding:8px 10px;background:var(--hover);border-radius:14px}
+}
+@media (max-width:700px){.sn span{white-space:normal;line-height:1.25;align-items:flex-start}.sn span .ti{margin-top:2px}}

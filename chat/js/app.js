@@ -28,6 +28,7 @@ const FALAS = {
   cansada: ['Foram muitos clientes hoje, hein?', 'Que equipe incrível!', 'Hora de um cafezinho?'],
 };
 const TZ = 'America/Sao_Paulo';
+const ico = (n) => `<i class="ti ti-${n}" aria-hidden="true"></i>`;
 const fDia = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
 const fHora = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
 const fDM = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, day: '2-digit', month: '2-digit' });
@@ -185,11 +186,11 @@ const souAdmin = () => S.eu?.papel === 'admin';
 /* ------------------------------------------------------------------ */
 const parada = (c) => c.aguardando && !c.bloqueada && c.espera >= S.cfg.aviso;
 const SITUACAO = {
-  cancelado: { t: 'Cancelada', cls: 'warn' },
-  devolucao: { t: 'Devolução', cls: 'warn' },
-  devolvido: { t: 'Devolvida', cls: 'neutral' },
-  reclamacao: { t: 'Reclamação', cls: 'warn' },
-  analise_ml: { t: 'Em análise no marketplace', cls: 'warn' },
+  cancelado: { t: 'Cancelada', cls: 'warn', i: 'x' },
+  devolucao: { t: 'Devolução', cls: 'warn', i: 'repeat' },
+  devolvido: { t: 'Devolvida', cls: 'neutral', i: 'repeat' },
+  reclamacao: { t: 'Reclamação', cls: 'warn', i: 'alert' },
+  analise_ml: { t: 'Em análise no marketplace', cls: 'warn', i: 'shield' },
 };
 // Situações em que o marketplace não aceita mensagens do vendedor.
 const SEM_ENVIO = ['cancelado', 'devolucao', 'devolvido', 'analise_ml'];
@@ -198,11 +199,11 @@ const SEM_ENVIO = ['cancelado', 'devolucao', 'devolvido', 'analise_ml'];
 const emTratamento = (c) => c.situacao === 'analise_ml';
 function estilo(c) {
   if (c.situacao && SITUACAO[c.situacao]) return SITUACAO[c.situacao];
-  if (c.bloqueada) return { t: 'Bloqueada', cls: 'warn' };
-  if (!c.aguardando) return { t: 'Respondida', cls: 'good' };
-  if (c.espera < S.cfg.aviso) return { t: fmt(c.espera), cls: 'neutral' };
-  if (c.espera < S.cfg.urgente) return { t: fmt(c.espera), cls: 'warn' };
-  return { t: fmt(c.espera), cls: 'bad' };
+  if (c.bloqueada) return { t: 'Bloqueada', cls: 'warn', i: 'lock' };
+  if (!c.aguardando) return { t: 'Respondida', cls: 'good', i: 'check' };
+  if (c.espera < S.cfg.aviso) return { t: fmt(c.espera), cls: 'neutral', i: 'clock' };
+  if (c.espera < S.cfg.urgente) return { t: fmt(c.espera), cls: 'warn', i: 'clock' };
+  return { t: fmt(c.espera), cls: 'bad', i: 'clock' };
 }
 function respTxt(c) {
   if (c.ia) return 'Sandy atendendo';
@@ -322,7 +323,7 @@ function renderSandy() {
     `<button type="button" class="sandy-fig${S.pula ? ' pula' : ''}" data-act="sandy-clica" aria-label="Conversar com a Sandy">${sandySvg(hu, 'a')}</button>` +
     `<div class="sandy-txt"><h2>${cumprimento()}, ${esc(eu())}.</h2><p>${esc(txt)}</p>` +
     (S.fala ? `<span class="fala" role="status">${esc(S.fala)}</span>` : '') + '</div>' +
-    `<div class="sandy-nums" aria-label="Resumo do dia"><div class="sn"><b>${m.pend}</b><span>Aguardando</span></div><div class="sn"><b>${m.total}</b><span>Clientes respondidos</span></div><div class="sn ${nc}"><b>${nivel}</b><span>Ritmo do dia</span></div></div>`;
+    `<div class="sandy-nums" aria-label="Resumo do dia"><div class="sn ${m.pend ? 'pend' : 'pend0'}"><b>${m.pend}</b><span>${ico('inbox')}Aguardando</span></div><div class="sn ok"><b>${m.total}</b><span>${ico('check')}Clientes respondidos</span></div><div class="sn ${nc}"><b>${nivel}</b><span>${ico('trend')}Ritmo do dia</span></div></div>`;
   S.pula = false;
 }
 
@@ -343,7 +344,7 @@ function renderFilters() {
   const fora = S.convs.filter(emTratamento).length;
   const tip = { marketplace: 'Casos em análise pelo marketplace. Quando a análise termina, vão para Respondidas. Não entram nas métricas de não respondidas.' };
   const st = [['todas', 'Todas', total], ['aguardando', 'Não respondidas', aguard], ['marketplace', 'Com o marketplace', fora], ['respondidas', 'Respondidas', total - aguard - fora]];
-  $('seg').innerHTML = st.map((x) => `<button type="button" class="seg-b" data-act="status" data-v="${x[0]}" aria-pressed="${S.status === x[0]}"${tip[x[0]] ? ` title="${tip[x[0]]}"` : ''}><span class="seg-n">${x[2]}</span><span class="seg-l">${x[1]}</span></button>`).join('');
+  $('seg').innerHTML = st.map((x) => `<button type="button" class="seg-b" data-act="status" data-v="${x[0]}" data-n="${x[2]}" aria-pressed="${S.status === x[0]}"${tip[x[0]] ? ` title="${tip[x[0]]}"` : ''}><span class="seg-n">${x[2]}</span><span class="seg-l">${x[1]}</span></button>`).join('');
   const mk = [['todos', 'Todos', null], ['mercado_livre', 'Mercado Livre', 'ml'], ['shopee', 'Shopee', 'sp'], ['tiktok_shop', 'TikTok Shop', 'tt']];
   $('mks').innerHTML = mk.map((x) => `<button type="button" class="pill${x[2] ? ` logo pk-${x[2]}` : ''}" data-act="mk" data-v="${x[0]}" aria-pressed="${S.mk === x[0]}" aria-label="${x[1]}" title="${x[1]}">${x[2] ? logo(x[2], x[1]) : x[1]}</button>`).join('');
   const at = [['todos', 'Todos'], ['minhas', 'Minhas'], ['livres', 'Sem responsável']];
@@ -360,11 +361,11 @@ function renderList() {
     const e = estilo(c);
     const et = c.tags.slice(0, 2).map((n) => `<span class="etq sm ${etqCls(n)}">${esc(n)}</span>`).join('') + (c.tags.length > 2 ? `<span class="etq sm e1">+${c.tags.length - 2}</span>` : '');
     return `<button type="button" class="row" data-act="sel" data-id="${c.id}" aria-pressed="${c.id === S.sel}"><span class="av">${inicial(c.nome)}</span><span class="rb">` +
-      `<span class="r1"><span class="nm">${esc(c.nome)}</span><span class="tg ${e.cls}">${esc(e.t)}</span></span>` +
+      `<span class="r1"><span class="nm">${esc(c.nome)}</span><span class="tg ${e.cls}">${e.i ? ico(e.i) : ''}${esc(e.t)}</span></span>` +
       `<span class="r2">${logo(c.mk, c.mkNome)}<span class="tx">${esc(c.lojaNome)} · ${TIPO[c.tipo] ?? ''}</span></span>` +
       `<span class="r3">${c.ultimaDe === 'loja' ? 'Você: ' : c.ultimaDe === 'sistema' ? `${esc(c.mkNome)}: ` : ''}${esc(c.ultimaTexto)}</span>` +
       (et ? `<span class="rowetq">${et}</span>` : '') +
-      `<span class="resp${c.atendenteId === S.user?.id ? ' eu' : ''}">${esc(respTxt(c))}</span></span></button>`;
+      `<span class="resp${c.atendenteId === S.user?.id ? ' eu' : ''}">${ico(c.ia ? 'bot' : (!c.atendenteId && c.escalada) ? 'alert' : c.atendenteId ? 'user' : 'users')}${esc(respTxt(c))}</span></span></button>`;
   }).join('') : `<div class="vazio">${S.convs.length ? 'Nenhuma conversa com esses filtros.' : 'Nenhuma conversa ainda. Quando chegar uma pergunta ou mensagem em uma loja conectada, ela aparece aqui sozinha.'}</div>`;
 }
 function linhasPainel(c) {
