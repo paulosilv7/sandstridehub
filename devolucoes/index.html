@@ -463,7 +463,8 @@ async function carregar(){
     SB.from('devol_relatos').select('caso_id,recomendacao,criado_em').order('criado_em',{ascending:false}).limit(1000),
     SB.from('devol_mensagens').select('caso_id,chave,origem,texto,anexos,enviado_em').order('enviado_em',{ascending:false}).limit(600),
     SB.from('devol_eventos').select('caso_id,criado_em,dados').eq('tipo','resposta_ml_enviada').order('criado_em',{ascending:false}).limit(200),
-    SB.from('devol_sugestoes').select('caso_id,recomendada,situacao,pct_ml,valor_pedido,motivo,comparacao,alerta')
+    SB.from('devol_sugestoes').select('caso_id,recomendada,situacao,pct_ml,valor_pedido,motivo,comparacao,alerta'),
+    SB.from('devol_resumo_mensal').select('*')
   ]);
   var falha=q.filter(function(x){return x.error;})[0];
   if(falha)throw new Error(falha.error.message);
@@ -474,6 +475,7 @@ async function carregar(){
   REC={};(q[9].data||[]).forEach(function(x){if(!REC[x.caso_id])REC[x.caso_id]=x.recomendacao;});
   MSG={};THR={};var _msgs=(q[10].data||[]);var _reais=_msgs.filter(function(x){return x.origem==='loja'&&String(x.chave).indexOf('loja-local:')!==0;});_msgs=_msgs.filter(function(x){if(String(x.chave).indexOf('loja-local:')!==0)return true;var t=new Date(x.enviado_em).getTime();return !_reais.some(function(y){return y.caso_id===x.caso_id&&Math.abs(new Date(y.enviado_em).getTime()-t)<180000;});});_msgs.forEach(function(x){if(x.origem==='mediador'&&!MSG[x.caso_id])MSG[x.caso_id]=x;(THR[x.caso_id]=THR[x.caso_id]||[]);if(THR[x.caso_id].length<6)THR[x.caso_id].push(x);});
   ENV={};(q[11].data||[]).forEach(function(x){if(!ENV[x.caso_id])ENV[x.caso_id]=x;});SUG={};(q[12].data||[]).forEach(function(x){SUG[x.caso_id]=x;});
+  S.resumo=(q[13].data||[]).map(function(r){var lj=LOJAID[r.loja_id]||{};r.mk=MKS[lj.marketplace]||'ml';r.loja=lj.apelido||'—';return r;});
   S.casos=(q[1].data||[]).map(adaptar);
   S.cfg={};(q[3].data||[]).forEach(function(c){S.cfg[c.chave]=c.valor;});
   S.regras=q[4].data||[];
@@ -647,7 +649,8 @@ function baixarRelatorio(mes){
     tot.ped+=c.vped||0;tot.reemb+=c.reemb>0?c.reemb:0;tot.frete+=frete;tot.est+=est;tot.parc+=parc;tot.custo+=custo;
     linhas.push([mesRotulo(mes),MK[c.mk].nome,c.loja,String(c.pedido).replace('#',''),c.solicitacao,DESF_PT[d]||d,csvNum(c.vped),csvNum(c.reemb>0?c.reemb:0),csvNum(frete),csvNum(est),csvNum(parc),csvNum(custo)].map(csvTxt).join(';'));
   });
-  linhas.push(['TOTAL ('+casos.length+' casos)','','','','','',csvNum(tot.ped),csvNum(tot.reemb),csvNum(tot.frete),csvNum(tot.est),csvNum(tot.parc),csvNum(tot.custo)].map(csvTxt).join(';'));
+  var nRes=0;(S.resumo||[]).filter(function(r){return r.mes===mes;}).forEach(function(r){var custo=(+r.frete_real)+(+r.reembolso_parcial);nRes+=r.casos;tot.frete+=+r.frete_real;tot.parc+=+r.reembolso_parcial;tot.custo+=custo;linhas.push([mesRotulo(mes),MK[r.mk].nome,r.loja,'(resumo de '+r.casos+' casos antigos já apagados)','','','','',csvNum(r.frete_real),csvNum(0),csvNum(r.reembolso_parcial),csvNum(custo)].map(csvTxt).join(';'));});
+  linhas.push(['TOTAL ('+(casos.length+nRes)+' casos)','','','','','',csvNum(tot.ped),csvNum(tot.reemb),csvNum(tot.frete),csvNum(tot.est),csvNum(tot.parc),csvNum(tot.custo)].map(csvTxt).join(';'));
   linhas.push(['O produto não entra no custo: já está no custo do fornecedor. Custo = frete + reembolsos parciais. Frete estimado = média real do Mercado Livre, usada onde o marketplace não informa o frete.'].map(csvTxt).join(';'));
   var blob=new Blob(['\ufeff'+[cab.join(';')].concat(linhas).join('\r\n')],{type:'text/csv;charset=utf-8'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='devolucoes-custos-'+mes+'.csv';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},800);
@@ -658,7 +661,7 @@ function mesDe(c){var d=c.decEm||c.atualizado;if(!d)return null;var p=new Date(n
 function mesRotulo(k){var p=k.split('-');return MESES_PT[+p[1]-1].charAt(0).toUpperCase()+MESES_PT[+p[1]-1].slice(1)+' de '+p[0];}
 function mesAtualKey(){var p=new Date(Date.now()-3*3600000);return p.getUTCFullYear()+'-'+('0'+(p.getUTCMonth()+1)).slice(-2);}
 function mesPassadoKey(){var p=new Date(Date.now()-3*3600000);p.setUTCDate(1);p.setUTCMonth(p.getUTCMonth()-1);return p.getUTCFullYear()+'-'+('0'+(p.getUTCMonth()+1)).slice(-2);}
-function mesesComDados(){var o={},ini=null;S.casos.forEach(function(c){var d=finDesfecho(c);if(d===null||d==='em_andamento')return;var k=mesDe(c);if(k)o[k]=1;var t=c.decEm?new Date(c.decEm).getTime():null;if(t&&(ini===null||t<ini))ini=t;});var ks=Object.keys(o).sort().reverse();var cur=mesAtualKey();if(ks.indexOf(cur)<0)ks.unshift(cur);return {ks:ks,ini:ini};}
+function mesesComDados(){var o={},ini=null;S.casos.forEach(function(c){var d=finDesfecho(c);if(d===null||d==='em_andamento')return;var k=mesDe(c);if(k)o[k]=1;var t=c.decEm?new Date(c.decEm).getTime():null;if(t&&(ini===null||t<ini))ini=t;});(S.resumo||[]).forEach(function(r){o[r.mes]=1;});var ks=Object.keys(o).sort().reverse();var cur=mesAtualKey();if(ks.indexOf(cur)<0)ks.unshift(cur);return {ks:ks,ini:ini};}
 function mesParcialInfo(k,ini){var cur=mesAtualKey();if(k===cur)return 'em andamento';if(ini){var p=new Date(ini-3*3600000);var kk=p.getUTCFullYear()+'-'+('0'+(p.getUTCMonth()+1)).slice(-2);if(kk===k&&p.getUTCDate()>3)return 'parcial, dados a partir de '+('0'+p.getUTCDate()).slice(-2)+'/'+('0'+(p.getUTCMonth()+1)).slice(-2);}return '';}
 function finCalc(mes){
   var cfg=parseFloat(String(S.cfg.custo_frete_devolucao_brl||'').replace(',','.')),temCfg=isFinite(cfg)&&cfg>0;
@@ -675,6 +678,7 @@ function finCalc(mes){
     if(d==='devolvido_com_produto'){f.devN++;m.dev++;if(!c.freteLido){f.semFrete++;}return;}
     f.semDevN++;
   });
+  (S.resumo||[]).forEach(function(r){if(mes&&r.mes!==mes)return;var m=f.porMk[r.mk];f.ganhouN+=r.ganhamos;f.evitado+=+r.evitado;f.cancN+=r.cancelados;f.freteReal+=+r.frete_real;f.freteN+=r.frete_n;m.custo+=+r.frete_real;f.parcialN+=r.parciais;f.parcial+=+r.reembolso_parcial;m.parc+=+r.reembolso_parcial;f.devN+=r.devolvidos;m.dev+=r.devolvidos;f.semDevN+=r.sem_devolucao;});
   f.medio=f.freteN>0?f.freteReal/f.freteN:null;
   var gs=0,gn=0;S.casos.forEach(function(c){if(c.freteLido&&c.custoFrete>0){gs+=c.custoFrete;gn++;}});
   var base=temCfg?cfg:(gn>0?gs/gn:0);
@@ -692,6 +696,7 @@ var TIPO_IDX={frete_evitado:0,ressarcimento:1,reembolso_barrado:2};
 function ecoCalc(){
   var tot=0,conf=0,porT=[0,0,0],nT=[0,0,0],porM={ml:0,sp:0,tt:0};
   S.eco.forEach(function(x){var i=TIPO_IDX[x.tipo];tot+=x.valor;if(x.conf)conf+=x.valor;porT[i]+=x.valor;nT[i]++;porM[x.mk]+=x.valor;});
+  (S.resumo||[]).forEach(function(r){tot+=+r.economia;conf+=+r.economia;});
   return {tot:tot,conf:conf,aconc:tot-conf,porT:porT,nT:nT,porM:porM,ganhas:S.eco.length,ret:GASTO_IA_MES>0?tot/GASTO_IA_MES:0};
 }
 var tt=null;
