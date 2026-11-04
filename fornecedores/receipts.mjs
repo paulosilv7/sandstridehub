@@ -16,7 +16,7 @@ export class ReceiptStore{
  async upload(entryId,prepared){
   if(this.busy)throw new Error('Aguarde o envio atual.');this.busy=true;
   try{
-   let path=this.paths.get(prepared.file);if(!path){path=entryId+'/'+crypto.randomUUID()+'.'+prepared.extension;this.paths.set(prepared.file,path);}
+   let paths=this.paths.get(prepared.file);if(!paths){paths=new Map();this.paths.set(prepared.file,paths);}let path=paths.get(entryId);if(!path){path=entryId+'/'+crypto.randomUUID()+'.'+prepared.extension;paths.set(entryId,path);}
    const bucket=this.client.storage.from(RECEIPT_BUCKET);let uploadError;
    try{const{error}=await bucket.upload(path,prepared.file,{contentType:prepared.mime,upsert:false,cacheControl:'0'});uploadError=error;}catch(error){uploadError=error;}
    // A resposta do upload pode se perder depois de o arquivo chegar. A vinculação
