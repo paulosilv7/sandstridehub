@@ -17,6 +17,9 @@ const APPS = [
     icone: '<path d="M3 17l5-5 4 4 8-9M15 7h5v5"/>' },
   { id: 'devolucoes', nome: 'Devoluções', desc: 'Reclamações, devoluções e contestações de todos os marketplaces, com a Sandy.', href: 'devolucoes/',
     icone: '<path d="M12 3 4 6v5c0 5 3.400 8.500 8 10 4.600-1.500 8-5 8-10V6l-8-3Zm-3 9 2.500 2.500L15.500 9.500"/>' },
+  { id: 'fornecedores', nome: 'Fornecedores', desc: 'Compras, pagamentos e saldo devedor por fornecedor.', href: 'fornecedores/',
+    usuarios: ['ebccd17d-16d7-46cc-82cd-1622c3fd254d', '0cd665bf-e4fb-4087-91a7-e5312cbafe6a'],
+    icone: '<path d="M4 21V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v16M2 21h20M8 7h5M8 11h5M8 15h2m7-5h3v11M8 21v-3h5v3"/>' },
   { id: 'ads', nome: 'Gestor de Ads', desc: 'Gastos e resultados dos anúncios pagos em cada marketplace.', breve: true,
     icone: '<path d="M4 20V10m6 10V4m6 16v-7m5 7H3"/>' },
 ];
@@ -104,7 +107,11 @@ async function trocarFoto(file) {
     label.classList.add('erro-foto');
   }
 }
-const podeAbrir = (id) => eu.papel === 'admin' || acessos.has(id);
+const podeAbrir = (id) => {
+  const app = APPS.find((a) => a.id === id);
+  if (app?.usuarios) return app.usuarios.includes(user.id);
+  return eu.papel === 'admin' || acessos.has(id);
+};
 
 async function tela() {
   const tiles = APPS.filter((a) => a.breve || podeAbrir(a.id)).map((a) => {
@@ -126,7 +133,7 @@ async function tabelaAcessos() {
   const tem = new Set((ac || []).map((x) => `${x.usuario_id}|${x.app}`));
   $('tab').innerHTML = `<table><thead><tr><th>Pessoa</th>${APPS.filter((a) => !a.breve).map((a) => `<th class="c">${a.nome}</th>`).join('')}</tr></thead><tbody>` +
     (eq || []).map((p) => `<tr><td><div style="display:flex;align-items:center;gap:10px">${avatar(p.foto_path, p.nome)}<div><b>${esc(p.nome)}</b><br><span class="sub">${p.papel === 'admin' ? 'Administrador' : 'Atendente'}</span></div></div></td>` +
-      APPS.filter((a) => !a.breve).map((a) => p.papel === 'admin' ? '<td class="c sub">Tudo</td>' :
+      APPS.filter((a) => !a.breve).map((a) => a.usuarios ? `<td class="c sub">${a.usuarios.includes(p.usuario_id) ? 'Administrador' : 'Restrito'}</td>` : p.papel === 'admin' ? '<td class="c sub">Tudo</td>' :
         `<td class="c"><input type="checkbox" data-u="${p.usuario_id}" data-a="${a.id}" aria-label="${esc(p.nome)}: ${a.nome}"${tem.has(`${p.usuario_id}|${a.id}`) ? ' checked' : ''}></td>`).join('') + '</tr>').join('') + '</tbody></table><p id="msg-acessos" class="sub" style="margin:8px 0 0" aria-live="polite"></p>';
   $('tab').onchange = async (ev) => {
     const c = ev.target; if (!c.dataset.u) return;
