@@ -520,7 +520,8 @@ async function carregar(){
     }else if(!r.data||!r.data.ok){S.erro={titulo:'Não consegui ler os valores',msg:'O Mercado Livre não respondeu agora. Tente de novo em instantes.',tentar:true}}
     else{S.d=r.data;S.mes=0}
   }catch(e){S.erro={titulo:'Não consegui ler os valores',msg:'Verifique a internet e tente de novo.',tentar:true}}
-  S.carregando=false;render();
+  S.carregando=false;
+  try{render()}catch(e){S.erro={titulo:'Não consegui montar a tela',msg:'Detalhe técnico: '+String((e&&e.message)||e).slice(0,120),tentar:true};render()}
 }
 document.addEventListener('mouseover',function(e){var c=e.target.closest('.cd');if(c)dica(c)});
 document.addEventListener('mouseout',function(e){if(e.target.closest('.cd'))$('ctip').hidden=true});
