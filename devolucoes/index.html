@@ -285,7 +285,6 @@ button.tile:hover{background:var(--hover)}
 /* grupos de situação (filtro da fila) */
 .gtabs{position:relative;display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .gtabs::-webkit-scrollbar{display:none}
-.etapas{margin-top:14px}.et-t{display:block;font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin:0 0 8px 4px}
 .gt{flex:0 0 auto;scroll-snap-align:start;height:48px;border-radius:24px;background:var(--chip);padding:0 8px 0 18px;display:inline-flex;align-items:center;gap:10px;font-weight:500;font-size:14.5px;border:1.5px solid transparent;white-space:nowrap}
 .gt b{min-width:30px;height:30px;border-radius:15px;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;padding:0 8px}
 .gt.hot b{background:var(--accent-soft);color:var(--accent-ink)}
@@ -326,7 +325,7 @@ button.tile:hover{background:var(--hover)}
   .gtabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;overflow:visible;margin:0;padding:0}
   .gt{grid-column:span 2;height:auto;min-height:58px;flex-direction:column;justify-content:center;gap:2px;padding:8px 4px;border-radius:20px;text-align:center}
   .gt:nth-child(n+4){grid-column:span 3}
-  .gt span{font-size:13px;line-height:1.2}
+  .gt span{font-size:13px;line-height:1.2;white-space:normal}
   .gt b{min-width:0;height:auto;background:transparent!important;padding:0;font-size:20px;font-weight:600;border-radius:0}
   .gt.hot b{color:var(--accent-ink)}
   /* Sandy compacta */
@@ -424,7 +423,7 @@ var MOTIVOS_SP={ITEM_NOT_FIT:'Não serviu',ITEM_MISSING:'Item faltando',CHANGE_M
 var LOJAID={},ANEXOS={},REC={},MSG={},SUG={},THR={},ENV={};
 var S={
   tela:'home',prev:'home',humor:'auto',fala:'',pula:false,mais:false,casoId:null,regraMk:'ml',nome:'',papelAdmin:false,
-  f:{home:{q:'',mk:'todos',loja:'todas',grupo:'todos',etapa:''},aprov:{q:'',mk:'todos',loja:'todas'},acomp:{q:'',mk:'todos',loja:'todas'}},
+  f:{home:{q:'',mk:'todos',loja:'todas',grupo:'todos'},aprov:{q:'',mk:'todos',loja:'todas'},acomp:{q:'',mk:'todos',loja:'todas'}},
   carregando:true,erro:'',casos:[],cfg:{},regras:[],modelos:[],eco:[],uso:[],lotes:[],cx:{id:null},
   lote:{fotos:[],chips:[],texto:'',rastreio:'',pedido:'',enviando:false,enviado:false,msg:''},
   nr:{id:null,t:'',b:'',f:''}
@@ -591,14 +590,15 @@ function prazoInfo(c){
 }
 function stCls(st){return st===3?'info':(st===4||st===5?'warn':(st===6?'good':''));}
 function stLabel(st){return st===3?'Preparado · aguarda você':ST[st];}
-function etapaTag(c){if(!c.etapa)return '';var n=Math.max(0,Math.floor((Date.now()-new Date(c.etapaEm).getTime())/86400000));var rot={despachar:'Não despachou',transito:'A caminho',chegou:'Chegou',conferido:'Conferido'}[c.etapa];return '<span class="tag mute">'+rot+' · '+(n===0?'hoje':'há '+n+(n===1?' dia':' dias'))+'</span>';}
 function segs(c){return '<span class="segs" aria-hidden="true">'+ST.map(function(_,i){return '<i class="'+(i<c.st?'d':(i===c.st?'n':''))+'"></i>';}).join('')+'</span>';}
 function caso(id){return S.casos.filter(function(c){return c.id===id;})[0]||S.casos[0];}
 function lojasDe(m){var l=[];(m==='todos'?['ml','sp','tt']:[m]).forEach(function(k){LOJAS[k].forEach(function(n){if(l.indexOf(n)===-1)l.push(n);});});return l;}
 var GRUPOS=[
-  ['todos','Todos','Casos em andamento. Os já decididos pelo marketplace ficam na aba Decididos.'],
-  ['voce','Para você','Esperam algo de você: aprovar um relato que a Sandy preparou ou resolver um envio incerto.'],
-  ['preparo','Novos','Chegaram dos marketplaces e a Sandy ainda não preparou. Por enquanto ela só lê, em modo sombra.'],
+  ['todos','Todos','Casos em andamento. Os já decididos pelo marketplace ficam em Decididos.'],
+  ['despachar','Cliente vai despachar','A devolução foi aceita, mas o cliente ainda não postou o produto.'],
+  ['transito','A caminho','O cliente já postou e o produto está em trânsito até o galpão.'],
+  ['chegou','Chegou, falta conferir','O marketplace marcou como entregue e ainda não há fotos de conferência.'],
+  ['conferido','Conferido','Já tem fotos de conferência enviadas à Sandy.'],
   ['enviados','Com o marketplace','Em análise ou enviados: a decisão está com o marketplace.'],
   ['decididos','Decididos','O marketplace já deu a resposta final, mas o caso ainda pode mudar (por exemplo, se o comprador voltar a falar).'],
   ['arquivados','Arquivados','Decisão definitiva do marketplace. Saem das listas, mas continuam nos custos e nos relatórios.']
@@ -613,14 +613,19 @@ function grupoDe(c){
   if(['ENVIADO','EM_ANALISE'].indexOf(s)>-1)return 'enviados';
   return 'decididos';
 }
+var ETAPAS_G=['despachar','transito','chegou','conferido'];
+function noGrupo(c,g){
+  if(ETAPAS_G.indexOf(g)>-1)return c.etapa===g&&!c.arq;
+  if(g==='todos')return grupoDe(c)!=='decididos'&&grupoDe(c)!=='arquivados';
+  return grupoDe(c)===g;
+}
+function etapaTag(c){if(!c.etapa)return '';var n=Math.max(0,Math.floor((Date.now()-new Date(c.etapaEm).getTime())/86400000));var rot={despachar:'Não despachou',transito:'A caminho',chegou:'Chegou',conferido:'Conferido'}[c.etapa];return '<span class="tag mute">'+rot+' · '+(n===0?'hoje':'há '+n+(n===1?' dia':' dias'))+'</span>';}
 function aplicar(lista,f){
   var q=f.q.trim().toLowerCase();
   return lista.filter(function(c){
     if(f.mk!=='todos'&&c.mk!==f.mk)return false;
     if(f.loja!=='todas'&&c.loja!==f.loja)return false;
-    if(f.etapa){if(c.etapa!==f.etapa||c.arq)return false;}else{
-    if(f.grupo==='todos'&&(grupoDe(c)==='decididos'||grupoDe(c)==='arquivados'))return false;
-    if(f.grupo&&f.grupo!=='todos'&&grupoDe(c)!==f.grupo)return false;}
+    if(f.grupo&&!noGrupo(c,f.grupo))return false;
     if(q){var tx=(c.produto+' '+c.pedido+' '+c.loja+' '+c.problema+' '+(c.protocolo||'')).toLowerCase();if(tx.indexOf(q)===-1)return false;}
     return true;
   });
@@ -839,15 +844,8 @@ function home(){
   var base=aplicar(todos,{q:f.q,mk:f.mk,loja:f.loja,grupo:''});
   var lista=aplicar(todos,f).sort(function(a,b){return (a.st>=4?1:0)-(b.st>=4?1:0)||a.prazo-b.prazo;});
   var gAtual=f.grupo||'todos';
-  var gt=GRUPOS.map(function(g){var n=g[0]==='todos'?base.filter(function(c){return grupoDe(c)!=='decididos'&&grupoDe(c)!=='arquivados';}).length:base.filter(function(c){return grupoDe(c)===g[0];}).length;return '<button type="button" class="gt'+(g[0]==='voce'?' hot':'')+'" data-a="grupo" data-v="'+g[0]+'" aria-pressed="'+(!f.etapa&&gAtual===g[0])+'"><span>'+g[1]+'</span><b>'+n+'</b></button>';}).join('');
+  var gt=GRUPOS.map(function(g){var n=base.filter(function(c){return noGrupo(c,g[0]);}).length;return '<button type="button" class="gt'+(g[0]==='voce'?' hot':'')+'" data-a="grupo" data-v="'+g[0]+'" aria-pressed="'+(gAtual===g[0])+'"><span>'+g[1]+'</span><b>'+n+'</b></button>';}).join('');
   var gSel=GRUPOS.filter(function(g){return g[0]===gAtual;})[0];
-  var ETAPAS=[['despachar','Cliente vai despachar','O marketplace aceitou a devolução, mas o cliente ainda não postou o produto.'],['transito','A caminho','O cliente já postou e o produto está em trânsito até o galpão.'],['chegou','Chegou, falta conferir','O marketplace marcou como entregue e ainda não há fotos de conferência.'],['conferido','Recebido e conferido','Já tem fotos enviadas à Sandy.']];
-  var eN={};ETAPAS.forEach(function(e){eN[e[0]]=base.filter(function(c){return c.etapa===e[0]&&!c.arq;}).length;});
-  var eAtual=f.etapa||'';
-  var fila=base.filter(function(c){return c.etapa==='chegou'&&!c.arq;}).map(function(c){return (Date.now()-new Date(c.etapaEm).getTime())/86400000;});
-  var paradas=fila.filter(function(d){return d>2;}).length,maisVelha=fila.length?Math.floor(Math.max.apply(null,fila)):0;
-  var eSel=ETAPAS.filter(function(e){return e[0]===eAtual;})[0];
-  var etapaRow='<div class="etapas"><span class="et-t">Devolução física</span><div class="gtabs" role="group" aria-label="Filtrar pela etapa da devolução física">'+ETAPAS.map(function(e){return '<button type="button" class="gt" data-a="etapa" data-v="'+e[0]+'" aria-pressed="'+(eAtual===e[0])+'"><span>'+e[1]+'</span><b>'+eN[e[0]]+'</b></button>';}).join('')+'</div>'+(eSel?'<p class="ghint"><b>'+eSel[1]+':</b> '+eSel[2]+(eSel[0]==='chegou'&&fila.length?' Parados há mais de 2 dias: '+paradas+'. O mais antigo espera há '+maisVelha+(maisVelha===1?' dia.':' dias.'):'')+'</p>':'')+'</div>';
   var rows=lista.map(function(c){var p=prazoInfo(c);
     return '<button type="button" class="caso" data-a="caso" data-v="'+c.id+'"><span class="cs-main">'+mk(c.mk)+'<span class="c1"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span></span></span><span class="c2">'+esc(c.problema)+(c.mkt?'<span class="sub" style="display:block;margin-top:2px">No marketplace: '+esc(c.mkt)+'</span>':'')+'</span>'+'<span class="cs-tags">'+etapaTag(c)+'<span class="tag '+stCls(c.st)+'">'+c.rot+'</span>'+(c.st<6?'<span class="tag '+p.cls+'">'+p.t+'</span>':'')+'</span><svg class="go" width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button>';}).join('')||'<div class="empty">Nenhum caso com esses filtros.</div>';
   var lojasDef=[['ml','Mercado Livre'],['sp','Shopee'],['tt','TikTok Shop']];
@@ -857,7 +855,7 @@ function home(){
   var comp=Object.keys(gr).map(function(n,i){return {n:n,v:gr[n],cor:cores[i%cores.length]};});
   return head()+ritaHtml()+
   '<section class="card" aria-label="Casos"><div class="chead"><h2 class="sech">Casos</h2><span class="pill">'+lista.length+(lista.length===1?' caso':' casos')+'</span><span class="sub">Ordenados pelo menor prazo</span></div>'+
-  '<div class="gtabs" role="group" aria-label="Filtrar casos por situação">'+gt+'</div><p class="ghint"><b>'+gSel[1]+':</b> '+gSel[2]+'</p>'+etapaRow+
+  '<div class="gtabs" role="group" aria-label="Filtrar casos por situação">'+gt+'</div><p class="ghint"><b>'+gSel[1]+':</b> '+gSel[2]+'</p>'+
   toolbar('home','Buscar por produto ou pedido')+'<div class="lista">'+rows+'</div></section>'+
   '<p class="foot">Modo sombra: a Sandy lê os marketplaces e prepara, mas nada é enviado, respondido ou contestado. Os dados vêm direto dos marketplaces e atualizam sozinhos a cada minuto.</p>';
 }
@@ -1203,8 +1201,7 @@ document.addEventListener('click',function(e){
   else if(a==='humor'){S.humor=v;S.fala='';render(true,false);}
   else if(a==='hub'){location.href='../';}
   else if(a==='fmk'){var f=S.f[k];f.mk=v;if(f.loja!=='todas'&&lojasDe(v).indexOf(f.loja)===-1)f.loja='todas';render(true,false);}
-  else if(a==='grupo'){S.f.home.grupo=v;S.f.home.etapa='';render(true,false);}
-  else if(a==='etapa'){S.f.home.etapa=(S.f.home.etapa===v?'':v);render(true,false);}
+  else if(a==='grupo'){S.f.home.grupo=v;render(true,false);}
   else if(a==='mais'){S.mais=!S.mais;render(true,false);}
       else if(a==='aprovar'){aprovar();}
   else if(a==='fotosCaso'){var cc=caso(v);if(cc){S.lote.pedido=String(cc.raw.pedido||cc.raw.solicitacao_id||'');ir('receber');}}
