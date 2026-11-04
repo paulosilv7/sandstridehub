@@ -843,7 +843,7 @@ function pillsRes(){
   return (m.aguard?'<span class="pill info">'+pl(m.aguard,'aguarda você','aguardam você')+'</span>':'')+(m.urg?'<span class="pill bad">'+m.urg+' com prazo em até 24 h</span>':'');
 }
 function acompStrip(){
-  var t=S.casos.filter(function(c){return !c.arq;}),cred=t.filter(function(c){return c.st===6;}).reduce(function(s,c){return s+(c.credito||0);},0);
+  var t=S.casos.filter(function(c){return !c.arq&&(c.st===4||c.st===5||(c.st===6&&c.credito>0));}),cred=t.filter(function(c){return c.st===6;}).reduce(function(s,c){return s+(c.credito||0);},0);
   return '<section class="strip"><div class="tiles"><div class="tile"><div class="k">Em acompanhamento</div><div class="v">'+t.filter(function(c){return c.st===4||c.st===5;}).length+'</div><div class="s">Enviados, sem decisão</div></div><div class="tile"><div class="k">Decididos</div><div class="v">'+t.filter(function(c){return c.st===6;}).length+'</div><div class="s">Com resposta final</div></div><div class="tile exp" style="grid-column:span 2"><div class="k">Créditos a conciliar</div><div class="v good">'+brl(cred)+'</div><div class="s">Dinheiro que o marketplace já decidiu devolver, mas que ainda não foi conferido no extrato da loja. Só vira ressarcimento depois dessa conferência.</div></div></div></section>';
 }
 
