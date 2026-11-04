@@ -143,7 +143,10 @@ async function processar(u: any) {
   // A conta que pagou diz qual das contas fixas é: pago pela Sandstride II => a conta "... II" da categoria, pelo valor.
   const { data: origens } = await supabase.from("financeiro_contas_origem").select("termo,rotulo");
   const pag = norm(String(l.pagador_nome ?? "") + " " + String(l.pagador_documento ?? ""));
-  const origem = (origens ?? []).find((o: any) => ` ${pag} `.includes(` ${norm(o.termo)} `));
+  const dig = (t: string) => String(t ?? "").replace(/\D/g, "");
+  const pagDig = dig(`${l.pagador_documento ?? ""}`);
+  // Documento: compara só os números (o leitor às vezes devolve 58.258.487, às vezes 58258487 ou 58986174NOME).
+  const origem = (origens ?? []).find((o: any) => dig(o.termo).length >= 6 ? pagDig.includes(dig(o.termo)) : ` ${pag} `.includes(` ${norm(o.termo)} `));
   const sufixo = origem ? String(origem.rotulo).trim().split(/\s+/).pop()!.toUpperCase() : "";
   const catAlvo = regra?.categoria ?? l.categoria ?? "";
   if (!conta && /^(I|II|III)$/.test(sufixo) && catAlvo) {

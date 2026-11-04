@@ -589,7 +589,7 @@ function selCat(atual,nome){return '<select class="selx"'+(nome?' name="'+nome+'
 
 function normT(t){return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
 function mesConta(c,dt){var d=dt||hojeSP(),ym=d.slice(0,7);if(c&&+c.dia-(+d.slice(8))>15)ym=ymSomar(ym,-1);return ym}
-function rotuloOrigem(x){var t=normT((x.pagador_nome||'')+' '+(x.pagador_documento||''));var r=(S.orig||[]).filter(function(o){return t.indexOf(normT(o.termo))>=0})[0];return r?r.rotulo:''}
+function rotuloOrigem(x){var dg=String(x.pagador_documento||'').replace(/\D/g,'');var r=(S.orig||[]).filter(function(o){var d=String(o.termo).replace(/\D/g,'');return d.length>=6&&dg.indexOf(d)>=0})[0];return r?r.rotulo:''}
 function pagouDe(x){
   if(!x.pagador_nome||x.pagador_nome==='—')return '<div class="cmp-p sub">'+ic('wallet',14)+'<span>Conta de origem não aparece neste comprovante</span></div>';
   var rot=rotuloOrigem(x),inst=x.pagador_instituicao||'',doc=x.pagador_documento||'';
