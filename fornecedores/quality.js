@@ -2,6 +2,7 @@
 (function(){
  const F=FinanceCore;let sequence=0,opened=null,draftId=null,submitting=false;
  const link=document.createElement('link');link.rel='stylesheet';link.href='quality.css';document.head.append(link);
+ const brand=document.querySelector('.brand');brand.querySelector('img').src='../img/sandstride-escuro.png';const moduleTitle=brand.querySelector('span');moduleTitle.textContent='Fornecedores';moduleTitle.classList.add('module-title');
  const chevron='<svg class="select-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg>';
  const check='<svg class="option-check" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m4 10 4 4 8-8"/></svg>';
  function closeMenu(focus=false){if(!opened)return;const{menu,trigger}=opened;try{if(menu.matches(':popover-open'))menu.hidePopover()}catch{}menu.classList.remove('fallback-open');trigger.setAttribute('aria-expanded','false');opened=null;if(focus&&trigger.isConnected)trigger.focus();}
