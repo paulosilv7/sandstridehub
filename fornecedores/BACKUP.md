@@ -13,8 +13,9 @@ Alterações posteriores entram na execução seguinte. Não depende do navegado
 O intervalo representa uma janela de possível perda: uma alteração ainda não copiada
 não está protegida no Google. Indisponibilidade dos serviços pode ampliar essa janela.
 
-As abas Controle, Fornecedores, Produtos, Precos, Lancamentos e Historico são espelhos
-para consulta, com dinheiro em centavos inteiros. As abas ocultas `v_REVISÃO` contêm
+A aba Resumo apresenta totais e saldos por fornecedor. Fornecedores, Produtos, Precos,
+Lancamentos e Historico são abas de consulta, com valores em reais e datas brasileiras.
+A aba Controle e os IDs de lançamento ficam ocultos na consulta principal. As abas ocultas `v_REVISÃO` contêm
 o JSON integral da posição e o SHA-256. Uma nova revisão cria uma nova aba, sem apagar
 as anteriores. Se não houve alteração, a execução apenas atualiza a verificação;
 não duplica cópias idênticas. Alterações entre verificações ficam na auditoria da próxima
@@ -69,7 +70,7 @@ recriadas separadamente. O script recusa sobrescrever um arquivo SQL já existen
 
 ## Validação
 
-`node --test fornecedores/tests/*.test.mjs`: 30 testes, incluindo perda de resposta,
+`node --test fornecedores/tests/*.test.mjs`: 31 testes, incluindo perda de resposta,
 retomada, falha Google, cópia divergente, caracteres Unicode, IDs grandes e valores exatos.
 Migração validada em PostgreSQL local (PGlite), incluindo isolamento de acessos,
 trava/lease, confirmação e recuperação de todas as tabelas em estruturas separadas.
