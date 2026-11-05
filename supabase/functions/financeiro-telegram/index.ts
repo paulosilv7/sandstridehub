@@ -97,7 +97,10 @@ async function processar(u: any) {
   const foto = Array.isArray(msg.photo) && msg.photo.length ? msg.photo[msg.photo.length - 1] : (mimeDoc.startsWith("image/") ? doc : null);
   const pdf = mimeDoc === "application/pdf" ? doc : null;
   const arq = foto ?? pdf;
-  if (!arq) return complementar(msg); // sem arquivo: só reage se for um complemento ("é de outubro", "da II") a um comprovante recente
+  if (!arq) { // sem arquivo: texto com valor ("Nota Fiscal R$2100") vira lançamento; senão, só reage a complemento ("é de outubro", "da II")
+    if (await lancamentoTexto(msg)) return;
+    return complementar(msg);
+  }
   const quem = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ") || "alguém";
   const responder = (t: string) => telegram("sendMessage", { chat_id: chat, text: t, reply_to_message_id: msg.message_id, allow_sending_without_reply: true, disable_web_page_preview: true }).catch(() => {});
   if (Number(arq.file_size ?? 0) > 15_000_000) return responder("Esse arquivo é grande demais (máx. 15 MB).");
@@ -183,6 +186,59 @@ async function processar(u: any) {
   await responder(`Li: ${l.tipo} de ${brl(valor)}${l.favorecido ? " para " + l.favorecido : ""}${data ? " em " + data.split("-").reverse().join("/") : ""}${linha.categoria_sugerida ? ` → ${linha.categoria_sugerida}` : ""}.${conta ? ` Combina com a conta fixa ${conta.nome}.` : ""}${mesRef ? ` Anotei: referente a ${MESES[+mesRef.slice(5) - 1]}/${mesRef.slice(0, 4)}.` : ""}\nConfirme na Central: ${SITE}/financeiro/#despesas`);
 }
 
+// Texto sem arquivo com um valor em reais ("Nota Fiscal R$2100", "pix 350 para o motoboy"): vira um lançamento "para confirmar".
+async function lancamentoTexto(msg: any): Promise<boolean> {
+  const texto = String(msg.text ?? "").trim();
+  if (!texto || texto.length > 300 || !/(r\$\s*\d|\d\s*reais|\b\d{2,}([.,]\d{1,3})*\b)/i.test(texto)) return false;
+  const chat = msg.chat.id;
+  const responder = (t: string) => telegram("sendMessage", { chat_id: chat, text: t, reply_to_message_id: msg.message_id, allow_sending_without_reply: true, disable_web_page_preview: true }).catch(() => {});
+  const quem = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ") || "alguém";
+  const { data: cats } = await supabase.from("financeiro_categorias").select("nome").order("ordem");
+  const nomes = (cats ?? []).map((c: any) => c.nome);
+  const hoje = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI}` }, signal: AbortSignal.timeout(30_000),
+    body: JSON.stringify({ model: MODELO, temperature: 0,
+      response_format: { type: "json_schema", json_schema: { name: "lancamento", strict: true, schema: { type: "object", additionalProperties: false,
+        required: ["e_gasto", "tipo", "valor", "data", "favorecido", "descricao", "categoria", "mes_referencia", "conta_ref"],
+        properties: { e_gasto: { type: "boolean" }, tipo: { type: "string", enum: ["Pix", "Boleto", "TED", "Cartão", "DAS", "Nota fiscal", "Outro"] }, valor: { type: "number" }, data: { type: "string" }, favorecido: { type: "string" }, descricao: { type: "string" }, categoria: { type: "string", enum: [...nomes, ""] }, mes_referencia: { type: "string" }, conta_ref: { type: "string", enum: ["", "I", "II", "III"] } } } } },
+      messages: [
+        { role: "system", content: `Hoje é ${hoje}. A equipe de uma loja de tênis escreveu uma mensagem no grupo Financeiro. e_gasto=true só se a mensagem registra um pagamento ou gasto com valor em reais (ex.: "Nota Fiscal R$2100", "pix 350 motoboy"); false para conversa comum. valor como número. data AAAA-MM-DD só se a mensagem disser; vazio se não disser. favorecido = quem recebe, só se disser. descricao = frase curta do gasto. categoria = a que melhor combina entre as permitidas, ou vazio se não tiver certeza. mes_referencia AAAA-MM só se a mensagem disser o mês a que se refere. conta_ref "I", "II" ou "III" só se disser a empresa/conta.` },
+        { role: "user", content: texto }] }),
+  });
+  const j: any = await r.json().catch(() => ({}));
+  if (!r.ok) { await diag(`lancamento IA ${r.status}`); await responder("Vi sua mensagem, mas não consegui ler agora. Tenta de novo daqui a pouco?"); return true; }
+  const l = JSON.parse(j.choices?.[0]?.message?.content ?? "{}");
+  if (!l.e_gasto || !(Number(l.valor) > 0)) return false;
+  const valor = Math.round(Number(l.valor) * 100) / 100;
+  const data = /^\d{4}-\d{2}-\d{2}$/.test(l.data) ? l.data : null;
+  const mesRef = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(l.mes_referencia ?? "")) ? String(l.mes_referencia) : null;
+  const fav = norm(String(l.favorecido ?? "") + " " + String(l.descricao ?? "") + " " + texto);
+  const { data: regras } = await supabase.from("financeiro_regras").select("termo,categoria,conta_fixa_id");
+  const regra = (regras ?? []).filter((x: any) => ` ${fav} `.includes(` ${norm(x.termo)} `)).sort((a: any, b: any) => b.termo.length - a.termo.length)[0];
+  const mes = (mesRef ?? (data ?? hoje).slice(0, 7)) + "-01";
+  const { data: contas } = await supabase.from("financeiro_contas_fixas").select("id,nome,categoria,valor,dia").eq("ativa", true);
+  const { data: pagas } = await supabase.from("financeiro_contas_pagas").select("conta_id").eq("mes", mes);
+  const jaPagas = new Set((pagas ?? []).map((p: any) => p.conta_id));
+  let conta: any = regra?.conta_fixa_id && !jaPagas.has(regra.conta_fixa_id) ? (contas ?? []).find((c: any) => c.id === regra.conta_fixa_id) ?? null : null;
+  if (!conta) for (const c of contas ?? []) {
+    if (jaPagas.has(c.id)) continue;
+    const palavras = norm(c.nome).split(" ").filter((p) => p.length > 2 && !/^\d+$/.test(p) && !["fixa", "conta"].includes(p));
+    if (palavras.length && palavras.every((p) => fav.includes(p)) && Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01)) { conta = c; break; }
+  }
+  const hash = await sha256(new TextEncoder().encode(`texto:${chat}:${msg.message_id}`));
+  const ins = await supabase.from("financeiro_comprovantes").insert({
+    sha256: hash, chat_id: String(chat), message_id: msg.message_id, enviado_por: quem, tipo: l.tipo, valor, data_pagamento: data ?? hoje,
+    favorecido: String(l.favorecido ?? "").slice(0, 120) || null, descricao: String(l.descricao ?? "").slice(0, 200) || null,
+    categoria_sugerida: (regra?.categoria ?? conta?.categoria ?? l.categoria) || null, conta_fixa_id: conta?.id ?? null,
+    liga: conta ? `Baixa a conta fixa ${conta.nome} (vence dia ${conta.dia})` : null, legenda: texto.slice(0, 400),
+    mes_referencia: mesRef ? mesRef + "-01" : null, arquivo_path: null, estado: "novo",
+  });
+  if (ins.error) { await diag(`lancamento inserir: ${ins.error.message}`); await responder("Entendi o gasto, mas não consegui guardar. Tenta de novo?"); return true; }
+  const cat = (regra?.categoria ?? conta?.categoria ?? l.categoria) || "";
+  await responder(`Anotei: ${l.tipo} de ${brl(valor)}${l.favorecido ? " para " + l.favorecido : ""}${cat ? ` → ${cat}` : ""}${data ? " em " + data.split("-").reverse().join("/") : ""}. Sem comprovante anexado.${conta ? ` Combina com a conta fixa ${conta.nome}.` : ""}\nConfirme na Central: ${SITE}/financeiro/#despesas`);
+  return true;
+}
 
 // Texto sem arquivo, logo depois de um comprovante (ou respondendo a ele): "é de outubro", "da II".
 async function complementar(msg: any) {
