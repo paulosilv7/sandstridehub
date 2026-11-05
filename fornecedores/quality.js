@@ -34,6 +34,9 @@
  function announce(message){const notice=document.querySelector('.notice');notice.textContent=message;notice.dataset.kind='error';notice.setAttribute('role','alert');}
  sum=function(entries,type){return F.sum(entries,type)};months=function(supplier){return F.monthly(db.entries,supplier)};
  const baseRender=render;render=function(){closeMenu();baseRender();
+  const pageLabels={'Contas a pagar':'Saldos a pagar','Pagamentos':'Histórico de pagamentos'};
+  if(pageLabels[page]&&app.querySelector('h1'))app.querySelector('h1').textContent=pageLabels[page];
+  document.querySelectorAll('#nav button').forEach(button=>{button.childNodes.forEach(node=>{if(node.nodeType===3&&pageLabels[node.textContent.trim()])node.textContent=pageLabels[node.textContent.trim()]})});
   if(page==='Relatórios'&&filter)renderReport();
   if(page==='Produtos e preços'){app.querySelectorAll('tbody tr').forEach((row,index)=>{const product=db.products[index];if(product&&row.cells[2]){const price=F.priceAt(product.prices,today());row.cells[2].textContent=price?money(price.value):'Sem preço vigente';}})}
   app.querySelectorAll('p').forEach(p=>{if(p.textContent.includes('Não há vencimentos definidos nesta demonstração.'))p.textContent='Baixas aplicadas incluem pagamentos e abatimentos. Os saldos são organizados pelo mês da compra.';});
