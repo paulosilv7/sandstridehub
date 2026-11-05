@@ -506,7 +506,15 @@ async function carregarCaso(id){
 }
 async function carregarLotes(){
   var r=await SB.from('devol_recebimentos').select('id,criado_em,descricao_equipe,rastreio,pedido_lido,identificacao,analise,analise_erro,devol_anexos(count)').order('criado_em',{ascending:false}).limit(8);
-  S.lotes=r.data||[];if(S.tela==='receber')render(true,false);
+  S.lotes=r.data||[];
+  try{
+    var o=await SB.from('devol_recebimentos').select('id,criado_em,descricao_equipe,analise_resumo,devol_anexos(caminho,tipo,estado)').is('caso_id',null).eq('analise','concluida').order('criado_em',{ascending:false}).limit(150);
+    S.orfaos=o.data||[];
+    var caminhos=[];S.orfaos.forEach(function(x){var f=(x.devol_anexos||[]).filter(function(a){return a.tipo!=='video'&&a.estado!=='excluido';})[0];x._foto=f?f.caminho:null;if(f)caminhos.push(f.caminho);});
+    S.orfUrls={};
+    if(caminhos.length){var su=await SB.storage.from('devol-provas').createSignedUrls(caminhos,3600);(su.data||[]).forEach(function(u){S.orfUrls[u.path]=u.signedUrl;});}
+  }catch(e){S.orfaos=S.orfaos||[];}
+  if(S.tela==='receber')render(true,false);
 }
 function hex(buf){return Array.prototype.map.call(new Uint8Array(buf),function(b){return ('0'+b.toString(16)).slice(-2);}).join('');}
 async function prepararArquivo(f){
@@ -891,7 +899,19 @@ function receber(){
     '<div class="row" style="align-items:flex-start;gap:14px"><label class="field" style="flex:2 1 280px"><span>Descrição (guardada como você escrever)</span><textarea id="f-texto" rows="3" data-in="texto" placeholder="Ex.: Completo">'+esc(L.texto)+'</textarea></label><label class="field" style="flex:1 1 200px"><span>Pedido (se souber)</span><input id="f-pedido" type="text" data-in="pedido" value="'+esc(L.pedido)+'" placeholder="Número do pedido" autocomplete="off"></label><label class="field" style="flex:1 1 200px"><span>Rastreio (opcional)</span><input id="f-rastreio" type="text" data-in="rastreio" value="'+esc(L.rastreio)+'" placeholder="Se estiver legível" autocomplete="off"></label></div>'+
     '<div class="row" style="gap:14px"><button type="button" class="btn lg'+(podeEnv?'':' off')+'" data-a="enviarLote">'+(L.enviando?'Enviando…':'Enviar lote')+'</button><span class="sub">'+dica+'</span></div></section>'+
     '<section class="card" style="flex:1 1 320px" aria-label="O que acontece depois"><h2 class="sech">O que acontece depois</h2>'+passos+'</section></div>'+
-    '<section class="card" style="gap:10px"><h2 class="sech">Lotes recebidos recentemente</h2>'+(rec||'<div class="empty">Nenhum lote enviado ainda.</div>')+'</section>';
+    '<section class="card" style="gap:10px"><h2 class="sech">Lotes recebidos recentemente</h2>'+(rec||'<div class="empty">Nenhum lote enviado ainda.</div>')+'</section>'+orfaosHtml();
+}
+function orfaosHtml(){
+  var l=S.orfaos||[];S.ligar=S.ligar||{};
+  if(!l.length)return '';
+  var it=l.map(function(x){
+    var et=((x.analise_resumo&&x.analise_resumo.etiqueta)||[]).filter(function(e){return e.confianca==='alta';}).map(function(e){return esc(e.tipo+' '+e.valor);}).join(' · ');
+    var u=x._foto&&S.orfUrls?S.orfUrls[x._foto]:null;
+    var th=u?'<a href="'+u+'" target="_blank" rel="noopener" aria-label="Abrir a foto do lote"><img src="'+u+'" alt="Foto do lote" width="64" height="64" style="width:64px;height:64px;object-fit:cover;border-radius:12px;flex:none"></a>':'<span class="tag mute">sem foto</span>';
+    return '<div class="cardrow" style="gap:10px"><div class="row" style="gap:12px;align-items:flex-start;flex-wrap:nowrap">'+th+'<span style="min-width:0;display:flex;flex-direction:column;gap:4px"><b>'+new Date(x.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</b><span class="sub">'+esc(x.descricao_equipe||'(sem descrição)')+'</span><span class="sub" style="font-size:12.5px">Lido na etiqueta: '+(et||'nada legível')+'</span></span></div>'+
+      '<div class="row" style="gap:8px;flex-wrap:wrap"><input id="lg-'+x.id+'" class="inp" type="text" data-in="lg" data-k="'+x.id+'" value="'+esc(S.ligar[x.id]||'')+'" placeholder="Número do pedido ou da solicitação" autocomplete="off" aria-label="Número do pedido para ligar a este lote" style="flex:1 1 220px"><button type="button" class="btn" data-a="ligarLote" data-v="'+x.id+'">Ligar a um caso</button></div></div>';
+  }).join('');
+  return '<section class="card" style="gap:10px"><h2 class="sech">Lotes sem caso ('+l.length+')</h2><p class="sub">Estas fotos estão guardadas e seguras, mas ainda não existe um caso com esses números. A Sandy tenta ligar sozinha a cada 15 minutos quando o caso aparecer. Se você achar a devolução, digite o número aqui e ela analisa em instantes.</p>'+it+'</section>';
 }
 
 function detalhe(){
@@ -1293,6 +1313,21 @@ async function decidirCaso(id,acao){
   }catch(e){toast('Não consegui registrar: '+((e&&e.message)||'erro'));}
   finally{S.decidindo=false;}
 }
+
+async function ligarLote(id){
+  if(S.ligando)return;
+  var el=document.getElementById('lg-'+id),num=((el&&el.value)||(S.ligar&&S.ligar[id])||'').trim();
+  if(num.length<5){toast('Digite o número do pedido ou da solicitação.');return;}
+  S.ligando=true;
+  try{
+    var r=await SB.rpc('devol_ligar_lote',{p_rec:id,p_numero:num});
+    if(r.error)throw new Error(r.error.message);
+    if(S.ligar)delete S.ligar[id];
+    toast('Ligado ao pedido '+r.data+'. A Sandy analisa em instantes.');
+    await carregarLotes();
+  }catch(e){toast((e&&e.message)||'Não consegui ligar');}
+  finally{S.ligando=false;}
+}
 document.addEventListener('click',function(e){
   if(S.mais&&!e.target.closest('.more,[data-a=mais]')&&!e.target.closest('[data-a]')){S.mais=false;render(true,false);return;}
   var t=e.target.closest('[data-a]');if(!t||t.type==='checkbox')return;
@@ -1323,6 +1358,7 @@ document.addEventListener('click',function(e){
   else if(a==='rmFoto'){var rm=S.lote.fotos.splice(+v,1)[0];try{URL.revokeObjectURL(rm.url);}catch(x){}render(true,false);}
   else if(a==='limpar'){S.lote.fotos.forEach(function(f){try{URL.revokeObjectURL(f.url);}catch(x){}});S.lote={fotos:[],chips:[],texto:'',rastreio:'',pedido:'',enviando:false,enviado:false,msg:''};render(true,false);}
   else if(a==='enviarLote'){enviarLote();}
+  else if(a==='ligarLote'){ligarLote(v);}
   else if(a==='chave'){trocarChave(v);}
   else if(a==='regraMk'){S.regraMk=v;render(true,false);}
   else if(a==='rmRegra'){apagarRegra(v);}
@@ -1348,6 +1384,7 @@ document.addEventListener('input',function(e){
   else if(k==='rastreio')S.lote.rastreio=el.value;
   else if(k==='nr-t')S.nr.t=el.value;
   else if(k==='frete-med')S.freteMed=el.value;
+  else if(k==='lg'){S.ligar=S.ligar||{};S.ligar[el.getAttribute('data-k')]=el.value;}
   else if(k==='pedido')S.lote.pedido=el.value;
   else if(k==='nr-f')S.nr.f=el.value;
   else if(k==='nr-b')S.nr.b=el.value;
