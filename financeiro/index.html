@@ -640,6 +640,7 @@ function cardComp(){
       '<div class="fv">'+chip('store','neu',1)+fav+'</div>'+(x.legenda?'<p class="sub" style="margin-top:-4px">Sua mensagem: “'+esc(x.legenda)+'”</p>':'')+pagouDe(x)+
       '<label class="fld">Categoria'+selCat(x.categoria_sugerida||'','')+'</label>'+
       '<label class="fld">Conta fixa<select class="selx" data-sc><option value="">Não é conta fixa</option>'+cs.map(function(c){return '<option value="'+c.id+'"'+(c.id===x.conta_fixa_id?' selected':'')+'>'+esc(c.nome)+' · dia '+c.dia+' · '+brl(+c.valor)+'</option>'}).join('')+'</select></label>'+
+      '<label class="fld">Data da despesa<input type="date" data-dt value="'+esc(x.data_pagamento||hojeSP())+'" max="'+hojeSP()+'"></label>'+
       '<label class="fld">Mês da conta<select class="selx" data-sm>'+mesesOpc(x)+'</select></label>'+
       (x.liga?'<div class="note">'+ic('cal',16)+esc(x.liga)+'</div>':'')+
       '<div class="acts"><button class="btn sm" data-cok="'+x.id+'">'+ic('check',15)+'Confirmar</button><button class="btn sec sm" data-cno="'+x.id+'">Não é pagamento</button><button class="btn sec sm" data-cver="'+x.id+'">'+ic('clip',14)+'Ver comprovante</button></div></div>';
@@ -650,7 +651,7 @@ async function confirmarComp(id,el){
   var x=(S.comp||[]).filter(function(c){return c.id===id})[0];if(!x)return;
   var box=el.closest('.cp'),cat=box.querySelector('select.selx').value,cid=box.querySelector('[data-sc]').value||null;
   if(!cat)return toast('Escolha a categoria.');
-  var c=cid?S.contas.filter(function(k){return k.id===cid})[0]:null,dt=x.data_pagamento||hojeSP(),sm=box.querySelector('[data-sm]'),mes=c?((sm&&sm.value)||mesConta(c,dt))+'-01':null;
+  var c=cid?S.contas.filter(function(k){return k.id===cid})[0]:null,dt=(box.querySelector('[data-dt]')||{}).value||x.data_pagamento||hojeSP(),sm=box.querySelector('[data-sm]'),mes=c?((sm&&sm.value)||mesConta(c,dt))+'-01':null;
   el.disabled=true;
   try{
     var de=await SB.from('financeiro_despesas').insert({data:dt,descricao:c?c.nome:(x.favorecido||x.descricao||'Comprovante'),valor:+x.valor,categoria:cat,origem:'comprovante',comprovante_path:x.arquivo_path,conta_fixa_id:cid,mes_conta:mes,criado_por:S.uid}).select('id').single();if(de.error)throw de.error;
@@ -851,7 +852,11 @@ async function modalDesp(id){
   var d=S.desp.filter(function(x){return x.id===id})[0];if(!d)return;
   var link='';
   if(d.comprovante_path){var u=await SB.storage.from('financeiro-comprovantes').createSignedUrl(d.comprovante_path,300);if(u.data&&u.data.signedUrl)link='<p><a href="'+esc(u.data.signedUrl)+'" target="_blank" rel="noopener" style="font-weight:600;text-decoration:underline">Abrir comprovante</a></p>'}
-  modal(d.descricao,'<p class="sub">'+ddmm(d.data)+' · '+esc(d.categoria)+'</p><p><b>'+brl(+d.valor)+'</b></p>'+link,[{t:'Excluir despesa',fn:async function(){
+  modal(d.descricao,'<p class="sub">'+esc(d.categoria)+(d.mes_conta&&d.data.slice(0,7)!==d.mes_conta.slice(0,7)?' · conta de '+mesNome(d.mes_conta.slice(0,7)).toLowerCase():'')+'</p><p><b>'+brl(+d.valor)+'</b></p><label class="fld">Data da despesa<input type="date" name="dt" value="'+esc(d.data)+'"></label>'+link,[{t:'Salvar data',fn:async function(m){
+    var nd=mv(m,'dt');if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)){toast('Escolha a data.');return false}
+    if(nd===d.data)return;
+    var r=await SB.from('financeiro_despesas').update({data:nd}).eq('id',id);if(r.error)throw r.error;
+    toast('Data alterada para '+ddmm(nd)+'.');carregarMes(1)}},{t:'Excluir despesa',fn:async function(){
     if(d.conta_fixa_id){await SB.from('financeiro_contas_pagas').delete().eq('conta_id',d.conta_fixa_id).eq('mes',d.mes_conta)}
     var r=await SB.from('financeiro_despesas').delete().eq('id',id);if(r.error)throw r.error;
     if(d.comprovante_path)await SB.storage.from('financeiro-comprovantes').remove([d.comprovante_path]);
@@ -868,7 +873,9 @@ function dica(el){
 }
 document.addEventListener('mouseover',function(e){var c=e.target.closest('.cd,.bar');if(c)dica(c)});
 document.addEventListener('mouseout',function(e){if(e.target.closest('.cd,.bar'))$('ctip').hidden=true});
-document.addEventListener('change',function(e){var s=e.target;if(s.name==='arq')$('anxTxt').textContent=s.files[0]?s.files[0].name:'Anexar foto ou PDF'});
+document.addEventListener('change',function(e){var s=e.target;
+  if(s.matches&&s.matches('[data-dt]')&&s.value){var box=s.closest('.cp'),sel=box&&box.querySelector('[data-sm]'),x=(S.comp||[]).filter(function(c){return c.id===box.dataset.cmp})[0];if(sel&&x){var cid=(box.querySelector('[data-sc]')||{}).value||null;sel.innerHTML=mesesOpc({data_pagamento:s.value,mes_referencia:null,conta_fixa_id:cid})}}
+  if(s.name==='arq')$('anxTxt').textContent=s.files[0]?s.files[0].name:'Anexar foto ou PDF'});
 document.addEventListener('submit',async function(e){
   if(e.target.id!=='fLanc')return;e.preventDefault();
   var f=e.target,v=parseBR(f.v.value),btn=f.querySelector('button[type=submit]');
