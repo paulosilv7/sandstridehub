@@ -1,6 +1,6 @@
 (async()=>{
  const empty=()=>({suppliers:[],products:[],entries:[],audit:[]});
- let client,store,ready=false,generation=0,savedControls=[];
+ let client,store,backupStatus,ready=false,generation=0,savedControls=[];
  db=empty();const main=document.querySelector('main'),notice=document.querySelector('.notice');
  notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');
  document.querySelector('main > p.tiny').textContent='Fornecedores · Central Sandstride · Compras, pagamentos e saldos mensais.';
@@ -8,9 +8,9 @@
  const originalRender=render,originalOpen=openForm;
  const authPanel=document.createElement('section');authPanel.className='card';authPanel.style.maxWidth='480px';authPanel.style.margin='40px auto';main.insertBefore(authPanel,document.getElementById('nav'));
  function status(message,kind=''){notice.textContent=message;notice.dataset.kind=kind;notice.setAttribute('role',kind==='error'?'alert':'status');}
- function lock(){generation++;ready=false;db=empty();window.FinanceAttachments?.reset();document.body.classList.remove('finance-ready','finance-busy');document.getElementById('nav').hidden=true;app.hidden=true;authPanel.hidden=false;modal.close();}
+ function lock(){generation++;ready=false;db=empty();backupStatus?.stop();backupStatus=null;window.FinanceAttachments?.reset();document.body.classList.remove('finance-ready','finance-busy');document.getElementById('nav').hidden=true;app.hidden=true;authPanel.hidden=false;modal.close();}
  function setBusy(value){document.body.classList.toggle('finance-busy',value);if(value){savedControls=[...document.querySelectorAll('#form input,#form select,#form button')].map(control=>[control,control.disabled]);savedControls.forEach(([control])=>control.disabled=true)}else{savedControls.forEach(([control,disabled])=>{if(control.isConnected)control.disabled=disabled});savedControls=[]}const saveButton=document.querySelector('#form footer .primary');if(saveButton)saveButton.setAttribute('aria-busy',String(value));updateButton.disabled=value;logout.disabled=value;}
- function showState(){db=structuredClone(store.state);ready=true;document.body.classList.add('finance-ready');authPanel.hidden=true;app.hidden=false;document.getElementById('nav').hidden=false;render();}
+ function showState(){db=structuredClone(store.state);ready=true;document.body.classList.add('finance-ready');authPanel.hidden=true;app.hidden=false;document.getElementById('nav').hidden=false;render();backupStatus?.refresh();}
  function failure(error){let message=error?.code==='40001'?'Outra pessoa atualizou os dados. A lista foi atualizada; confira os campos e salve novamente.':error?.code==='42501'?'Seu usuário não tem acesso ao financeiro.':error?.message&&/vigência|histórico|cancelado|total|quantidade|duplicado|limite|precisão/i.test(error.message)?error.message:'Não foi possível confirmar a gravação. Os campos foram mantidos; confira os dados antes de tentar novamente.';status(message,'error');return message;}
  render=function(){if(ready)originalRender()};
  openForm=function(type,id){if(ready&&!store.busy&&!window.FinanceAttachments?.busy)originalOpen(type,id)};
@@ -37,6 +37,7 @@
   client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'){lock();loginView()}});
   const{data:{session},error}=await client.auth.getSession();if(error)throw error;if(!session){loginView();return}
   window.FinanceReceipts=new ReceiptStore(client);window.FinanceReceipts.validate=validateReceipt;
+  try{const{createBackupStatus}=await import('./backup-ui.mjs');const backupCss=document.createElement('link');backupCss.rel='stylesheet';backupCss.href='backup.css';document.head.append(backupCss);backupStatus=createBackupStatus(client,main)}catch{const warning=document.createElement('p');warning.className='backup-status';warning.textContent='Não foi possível carregar o indicador do backup. Confira a cópia no Google antes de continuar.';main.append(warning)}
   name.textContent=session.user.email.slice(0,1).toLocaleUpperCase('pt-BR');name.dataset.tooltip=session.user.email+' · Administrador';name.setAttribute('aria-label',name.dataset.tooltip);await refresh();
   if(!ready)unavailable('Não foi possível carregar o financeiro. Confira sua conexão e o acesso do seu usuário.');
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&ready&&!store.busy&&!modal.open)refresh()});
