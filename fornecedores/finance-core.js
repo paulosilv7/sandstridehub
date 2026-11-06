@@ -27,6 +27,10 @@
  function priceAt(prices,date){validDate(date);return [...prices].filter(p=>p.date<=date).sort((a,b)=>a.date.localeCompare(b.date)).at(-1)||null;}
  function sum(entries,type){return checked(entries.filter(e=>!e.cancelled&&(!type||e.type===type)).reduce((n,e)=>n+BigInt(integer(e.value)),0n));}
  function monthly(entries,supplier){let rows=entries.filter(e=>!e.cancelled&&e.supplier===supplier);let groups=new Map();rows.filter(e=>e.type==='purchase').forEach(e=>{let month=validDate(e.date).slice(0,7);groups.set(month,checked(BigInt(groups.get(month)||0)+BigInt(e.value)))});let credit=checked(BigInt(sum(rows,'payment'))+BigInt(sum(rows,'credit')));return [...groups.keys()].sort().map(month=>{let purchase=groups.get(month),applied=Math.min(credit,purchase);credit-=applied;return[month,purchase,applied,purchase-applied]});}
+ function paymentMonths(entries,supplier){
+  const groups=new Map();entries.forEach((entry,order)=>{if(entry.supplier!==supplier||entry.type==='purchase')return;validDate(entry.date);const month=entry.date.slice(0,7);if(!groups.has(month))groups.set(month,[]);groups.get(month).push({...entry,_order:order})});
+  return[...groups.entries()].sort(([a],[b])=>b.localeCompare(a)).map(([month,rows])=>{rows.sort((a,b)=>b.date.localeCompare(a.date)||b._order-a._order);const active=rows.filter(entry=>!entry.cancelled);return{month,rows,payments:sum(active,'payment'),credits:sum(active,'credit'),activeCount:active.length,cancelledCount:rows.length-active.length}});
+ }
  function name(input){let value=String(input??'').normalize('NFKC').trim().replace(/\s+/g,' ');if(!value||value.length>200||/[\u0000-\u001f\u007f]/.test(value))throw new Error('Informe um nome entre 1 e 200 caracteres.');return value;}
  function nameKey(input){return name(input).toLocaleLowerCase('pt-BR');}
  function validateSnapshot(db){
@@ -50,6 +54,6 @@
   const purchases=sum(activeEntries,'purchase'),payments=sum(activeEntries,'payment'),credits=sum(activeEntries,'credit');
   return{supplier,entries,activeEntries,products,purchases,payments,credits,balance:checked(BigInt(purchases)-BigInt(payments)-BigInt(credits)),months:monthly(db.entries,supplier)};
  }
- const api={parseCents,formatInput,formatMoney,quantity,total,validDate,monthRange,businessDate,priceAt,sum,monthly,name,nameKey,validateSnapshot,report,supplierView};
+ const api={parseCents,formatInput,formatMoney,quantity,total,validDate,monthRange,businessDate,priceAt,sum,monthly,paymentMonths,name,nameKey,validateSnapshot,report,supplierView};
  root.FinanceCore=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

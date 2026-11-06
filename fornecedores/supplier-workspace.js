@@ -46,15 +46,26 @@
   app.querySelectorAll('.table').forEach(container=>{
    const headers=[...container.querySelectorAll('th')],supplierColumn=headers.findIndex(header=>header.textContent.trim()==='Fornecedor');
    if(supplierColumn>=0)container.querySelectorAll('tbody tr').forEach(row=>{const match=row.cells[supplierColumn]?.textContent.trim()===selectedSupplier;row.hidden=!match;if(match)visible++});
+   else visible+=container.querySelectorAll('tbody tr').length;
    hideSupplierColumn(container);
   });
-  const search=app.querySelector('.listsearch');if(search)search.oninput=()=>{const term=search.value.toLocaleLowerCase('pt-BR');app.querySelectorAll('.table tbody tr').forEach(row=>{const supplierCell=[...row.cells].find(cell=>cell.dataset.label==='Fornecedor'),sameSupplier=supplierCell?.textContent.trim()===selectedSupplier;row.hidden=!sameSupplier||!row.textContent.toLocaleLowerCase('pt-BR').includes(term)})};
+  const search=app.querySelector('.listsearch');if(search&&!search.classList.contains('payment-history-search'))search.oninput=()=>{const term=search.value.toLocaleLowerCase('pt-BR');app.querySelectorAll('.table tbody tr').forEach(row=>{const supplierCell=[...row.cells].find(cell=>cell.dataset.label==='Fornecedor'),sameSupplier=supplierCell?.textContent.trim()===selectedSupplier;row.hidden=!sameSupplier||!row.textContent.toLocaleLowerCase('pt-BR').includes(term)})};
   if(!visible&&!['Contas a pagar','Relatórios'].includes(page)){const empty=document.createElement('div');empty.className='workspace-empty';empty.innerHTML=`<strong>Nenhum registro para ${esc(selectedSupplier)}</strong><span>Use a ação principal desta tela para criar o primeiro registro.</span>`;app.querySelector('.table')?.after(empty)}
+ }
+ function renderPaymentHistory(){
+  const groups=F.paymentMonths(db.entries,selectedSupplier),oldTable=app.querySelector('.table'),oldSearch=app.querySelector('.listsearch');if(!oldTable)return;
+  const date=value=>value.split('-').reverse().join('/');
+  const html=groups.length?`<div class="payment-months">${groups.map((group,index)=>`<details class="payment-month" ${index===0?'open':''}><summary><div><span class="supplier-eyebrow">COMPETÊNCIA</span><strong>${esc(monthLabel(group.month))}</strong><small>${group.activeCount} ${group.activeCount===1?'movimento válido':'movimentos válidos'}${group.cancelledCount?' · '+group.cancelledCount+' cancelado'+(group.cancelledCount===1?'':'s'):''}</small></div><div class="payment-month-totals"><span>Pago <b>${money(group.payments)}</b></span><span>Abatido <b>${money(group.credits)}</b></span><i aria-hidden="true"></i></div></summary>${table(['Data','Tipo','Valor','Observação','Situação','Ações'],group.rows.map(entry=>[date(entry.date),entry.type==='payment'?'<span class="payment-kind paid">Pagamento</span>':'<span class="payment-kind credit">Abatimento</span>',money(entry.value),esc(entry.note||'—'),entry.cancelled?'<span class="payment-status cancelled">Cancelado</span>':'<span class="payment-status confirmed">Confirmado</span>',entry.cancelled?'—':`<button data-action="edit" data-id="${esc(entry.id)}">Editar</button> <button data-action="cancel" data-id="${esc(entry.id)}">Cancelar</button>`]))}</details>`).join('')}</div>`:'<div class="workspace-empty"><strong>Nenhum pagamento registrado</strong><span>Registre o primeiro pagamento ou abatimento deste fornecedor.</span></div>';
+  const fragment=document.createRange().createContextualFragment(`<input class="listsearch payment-history-search" placeholder="Buscar por dia, mês, valor ou observação…" aria-label="Buscar no histórico mensal">${html}`);oldSearch?.remove();oldTable.replaceWith(fragment);
+  const search=app.querySelector('.payment-history-search');if(search)search.oninput=()=>{const term=search.value.toLocaleLowerCase('pt-BR');app.querySelectorAll('.payment-month').forEach(section=>{let matches=0;section.querySelectorAll('tbody tr').forEach(row=>{row.hidden=!row.textContent.toLocaleLowerCase('pt-BR').includes(term);if(!row.hidden)matches++});section.hidden=!matches;if(term&&matches)section.open=true})};
+  app.querySelectorAll('.payment-month [data-action]').forEach(button=>button.onclick=()=>{const id=button.dataset.id,entry=db.entries.find(item=>item.id===id);if(button.dataset.action==='cancel')cancelEntry(id);else if(entry)openForm(entry.type,id)});
  }
  function contextualizePage(){
   const title=app.querySelector('h1');if(title){const names={'Contas a pagar':'Saldos a pagar','Retiradas':'Compras','Pagamentos':'Histórico de pagamentos','Produtos e preços':'Produtos e preços','Relatórios':'Relatório'};title.textContent=`${names[page]||page} · ${selectedSupplier}`;}
   const subtitle=title?.nextElementSibling;if(subtitle&&page==='Contas a pagar')subtitle.textContent='Consulte uma competência por vez e acompanhe o valor restante deste fornecedor.';
+  if(subtitle&&page==='Pagamentos')subtitle.textContent='Pagamentos e abatimentos organizados por mês, com cada lançamento no seu respectivo dia.';
   if(page==='Contas a pagar'){app.querySelector('.payable-filters>div:first-child')?.remove();const monthLabelElement=app.querySelector('.payable-filters label');if(monthLabelElement)monthLabelElement.textContent='Competência';app.querySelector('.payable-context>div:first-child')?.remove();}
+  if(page==='Pagamentos')renderPaymentHistory();
   const first=app.firstElementChild;first?.insertAdjacentHTML('beforebegin',contextMarkup());
   scopeTables();window.enhanceFinanceUI?.(app);
  }
