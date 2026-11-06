@@ -30,6 +30,7 @@
   new MutationObserver(()=>{sync();if(opened?.trigger===trigger){build();position()}}).observe(native,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','selected']});native.addEventListener('change',sync);sync();
  }
  function enhance(root){root.querySelectorAll('select').forEach(enhanceSelect);root.querySelectorAll('label').forEach(label=>{let input=label.nextElementSibling;if(input?.tagName==='INPUT'){input.id=input.id||'field-'+(++sequence);label.htmlFor=input.id}});root.querySelectorAll('.table').forEach(container=>{const labels=[...container.querySelectorAll('th')].map(h=>h.textContent);container.querySelectorAll('tbody tr').forEach(row=>[...row.cells].forEach((cell,i)=>{cell.dataset.label=labels[i]||'';if(cell.querySelector('button'))cell.classList.add('cell-actions')}))})}
+ window.enhanceFinanceUI=enhance;
  function showError(message){let error=document.getElementById('finance-form-error');if(!error){error=document.createElement('div');error.id='finance-form-error';error.className='form-error';error.setAttribute('role','alert');document.getElementById('formTitle').after(error)}error.textContent=message;error.scrollIntoView({block:'nearest'});}
  function announce(message){const notice=document.querySelector('.notice');notice.textContent=message;notice.dataset.kind='error';notice.setAttribute('role','alert');}
  sum=function(entries,type){return F.sum(entries,type)};months=function(supplier){return F.monthly(db.entries,supplier)};

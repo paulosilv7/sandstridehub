@@ -39,6 +39,12 @@
   const rows=all.filter(e=>(!from||e.date>=from)&&(!to||e.date<=to)).map(e=>{balance=checked(BigInt(balance)+signed(e));return {...e,balance};});
   return{opening,closing:balance,rows,purchases:sum(rows,'purchase'),payments:sum(rows,'payment'),credits:sum(rows,'credit')};
  }
- const api={parseCents,formatInput,formatMoney,quantity,total,validDate,businessDate,priceAt,sum,monthly,name,nameKey,validateSnapshot,report};
+ function supplierView(db,supplier){
+  if(!db.suppliers.includes(supplier))throw new Error('Fornecedor não encontrado.');
+  const entries=db.entries.filter(entry=>entry.supplier===supplier),activeEntries=entries.filter(entry=>!entry.cancelled),products=db.products.filter(product=>product.supplier===supplier);
+  const purchases=sum(activeEntries,'purchase'),payments=sum(activeEntries,'payment'),credits=sum(activeEntries,'credit');
+  return{supplier,entries,activeEntries,products,purchases,payments,credits,balance:checked(BigInt(purchases)-BigInt(payments)-BigInt(credits)),months:monthly(db.entries,supplier)};
+ }
+ const api={parseCents,formatInput,formatMoney,quantity,total,validDate,businessDate,priceAt,sum,monthly,name,nameKey,validateSnapshot,report,supplierView};
  root.FinanceCore=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);
