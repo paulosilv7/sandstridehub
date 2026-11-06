@@ -33,20 +33,39 @@
  function showError(message){let error=document.getElementById('finance-form-error');if(!error){error=document.createElement('div');error.id='finance-form-error';error.className='form-error';error.setAttribute('role','alert');document.getElementById('formTitle').after(error)}error.textContent=message;error.scrollIntoView({block:'nearest'});}
  function announce(message){const notice=document.querySelector('.notice');notice.textContent=message;notice.dataset.kind='error';notice.setAttribute('role','alert');}
  sum=function(entries,type){return F.sum(entries,type)};months=function(supplier){return F.monthly(db.entries,supplier)};
+ function renderProducts(){
+  const rows=db.products.map(product=>{const price=F.priceAt(product.prices,today()),active=product.active!==false;return[
+   esc(product.supplier),esc(product.name),price?money(price.value):'Sem preço vigente',
+   product.prices.map(value=>esc(value.date)+' · '+money(value.value)).join('<br>'),
+   `<span class="product-status ${active?'active':'inactive'}">${active?'Ativo':'Inativo'}</span>`,
+   `<div class="product-actions">${active?`<button data-action="price" data-id="${esc(product.id)}">Atualizar preço</button>`:''}<button class="${active?'product-deactivate':'product-reactivate'}" data-action="toggle-product" data-id="${esc(product.id)}">${active?'Inativar':'Reativar'}</button></div>`
+  ]});
+  app.innerHTML='<h1>Produtos e preços</h1><p class="muted">Produtos inativos permanecem no histórico, mas não aparecem em novas compras.</p><div class="toolbar"><span>Cadastro por fornecedor</span><button class="primary" onclick="openForm(\'product\')">+ Produto</button></div>';
+  app.innerHTML+=table(['Fornecedor','Produto','Preço atual','Histórico','Situação','Ações'],rows);
+  const list=app.querySelector('.table'),search=document.createElement('input');search.className='listsearch';search.placeholder='Buscar produto ou fornecedor…';search.setAttribute('aria-label','Buscar produtos');search.oninput=()=>{const term=search.value.toLocaleLowerCase('pt-BR');list.querySelectorAll('tbody tr').forEach(row=>row.hidden=!row.textContent.toLocaleLowerCase('pt-BR').includes(term))};list.before(search);
+ }
+ async function toggleProduct(id){
+  if(submitting)return;const product=db.products.find(item=>item.id===id);if(!product)return;
+  const active=product.active!==false;
+  if(active&&!confirm(`Inativar ${product.name}? Ele deixará de aparecer em novas compras, mas todo o histórico e os preços serão preservados.`))return;
+  const next=structuredClone(db),target=next.products.find(item=>item.id===id);target.active=!active;
+  try{F.validateSnapshot(next);db=next;await save()}catch(error){announce(error.message||'Não foi possível alterar a situação do produto.');}
+ }
  const baseRender=render;render=function(){closeMenu();baseRender();
   const pageLabels={'Contas a pagar':'Saldos a pagar','Pagamentos':'Histórico de pagamentos'};
   if(pageLabels[page]&&app.querySelector('h1'))app.querySelector('h1').textContent=pageLabels[page];
   document.querySelectorAll('#nav button').forEach(button=>{button.childNodes.forEach(node=>{if(node.nodeType===3&&pageLabels[node.textContent.trim()])node.textContent=pageLabels[node.textContent.trim()]})});
   if(page==='Relatórios'&&filter)renderReport();
-  if(page==='Produtos e preços'){app.querySelectorAll('tbody tr').forEach((row,index)=>{const product=db.products[index];if(product&&row.cells[2]){const price=F.priceAt(product.prices,today());row.cells[2].textContent=price?money(price.value):'Sem preço vigente';}})}
+  if(page==='Produtos e preços')renderProducts();
   app.querySelectorAll('p').forEach(p=>{if(p.textContent.includes('Não há vencimentos definidos nesta demonstração.'))p.textContent='Baixas aplicadas incluem pagamentos e abatimentos. Os saldos são organizados pelo mês da compra.';});
   if(!db.suppliers.length&&['Painel','Fornecedores'].includes(page)){const empty=app.querySelector('.empty');if(empty){empty.className='empty-guide';empty.innerHTML='<h2>Comece pelo primeiro fornecedor</h2><p>Cadastre o fornecedor e seus produtos para registrar compras e acompanhar os pagamentos.</p><button class="primary" type="button">Cadastrar fornecedor</button>';empty.querySelector('button').onclick=()=>openForm('supplier')}}
-  app.querySelectorAll('button[data-action]').forEach(button=>{button.onclick=()=>{const id=button.dataset.id;if(button.dataset.action==='cancel')cancelEntry(id);else if(button.dataset.action==='price')openForm('price',id);else{const entry=db.entries.find(e=>e.id===id);if(entry)openForm(entry.type,id)}}});
+  app.querySelectorAll('button[data-action]').forEach(button=>{button.onclick=()=>{const id=button.dataset.id;if(button.dataset.action==='cancel')cancelEntry(id);else if(button.dataset.action==='price')openForm('price',id);else if(button.dataset.action==='toggle-product')toggleProduct(id);else{const entry=db.entries.find(e=>e.id===id);if(entry)openForm(entry.type,id)}}});
   enhance(app);
  };
  const baseOpen=openForm;openForm=function(type,id){closeMenu();
   if(!db.suppliers.length&&['purchase','payment','credit','product'].includes(type)){announce('Cadastre um fornecedor antes de registrar esta operação.');navTo('Fornecedores');return}
-  if(type==='purchase'&&!db.products.length){announce('Cadastre ao menos um produto com preço antes de registrar uma compra.');navTo('Produtos e preços');return}
+  const editedEntry=id?db.entries.find(entry=>entry.id===id):null;
+  if(type==='purchase'&&!db.products.some(product=>product.active!==false||editedEntry&&product.supplier===editedEntry.supplier&&product.name===editedEntry.product)){announce('Ative ou cadastre ao menos um produto com preço antes de registrar uma compra.');navTo('Produtos e preços');return}
   baseOpen(type,id);if(!modal.open)return;draftId=id||crypto.randomUUID();document.getElementById('finance-form-error')?.remove();
   // Descarta os ouvintes de prévia do protótipo, que calculavam valores com ponto flutuante.
   const oldForm=document.getElementById('form'),form=oldForm.cloneNode(true);oldForm.replaceWith(form);form.onsubmit=submitForm;const value=form.elements.namedItem('value');
@@ -54,7 +73,7 @@
   const note=form.elements.namedItem('note');if(note){note.required=false;note.maxLength=5000;}
   if(type==='purchase'){
    const update=()=>{const product=db.products.find(p=>p.id===form.elements.product.value);let price=null;try{price=product?F.priceAt(product.prices,form.elements.date.value):null}catch{}value.value=price?F.formatInput(price.value):'';renderTotal();};
-   const supplierChange=()=>{form.elements.product.replaceChildren();db.products.filter(p=>p.supplier===form.elements.supplier.value).forEach(p=>form.elements.product.add(new Option(p.name,p.id)));update();};
+   const supplierChange=()=>{form.elements.product.replaceChildren();db.products.filter(p=>p.supplier===form.elements.supplier.value&&(p.active!==false||editedEntry&&p.name===editedEntry.product&&p.supplier===editedEntry.supplier)).forEach(p=>form.elements.product.add(new Option(p.name,p.id)));update();};
    form.elements.supplier.onchange=supplierChange;form.elements.product.onchange=update;form.elements.date.onchange=update;
    const priceHint=[...document.getElementById('fields').querySelectorAll('.formhint')].at(-1);if(priceHint){priceHint.className='form-total';priceHint.id='purchaseTotal';}
    function renderTotal(){const totalElement=document.getElementById('purchaseTotal');if(!totalElement)return;try{const total=F.total(F.quantity(form.elements.qty.value),F.parseCents(value.value));totalElement.innerHTML='<span>Total da compra</span><strong>'+money(total)+'</strong>';}catch{totalElement.innerHTML='<span>Total da compra</span><strong>—</strong>';}}
@@ -67,9 +86,9 @@
   const attachment=await window.FinanceAttachments?.prepare(form,kind,draftId);
   const data=Object.fromEntries(new FormData(form)),next=structuredClone(db);
   if(kind==='supplier'){const name=F.name(data.name);if(next.suppliers.some(s=>F.nameKey(s)===F.nameKey(name)))throw new Error('Este fornecedor já está cadastrado.');next.suppliers.push(name);}
-  else if(kind==='product'){const name=F.name(data.name);if(next.products.some(p=>p.supplier===data.supplier&&F.nameKey(p.name)===F.nameKey(name)))throw new Error('Este produto já está cadastrado para o fornecedor.');next.products.push({id:draftId,supplier:data.supplier,name,prices:[{date:F.validDate(data.date),value:F.parseCents(data.value)}]});}
+  else if(kind==='product'){const name=F.name(data.name);if(next.products.some(p=>p.supplier===data.supplier&&F.nameKey(p.name)===F.nameKey(name)))throw new Error('Este produto já está cadastrado para o fornecedor.');next.products.push({id:draftId,supplier:data.supplier,name,active:true,prices:[{date:F.validDate(data.date),value:F.parseCents(data.value)}]});}
   else if(kind==='price'){const product=next.products.find(p=>p.id===editing);if(!product)throw new Error('Produto não encontrado. Atualize os dados.');const date=F.validDate(data.date);if(product.prices.some(p=>p.date>=date))throw new Error('A nova vigência deve ser posterior à última registrada.');product.prices.push({date,value:F.parseCents(data.value)});}
-  else{const entry={id:draftId,type:kind,date:F.validDate(data.date),supplier:data.supplier,note:data.note||'',value:F.parseCents(data.value),cancelled:false};if(kind==='purchase'){const product=next.products.find(p=>p.id===data.product&&p.supplier===data.supplier);if(!product)throw new Error('Selecione um produto deste fornecedor.');entry.product=product.name;entry.unit=entry.value;entry.qty=F.quantity(data.qty);entry.value=F.total(entry.qty,entry.unit);}const existing=next.entries.findIndex(e=>e.id===draftId);if(existing>=0){if(next.entries[existing].cancelled)throw new Error('Este lançamento foi cancelado e não pode ser editado.');next.entries[existing]=entry;}else next.entries.push(entry);}
+  else{const entry={id:draftId,type:kind,date:F.validDate(data.date),supplier:data.supplier,note:data.note||'',value:F.parseCents(data.value),cancelled:false},existing=next.entries.findIndex(e=>e.id===draftId);if(kind==='purchase'){const product=next.products.find(p=>p.id===data.product&&p.supplier===data.supplier),sameHistoricalProduct=existing>=0&&next.entries[existing].supplier===product?.supplier&&next.entries[existing].product===product?.name;if(!product||product.active===false&&!sameHistoricalProduct)throw new Error('Selecione um produto ativo deste fornecedor.');entry.product=product.name;entry.unit=entry.value;entry.qty=F.quantity(data.qty);entry.value=F.total(entry.qty,entry.unit);}if(existing>=0){if(next.entries[existing].cancelled)throw new Error('Este lançamento foi cancelado e não pode ser editado.');next.entries[existing]=entry;}else next.entries.push(entry);}
   F.validateSnapshot(next);db=next;const result=await save();if(result===true){await window.FinanceAttachments?.finish(attachment);modal.close();}else showError(document.querySelector('.notice').textContent||'Não foi possível salvar. Seus campos foram mantidos para conferência.');
  }catch(error){showError(error.message||'Confira os campos antes de salvar.');}finally{submitting=false;}}
  document.getElementById('form').onsubmit=submitForm;

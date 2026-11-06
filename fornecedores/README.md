@@ -17,6 +17,8 @@ Não colocar chaves secretas ou `service_role` no navegador. `bootstrap.js` reut
 
 Fornecedores, produtos, histórico de preços, compras com um produto por registro, pagamentos, abatimentos, cancelamentos, extrato mensal e consultas. A gravação ocorre em transação com revisão otimista e auditoria de autoria gerada no servidor. Exclusão de movimentos e substituição de preços antigos são bloqueadas no banco.
 
+Produtos podem ser inativados e reativados. A inativação preserva o cadastro, os preços e todas as compras anteriores, mas remove o produto das opções de novas compras. A migração `202611050003_fornecedores_produtos_ativos.sql` adiciona esse estado ao banco e às funções transacionais.
+
 O rateio dos pagamentos por mês é calculado a partir dos dados persistidos; não marca uma notinha individual como quitada. Retenção de arquivos, agrupamento de múltiplos itens por notinha, importação de planilhas e relatórios avançados continuam sendo evoluções posteriores.
 
 ## Verificação
