@@ -18,6 +18,11 @@
  function quantity(value){if(!/^[1-9]\d*$/.test(String(value).trim()))throw new Error('A quantidade deve ser um número inteiro maior que zero.');return checked(BigInt(String(value).trim()));}
  function total(qty,cents){quantity(qty);integer(cents);if(cents<=0)throw new Error('Preço inválido.');return checked(BigInt(qty)*BigInt(cents));}
  function validDate(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value))throw new Error('Informe uma data válida.');let d=new Date(value+'T12:00:00Z');if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==value||Number(value.slice(0,4))<1900)throw new Error('Informe uma data válida.');return value;}
+ function monthRange(value){
+  if(!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(value)||Number(value.slice(0,4))<1900)throw new Error('Informe uma competência válida.');
+  const [year,month]=value.split('-').map(Number),lastDay=new Date(Date.UTC(year,month,0)).getUTCDate();
+  return{from:validDate(value+'-01'),to:validDate(value+'-'+String(lastDay).padStart(2,'0'))};
+ }
  function businessDate(date=new Date()){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);return ['year','month','day'].map(t=>parts.find(p=>p.type===t).value).join('-');}
  function priceAt(prices,date){validDate(date);return [...prices].filter(p=>p.date<=date).sort((a,b)=>a.date.localeCompare(b.date)).at(-1)||null;}
  function sum(entries,type){return checked(entries.filter(e=>!e.cancelled&&(!type||e.type===type)).reduce((n,e)=>n+BigInt(integer(e.value)),0n));}
@@ -45,6 +50,6 @@
   const purchases=sum(activeEntries,'purchase'),payments=sum(activeEntries,'payment'),credits=sum(activeEntries,'credit');
   return{supplier,entries,activeEntries,products,purchases,payments,credits,balance:checked(BigInt(purchases)-BigInt(payments)-BigInt(credits)),months:monthly(db.entries,supplier)};
  }
- const api={parseCents,formatInput,formatMoney,quantity,total,validDate,businessDate,priceAt,sum,monthly,name,nameKey,validateSnapshot,report,supplierView};
+ const api={parseCents,formatInput,formatMoney,quantity,total,validDate,monthRange,businessDate,priceAt,sum,monthly,name,nameKey,validateSnapshot,report,supplierView};
  root.FinanceCore=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);
