@@ -49,7 +49,7 @@
    else visible+=container.querySelectorAll('tbody tr').length;
    hideSupplierColumn(container);
   });
-  const search=app.querySelector('.listsearch');if(search&&!search.classList.contains('purchase-history-search'))search.oninput=()=>{const term=search.value.toLocaleLowerCase('pt-BR');app.querySelectorAll('.table tbody tr').forEach(row=>{const supplierCell=[...row.cells].find(cell=>cell.dataset.label==='Fornecedor'),sameSupplier=supplierCell?.textContent.trim()===selectedSupplier;row.hidden=!sameSupplier||!row.textContent.toLocaleLowerCase('pt-BR').includes(term)})};
+  const search=app.querySelector('.listsearch');if(search&&!search.classList.contains('purchase-history-search'))search.oninput=()=>{const term=search.value.toLocaleLowerCase('pt-BR');app.querySelectorAll('.table tbody tr').forEach(row=>{const supplierCell=[...row.cells].find(cell=>cell.dataset.label==='Fornecedor'),sameSupplier=!supplierCell||supplierCell.textContent.trim()===selectedSupplier;row.hidden=!sameSupplier||!row.textContent.toLocaleLowerCase('pt-BR').includes(term)})};
   if(!visible&&!['Contas a pagar','Relatórios'].includes(page)){const empty=document.createElement('div');empty.className='workspace-empty';empty.innerHTML=`<strong>Nenhum registro para ${esc(selectedSupplier)}</strong><span>Use a ação principal desta tela para criar o primeiro registro.</span>`;app.querySelector('.table')?.after(empty)}
  }
  function renderPurchaseHistory(){
@@ -60,12 +60,27 @@
   const search=app.querySelector('.purchase-history-search');if(search)search.oninput=()=>{const term=search.value.toLocaleLowerCase('pt-BR');app.querySelectorAll('.purchase-month').forEach(section=>{let matches=0;section.querySelectorAll('tbody tr').forEach(row=>{row.hidden=!row.textContent.toLocaleLowerCase('pt-BR').includes(term);if(!row.hidden)matches++});section.hidden=!matches;if(term&&matches)section.open=true})};
   app.querySelectorAll('.purchase-month [data-action]').forEach(button=>button.onclick=()=>{const id=button.dataset.id,entry=db.entries.find(item=>item.id===id);if(button.dataset.action==='cancel')cancelEntry(id);else if(entry)openForm(entry.type,id)});
  }
+ function renderPaymentHistory(){
+  const oldTable=app.querySelector('.table');if(!oldTable)return;
+  const ledger=F.allocationLedger(db.entries,selectedSupplier),byId=new Map(ledger.transactions.map(transaction=>[transaction.id,transaction]));
+  const entries=db.entries.filter(entry=>entry.supplier===selectedSupplier&&entry.type!=='purchase').map((entry,order)=>({...entry,_order:order})).sort((a,b)=>b.date.localeCompare(a.date)||b._order-a._order);
+  const destination=entry=>{
+   if(entry.cancelled)return'<span class="allocation-muted">Não entra nos saldos</span>';
+   const transaction=byId.get(entry.id),parts=(transaction?.allocations||[]).map(allocation=>`<span><b>${esc(monthLabel(allocation.month))}</b>${money(allocation.value)}</span>`);
+   if(transaction?.unapplied)parts.push(`<span class="allocation-credit"><b>Crédito disponível</b>${money(transaction.unapplied)}</span>`);
+   return parts.length?`<div class="allocation-destinations">${parts.join('')}</div>`:'<span class="allocation-muted">Ainda não utilizado</span>';
+  };
+  oldTable.replaceWith(document.createRange().createContextualFragment(table(['Data','Movimento','Valor registrado','Destino do valor','Situação','Ações'],entries.map(entry=>[entry.date.split('-').reverse().join('/'),entry.type==='payment'?'Pagamento':'Abatimento',money(entry.value),destination(entry),entry.cancelled?'<span class="purchase-status cancelled">Cancelado</span>':'<span class="purchase-status confirmed">Registrado</span>',entry.cancelled?`<span data-entry-id="${esc(entry.id)}">—</span>`:`<button data-action="edit" data-id="${esc(entry.id)}">Editar</button> <button data-action="cancel" data-id="${esc(entry.id)}">Cancelar</button>`]))));
+  app.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>{const id=button.dataset.id,entry=db.entries.find(item=>item.id===id);if(button.dataset.action==='cancel')cancelEntry(id);else if(entry)openForm(entry.type,id)});
+ }
  function contextualizePage(){
   const title=app.querySelector('h1');if(title){const names={'Contas a pagar':'Saldos a pagar','Retiradas':'Compras','Pagamentos':'Histórico de pagamentos','Produtos e preços':'Produtos e preços','Relatórios':'Relatório'};title.textContent=`${names[page]||page} · ${selectedSupplier}`;}
   const subtitle=title?.nextElementSibling;if(subtitle&&page==='Contas a pagar')subtitle.textContent='Consulte uma competência por vez e acompanhe o valor restante deste fornecedor.';
   if(subtitle&&page==='Retiradas')subtitle.textContent='Compras organizadas por mês, mantendo produto, quantidade e valor de cada dia.';
+  if(subtitle&&page==='Pagamentos')subtitle.textContent='Veja a data real do pagamento e em quais dívidas mensais o valor foi utilizado.';
   if(page==='Contas a pagar'){app.querySelector('.payable-filters>div:first-child')?.remove();const monthLabelElement=app.querySelector('.payable-filters label');if(monthLabelElement)monthLabelElement.textContent='Competência';app.querySelector('.payable-context>div:first-child')?.remove();}
   if(page==='Retiradas')renderPurchaseHistory();
+  if(page==='Pagamentos')renderPaymentHistory();
   const first=app.firstElementChild;first?.insertAdjacentHTML('beforebegin',contextMarkup());
   scopeTables();window.enhanceFinanceUI?.(app);
  }

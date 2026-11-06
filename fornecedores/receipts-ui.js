@@ -8,6 +8,7 @@
  function paintButtons(){if(page!=='Pagamentos')return;app.querySelectorAll('[data-receipts]').forEach(button=>{const count=receipts.filter(r=>r.entryId===button.dataset.receipts).length;button.textContent=count?'Comprovantes ('+count+')':'Anexar comprovante';button.title=loadError?'Não foi possível atualizar os comprovantes. Clique para tentar novamente.':button.textContent;});}
  const previousRender=render;render=function(){previousRender();if(page==='Pagamentos'){app.querySelectorAll('tbody tr').forEach(row=>{const edit=row.querySelector('[data-action=edit]'),cancel=row.querySelector('[data-action=cancel]');let id=edit?.dataset.id||cancel?.dataset.id;
    // Cancelados também mantêm seus comprovantes consultáveis.
+   if(!id)id=row.querySelector('[data-entry-id]')?.dataset.entryId;
    if(!id){const index=[...row.parentElement.children].indexOf(row);id=db.entries.filter(e=>e.type!=='purchase')[index]?.id;}
    const entry=db.entries.find(e=>e.id===id);if(entry?.type!=='payment')return;let cell=row.lastElementChild;const button=document.createElement('button');button.type='button';button.className='receipt-action';button.dataset.receipts=id;button.onclick=()=>openReceipts(id);cell.classList.add('cell-actions');cell.append(button);
   });paintButtons();}};
