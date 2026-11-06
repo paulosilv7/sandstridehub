@@ -48,7 +48,9 @@ test('abas operacionais abrem sem fornecedor pré-selecionado',async()=>{
   context.navTo('Pagamentos');
   assert.equal(context.payableSupplier,'');
   assert.equal(context.filter,'');
-  assert.match(context.app.innerHTML,/Selecione um fornecedor/);
+  assert.match(context.app.innerHTML,/Qual fornecedor deseja consultar\?/);
+  assert.match(context.app.innerHTML,/Clique para selecionar/);
+  assert.doesNotMatch(context.app.innerHTML,/supplier-required-icon/);
   assert.doesNotMatch(context.app.innerHTML,/value="W-BOX" selected/);
 });
 
@@ -58,5 +60,5 @@ test('último fornecedor salvo no navegador não é restaurado',async()=>{
 
   context.navTo('Relatórios');
   assert.equal(context.filter,'');
-  assert.match(context.app.innerHTML,/Escolha quem deseja consultar/);
+  assert.match(context.app.innerHTML,/Qual fornecedor deseja consultar\?/);
 });
