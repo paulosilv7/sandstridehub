@@ -1,19 +1,15 @@
 // Mantém as operações financeiras dentro do contexto de um único fornecedor.
 (function(){
- const F=FinanceCore,storageKey='sandstride-finance-active-supplier-v1';
+ const F=FinanceCore;
  const stylesheet=document.createElement('link');stylesheet.rel='stylesheet';stylesheet.href='supplier-workspace.css';document.head.append(stylesheet);
  const operationalPages=new Set(['Contas a pagar','Retiradas','Pagamentos','Produtos e preços','Relatórios']);
  let selectedSupplier='';
- try{selectedSupplier=localStorage.getItem(storageKey)||''}catch{}
 
  function remember(value){
   selectedSupplier=db.suppliers.includes(value)?value:'';
-  try{selectedSupplier?localStorage.setItem(storageKey,selectedSupplier):localStorage.removeItem(storageKey)}catch{}
  }
  function normalize(){
-  if(!db.suppliers.length)return;
-  if(!db.suppliers.includes(selectedSupplier))selectedSupplier=db.suppliers.length===1?db.suppliers[0]:'';
-  if(selectedSupplier)remember(selectedSupplier);
+  if(!db.suppliers.includes(selectedSupplier))selectedSupplier='';
  }
  function supplierIndex(value){return db.suppliers.indexOf(value)}
  function setSupplier(value,destination){
@@ -24,6 +20,19 @@
  }
  window.chooseWorkspaceSupplier=value=>setSupplier(value);
  window.openSupplierWorkspace=(index,destination='Contas a pagar')=>{const value=db.suppliers[index];if(value)setSupplier(value,destination)};
+
+ const priorNavTo=navTo;
+ navTo=function(destination){
+  if(operationalPages.has(destination)){
+   remember('');
+   payableSupplier='';
+   payableMonth='';
+   filter='';
+   reportFrom='';
+   reportTo='';
+  }
+  priorNavTo(destination);
+ };
 
  function options(){return db.suppliers.map(value=>`<option value="${esc(value)}" ${value===selectedSupplier?'selected':''}>${esc(value)}</option>`).join('')}
  function monthCount(view){return view.months.filter(row=>row[3]>0).length}
