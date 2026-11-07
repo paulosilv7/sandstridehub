@@ -941,7 +941,7 @@ function detalhe(){
     '</section>'+
     '</div>'+
   '<div style="flex:1 1 380px"><section class="card"><h2 class="sech">Fotos do caso</h2>'+(fotos?'<div class="slots">'+fotos+'</div><p class="sub">As fotos saem automaticamente quando o caso fica conciliado ou encerrado e o prazo de retenção passa.</p>':'<div class="empty">Nenhuma foto ligada a este caso. Lotes recebidos entram aqui depois de identificados.</div>')+'</section>'+
-    '<section class="card" style="gap:10px"><h2 class="sech">Análise da Sandy</h2>'+relatoHtml(cx.relato)+'</section>'+suporteHtml(c,cx)+'</div></div>';
+    suporteHtml(c,cx)+'<section class="card" style="gap:10px"><h2 class="sech">Análise da Sandy</h2>'+relatoHtml(cx.relato)+'</section></div></div>';
 }
 
 function equipeHtml(l,carr){
