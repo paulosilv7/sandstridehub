@@ -631,6 +631,8 @@ function mesesOpc(x){var dt=x.data_pagamento||hojeSP(),base=dt.slice(0,7),sel=x.
 // meses para escolher a que mês a conta se refere (em torno do pagamento e de hoje, mais o que já está salvo)
 function mesesRef(dt,atual,vazio){var set={},hm=hojeSP().slice(0,7),dm=(dt||hojeSP()).slice(0,7);[-5,-4,-3,-2,-1,0,1].forEach(function(n){set[ymSomar(hm,n)]=1});[-3,-2,-1,0,1].forEach(function(n){set[ymSomar(dm,n)]=1});if(atual)set[atual]=1;
   var o=vazio?'<option value=""'+(!atual?' selected':'')+'>Mesmo mês do pagamento</option>':'';return o+Object.keys(set).sort().map(function(ym){return '<option value="'+ym+'"'+(ym===atual?' selected':'')+'>'+mesNome(ym).toLowerCase()+'/'+ym.slice(0,4)+'</option>'}).join('')}
+// liga pelo nome: se o nome da despesa é igual ao de uma conta fixa ativa, é ela (o valor da conta é só uma previsão)
+function contaPorNome(nome){var n=normT(nome);if(!n)return null;return (S.contas||[]).filter(function(k){return k.ativa&&normT(k.nome)===n})[0]||null}
 // uma conta fixa paga num mês = soma das despesas ligadas a ela naquele mês (pagamento em partes soma; sem despesa, some)
 async function sincConta(cid,mes){
   if(!cid||!mes)return;
@@ -664,6 +666,7 @@ async function confirmarComp(id,el){
   var x=(S.comp||[]).filter(function(c){return c.id===id})[0];if(!x)return;
   var box=el.closest('.cp'),cat=box.querySelector('select.selx').value,cid=box.querySelector('[data-sc]').value||null;
   if(!cat)return toast('Escolha a categoria.');
+  var nmDig=(((box.querySelector('[data-nm]')||{}).value||'').trim());if(!cid){var cn=contaPorNome(nmDig)||contaPorNome(x.favorecido);if(cn)cid=cn.id}
   var c=cid?S.contas.filter(function(k){return k.id===cid})[0]:null,dt=(box.querySelector('[data-dt]')||{}).value||x.data_pagamento||hojeSP(),sm=box.querySelector('[data-sm]'),mes=c?((sm&&sm.value)||mesConta(c,dt))+'-01':null;
   el.disabled=true;
   try{
@@ -895,12 +898,13 @@ async function modalDesp(id){
   modal('Editar despesa',corpo,[{t:'Salvar',fn:async function(m){
     var t=mv(m,'t').trim(),v=parseBR(mv(m,'v')),nd=mv(m,'dt'),c=mv(m,'c'),nm=mv(m,'m'),ncf=mv(m,'cf')||null;
     if(!t||!(v>0)||!/^\d{4}-\d{2}-\d{2}$/.test(nd)||!c){toast('Preencha nome, valor, data e categoria.');return false}
-    var mes=nm?nm+'-01':(ncf?nd.slice(0,7)+'-01':null),antes=d.mes_conta,antesCf=d.conta_fixa_id;
+    var auto=null;if(!ncf&&!d.conta_fixa_id){auto=contaPorNome(t);if(auto)ncf=auto.id}
+    var mes=nm?nm+'-01':(ncf?(auto?mesConta(auto,nd):nd.slice(0,7))+'-01':null),antes=d.mes_conta,antesCf=d.conta_fixa_id;
     var r=await SB.from('financeiro_despesas').update({descricao:t,valor:v,data:nd,categoria:c,mes_conta:mes,conta_fixa_id:ncf}).eq('id',id);if(r.error)throw r.error;
     if(ncf)await sincConta(ncf,mes);
     if(antesCf&&antes&&(antesCf!==ncf||antes!==mes))await sincConta(antesCf,antes)
     var mudou=(mes||nd.slice(0,7)+'-01').slice(0,7)!==(antes||d.data.slice(0,7)+'-01').slice(0,7);
-    toast(mudou?'Despesa atualizada. Agora ela conta em '+mesNome((mes||nd).slice(0,7)).toLowerCase()+'.':'Despesa atualizada.');carregarMes(1)}},
+    toast(auto?'Despesa atualizada e ligada à conta fixa '+auto.nome+'.':mudou?'Despesa atualizada. Agora ela conta em '+mesNome((mes||nd).slice(0,7)).toLowerCase()+'.':'Despesa atualizada.');carregarMes(1)}},
   {t:'Excluir despesa',fn:async function(){
     var r=await SB.from('financeiro_despesas').delete().eq('id',id);if(r.error)throw r.error;
     if(d.conta_fixa_id&&d.mes_conta)await sincConta(d.conta_fixa_id,d.mes_conta);
@@ -929,9 +933,11 @@ document.addEventListener('submit',async function(e){
   try{
     var path=null,arq=f.arq.files[0];
     if(arq){path=S.uid+'/'+Date.now()+'-'+arq.name.replace(/[^\w.\-]+/g,'_');var up=await SB.storage.from('financeiro-comprovantes').upload(path,arq);if(up.error)throw up.error}
-    var r=await SB.from('financeiro_despesas').insert({data:f.d.value,descricao:f.t.value.trim(),valor:v,categoria:f.c.value,origem:path?'comprovante':'manual',comprovante_path:path});
+    var cm=contaPorNome(f.t.value),mesm=cm?mesConta(cm,f.d.value)+'-01':null;
+    var r=await SB.from('financeiro_despesas').insert({data:f.d.value,descricao:f.t.value.trim(),valor:v,categoria:f.c.value,origem:path?'comprovante':'manual',comprovante_path:path,conta_fixa_id:cm?cm.id:null,mes_conta:mesm});
     if(r.error){if(path)await SB.storage.from('financeiro-comprovantes').remove([path]);throw r.error}
-    toast('Despesa lançada.');
+    if(cm)await sincConta(cm.id,mesm);
+    toast(cm?'Despesa lançada e ligada à conta fixa '+cm.nome+'.':'Despesa lançada.');
     if(f.d.value.slice(0,7)!==S.ym){S.ym=f.d.value.slice(0,7)}
     carregarMes(1);
   }catch(x){console.error(x);toast('Não consegui lançar. Tente de novo.');btn.disabled=false}
