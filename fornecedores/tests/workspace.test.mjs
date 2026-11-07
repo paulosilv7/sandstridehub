@@ -25,7 +25,7 @@ function environment(source){
       allocationLedger(){return{transactions:[],months:[]}}
     },
     document,window,app,
-    db:{suppliers:['W-BOX','PECHINCHA LIVRE'],products:[],entries:[]},
+    db:{suppliers:['W-BOX','PECHINCHA LIVRE'],inactiveSuppliers:[],products:[],entries:[]},
     page:'Painel',filter:'',payableSupplier:'',payableMonth:'',reportFrom:'',reportTo:'',
     render(){},openForm(){},modal:{open:false},
     navTo(destination){context.page=destination;context.filter='';context.render()},

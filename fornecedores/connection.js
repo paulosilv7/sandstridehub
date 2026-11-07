@@ -1,5 +1,5 @@
 (async()=>{
- const empty=()=>({suppliers:[],products:[],entries:[],audit:[]});
+ const empty=()=>({suppliers:[],inactiveSuppliers:[],products:[],entries:[],audit:[]});
  let client,store,backupStatus,ready=false,generation=0,savedControls=[];
  db=empty();const main=document.querySelector('main'),notice=document.querySelector('.notice');
  notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');

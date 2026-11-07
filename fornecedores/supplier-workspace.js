@@ -6,6 +6,9 @@
  let selectedSupplier='';
  let portfolioFrom='';
  let portfolioTo='';
+ let directoryFilter='active';
+ const inactive=name=>typeof window.isInactiveSupplier==='function'&&window.isInactiveSupplier(name);
+ window.currentWorkspaceSupplier=()=>selectedSupplier;
 
  function remember(value){
   selectedSupplier=db.suppliers.includes(value)?value:'';
@@ -36,7 +39,7 @@
   priorNavTo(destination);
  };
 
- function options(){return db.suppliers.map(value=>`<option value="${esc(value)}" ${value===selectedSupplier?'selected':''}>${esc(value)}</option>`).join('')}
+ function options(){return db.suppliers.map(value=>`<option value="${esc(value)}" ${value===selectedSupplier?'selected':''}>${esc(value)}${inactive(value)?' · Inativo':''}</option>`).join('')}
  function monthCount(view){return view.months.filter(row=>row[3]>0).length}
  function lastMovement(view){return [...view.activeEntries].sort((a,b)=>b.date.localeCompare(a.date)).at(0)?.date||''}
  function dateLabel(value){return value?value.split('-').reverse().join('/'):'Nenhum movimento'}
@@ -54,7 +57,8 @@
   const view=selectedSupplier?F.supplierView(db,selectedSupplier):null;
   const identity=pageIdentity(),identityClass=`supplier-context-${identity.key}`;
   if(!view)return `<section class="supplier-context supplier-context-empty ${identityClass}" aria-labelledby="supplierChoiceTitle"><div class="supplier-choice-heading"><div class="supplier-choice-icon">${identity.icon}</div><div class="supplier-choice-copy"><span class="supplier-eyebrow">${identity.eyebrow}</span><h1 id="supplierChoiceTitle">${identity.title}</h1><p>${identity.description}</p></div></div><div class="supplier-switch supplier-switch-primary"><label for="workspaceSupplier"><span>1</span> Escolha o fornecedor</label><select id="workspaceSupplier" onchange="chooseWorkspaceSupplier(this.value)"><option value="">Clique para selecionar</option>${options()}</select><small>${identity.helper}</small></div></section>`;
-  return `<section class="supplier-context ${identityClass}" aria-label="Fornecedor em uso"><div class="supplier-context-heading"><div class="supplier-context-name"><span class="supplier-context-mini-icon">${identity.icon}</span><div><span class="supplier-eyebrow">${identity.eyebrow} · FORNECEDOR</span><h2>${esc(view.supplier)}</h2><p>Todas as informações abaixo pertencem somente a este fornecedor.</p></div></div><div class="supplier-switch"><label for="workspaceSupplier">Trocar fornecedor</label><select id="workspaceSupplier" onchange="chooseWorkspaceSupplier(this.value)"><option value="">Selecionar outro fornecedor</option>${options()}</select></div></div><div class="supplier-context-metrics"><div><span>Saldo a pagar</span><strong>${money(view.balance)}</strong></div><div><span>Meses em aberto</span><strong>${monthCount(view)}</strong></div><div><span>Produtos ativos</span><strong>${view.products.filter(item=>item.active!==false).length}</strong></div><div><span>Último movimento</span><strong>${dateLabel(lastMovement(view))}</strong></div></div></section>`;
+  const status=inactive(view.supplier)?'<span class="supplier-status inactive">Inativo · somente histórico</span>':'<span class="supplier-status active">Ativo</span>';
+  return `<section class="supplier-context ${identityClass} ${inactive(view.supplier)?'is-inactive':''}" aria-label="Fornecedor em uso"><div class="supplier-context-heading"><div class="supplier-context-name"><span class="supplier-context-mini-icon">${identity.icon}</span><div><span class="supplier-eyebrow">${identity.eyebrow} · FORNECEDOR</span><h2>${esc(view.supplier)}</h2>${status}<p>${inactive(view.supplier)?'Histórico e relatórios preservados. Reative para registrar novas compras ou produtos.':'Todas as informações abaixo pertencem somente a este fornecedor.'}</p></div></div><div class="supplier-switch"><label for="workspaceSupplier">Trocar fornecedor</label><select id="workspaceSupplier" onchange="chooseWorkspaceSupplier(this.value)"><option value="">Selecionar outro fornecedor</option>${options()}</select></div></div><div class="supplier-context-metrics"><div><span>Saldo a pagar</span><strong>${money(view.balance)}</strong></div><div><span>Meses em aberto</span><strong>${monthCount(view)}</strong></div><div><span>Produtos ativos</span><strong>${view.products.filter(item=>item.active!==false).length}</strong></div><div><span>Último movimento</span><strong>${dateLabel(lastMovement(view))}</strong></div></div></section>`;
  }
  function selectionRequired(){
   app.innerHTML=contextMarkup();
@@ -108,15 +112,21 @@
   if(page==='Retiradas')renderPurchaseHistory();
   if(page==='Pagamentos')renderPaymentHistory();
   const first=app.firstElementChild;first?.insertAdjacentHTML('beforebegin',contextMarkup());
+  if(inactive(selectedSupplier)&&['Retiradas','Produtos e preços'].includes(page)){app.querySelectorAll('button').forEach(button=>{if(/registrar compra|novo produto|\+ produto/i.test(button.textContent)){button.disabled=true;button.title='Reative o fornecedor para fazer novos lançamentos.'}})}
   scopeTables();window.enhanceFinanceUI?.(app);
  }
- function supplierCards(){
-  return `<section class="supplier-card-grid">${db.suppliers.map((name,index)=>{const view=F.supplierView(db,name),open=monthCount(view);return `<article class="supplier-card"><div class="supplier-card-top"><span>${esc(name.slice(0,1).toUpperCase())}</span><em>${open?open+' '+(open===1?'mês em aberto':'meses em aberto'):'Sem pendências'}</em></div><h3>${esc(name)}</h3><div class="supplier-card-balance"><span>Saldo a pagar</span><strong>${money(view.balance)}</strong></div><div class="supplier-card-meta"><span>${view.products.filter(item=>item.active!==false).length} produtos ativos</span><span>${view.activeEntries.length} movimentos</span></div><div class="supplier-card-actions"><button class="primary" onclick="openSupplierWorkspace(${index})">Abrir financeiro</button><button onclick="openSupplierWorkspace(${index},'Relatórios')">Ver extrato</button></div></article>`}).join('')}</section>`;
+ function supplierCards(names=db.suppliers,manageStatus=false){
+  return `<section class="supplier-card-grid">${names.map(name=>{const index=supplierIndex(name),view=F.supplierView(db,name),open=monthCount(view),isInactive=inactive(name),statusControl=manageStatus?`<button class="supplier-toggle ${isInactive?'reactivate':'deactivate'}" onclick="toggleSupplier(db.suppliers[${index}])">${isInactive?'Reativar':'Inativar'}</button>`:'';return `<article class="supplier-card ${isInactive?'supplier-card-inactive':''}" data-supplier-status="${isInactive?'inactive':'active'}"><div class="supplier-card-top"><span>${esc(name.slice(0,1).toUpperCase())}</span><em>${isInactive?'Inativo':open?open+' '+(open===1?'mês em aberto':'meses em aberto'):'Sem pendências'}</em></div><h3>${esc(name)}</h3><div class="supplier-card-balance"><span>Saldo a pagar</span><strong>${money(view.balance)}</strong></div><div class="supplier-card-meta"><span>${view.products.filter(item=>item.active!==false).length} produtos ativos</span><span>${view.activeEntries.length} movimentos</span></div><div class="supplier-card-actions"><button class="primary" onclick="openSupplierWorkspace(${index})">Abrir financeiro</button><button onclick="openSupplierWorkspace(${index},'Relatórios')">Ver extrato</button>${statusControl}</div></article>`}).join('')}</section>`;
  }
  function renderDirectory(){
-  const tableElement=app.querySelector('.table');if(!tableElement)return;tableElement.replaceWith(document.createRange().createContextualFragment(supplierCards()));
+  const tableElement=app.querySelector('.table');if(!tableElement)return;tableElement.replaceWith(document.createRange().createContextualFragment(supplierCards(db.suppliers,true)));
   const search=app.querySelector('.listsearch');if(search){search.placeholder='Buscar fornecedor…';search.oninput=()=>{const term=search.value.toLocaleLowerCase('pt-BR');app.querySelectorAll('.supplier-card').forEach(card=>card.hidden=!card.textContent.toLocaleLowerCase('pt-BR').includes(term))}}
-  const title=app.querySelector('h1');if(title)title.textContent='Carteira de fornecedores';const subtitle=title?.nextElementSibling;if(subtitle)subtitle.textContent='Escolha um fornecedor para abrir seu espaço financeiro individual.';
+  const title=app.querySelector('h1');if(title)title.textContent='Carteira de fornecedores';const subtitle=title?.nextElementSibling;if(subtitle)subtitle.textContent='Fornecedores inativos continuam disponíveis para histórico, relatórios e totais anuais.';
+  const activeCount=db.suppliers.filter(name=>!inactive(name)).length,inactiveCount=db.suppliers.length-activeCount;
+  const filters=document.createRange().createContextualFragment(`<div class="supplier-directory-filters" role="group" aria-label="Filtrar fornecedores"><button class="${directoryFilter==='active'?'active':''}" data-filter="active">Ativos <span>${activeCount}</span></button><button class="${directoryFilter==='all'?'active':''}" data-filter="all">Todos <span>${db.suppliers.length}</span></button><button class="${directoryFilter==='inactive'?'active':''}" data-filter="inactive">Inativos <span>${inactiveCount}</span></button></div>`);
+  app.querySelector('.supplier-card-grid')?.before(filters);
+  const apply=()=>app.querySelectorAll('.supplier-card').forEach(card=>{const status=card.dataset.supplierStatus;card.hidden=directoryFilter!=='all'&&status!==directoryFilter});apply();
+  app.querySelectorAll('.supplier-directory-filters button').forEach(button=>button.onclick=()=>{directoryFilter=button.dataset.filter;render()});
  }
  function renderPortfolio(){
   const toolbar=app.querySelector('.toolbar'),tableElement=app.querySelector('.table');if(!toolbar||!tableElement)return;
@@ -141,6 +151,7 @@
  window.clearPortfolioPeriod=()=>{portfolioFrom='';portfolioTo='';render()};
  function preselectForm(type,id){
   if(!selectedSupplier||id||!['purchase','payment','credit','product'].includes(type)||!modal.open)return;
+  if(inactive(selectedSupplier)&&['purchase','product'].includes(type)){modal.close();return;}
   const form=document.getElementById('form'),supplier=form.elements.namedItem('supplier');if(!supplier)return;
   supplier.value=selectedSupplier;supplier.dispatchEvent(new Event('change',{bubbles:true}));
   const fixed=document.createElement('input');fixed.type='hidden';fixed.name='supplier';fixed.value=selectedSupplier;supplier.name='supplierDisplay';supplier.disabled=true;
