@@ -907,11 +907,11 @@ function orfaosHtml(){
   var it=l.map(function(x){
     var et=((x.analise_resumo&&x.analise_resumo.etiqueta)||[]).filter(function(e){return e.confianca==='alta';}).map(function(e){return esc(e.tipo+' '+e.valor);}).join(' · ');
     var u=x._foto&&S.orfUrls?S.orfUrls[x._foto]:null;
-    var th=u?'<a href="'+u+'" target="_blank" rel="noopener" aria-label="Abrir a foto do lote"><img src="'+u+'" alt="Foto do lote" width="64" height="64" style="width:64px;height:64px;object-fit:cover;border-radius:12px;flex:none"></a>':'<span class="tag mute">sem foto</span>';
+    var th=u?'<a href="'+u+'" data-foto="orf'+x.id+'" data-src="'+u+'" aria-label="Ampliar a foto do lote" style="cursor:zoom-in"><img src="'+u+'" alt="Foto do lote" width="64" height="64" style="width:64px;height:64px;object-fit:cover;border-radius:12px;flex:none"></a>':'<span class="tag mute">sem foto</span>';
     return '<div class="cardrow" style="gap:10px"><div class="row" style="gap:12px;align-items:flex-start;flex-wrap:nowrap">'+th+'<span style="min-width:0;display:flex;flex-direction:column;gap:4px"><b>'+new Date(x.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</b><span class="sub">'+esc(x.descricao_equipe||'(sem descrição)')+'</span><span class="sub" style="font-size:12.5px">Lido na etiqueta: '+(et||'nada legível')+'</span></span></div>'+
-      '<div class="row" style="gap:8px;flex-wrap:wrap"><input id="lg-'+x.id+'" class="inp" type="text" data-in="lg" data-k="'+x.id+'" value="'+esc(S.ligar[x.id]||'')+'" placeholder="Número do pedido ou da solicitação" autocomplete="off" aria-label="Número do pedido para ligar a este lote" style="flex:1 1 220px"><button type="button" class="btn" data-a="ligarLote" data-v="'+x.id+'">Ligar a um caso</button></div></div>';
+      '<div class="row" style="gap:8px;flex-wrap:wrap"><input id="lg-'+x.id+'" class="inp" type="text" data-in="lg" data-k="'+x.id+'" value="'+esc(S.ligar[x.id]||'')+'" placeholder="Pedido, rastreio ou nome do cliente" autocomplete="off" aria-label="Número do pedido para ligar a este lote" style="flex:1 1 220px"><button type="button" class="btn" data-a="ligarLote" data-v="'+x.id+'">Ligar a um caso</button></div></div>';
   }).join('');
-  return '<section class="card" style="gap:10px"><h2 class="sech">Lotes sem caso ('+l.length+')</h2><p class="sub">Estas fotos estão guardadas e seguras, mas ainda não existe um caso com esses números. A Sandy tenta ligar sozinha a cada 15 minutos quando o caso aparecer. Se você achar a devolução, digite o número aqui e ela analisa em instantes.</p>'+it+'</section>';
+  return '<section class="card" style="gap:10px"><h2 class="sech">Lotes sem caso ('+l.length+')</h2><p class="sub">Estas fotos estão guardadas e seguras, mas ainda não existe um caso com esses números. A Sandy tenta ligar sozinha a cada 15 minutos, procurando pelo número do pedido, depois pelo rastreio e depois pelo nome do cliente. Se você achar a devolução, digite aqui o pedido, o rastreio ou o nome do cliente e ela analisa em instantes.</p>'+it+'</section>';
 }
 
 function detalhe(){
@@ -926,7 +926,7 @@ function detalhe(){
   var dt=function(x){return x?new Date(x).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';};
   var kv=function(a,b){return '<div class="idrow"><span class="a">'+a+'</span><span class="b">'+b+'</span></div>';};
   var evs=(cx.eventos||[]).map(function(e){var d=e.dados||{};var tx=e.tipo==='leitura_marketplace'?'Leitura do marketplace: '+esc(ST_MKT[d.status]||String(d.status||'—'))+(d.stage?' · etapa '+esc(ETAPA_MKT[d.stage]||d.stage):'')+' → '+esc(ROT[d.estado_local]||d.estado_local||''):(e.tipo==='fotos_excluidas'?'Fotos excluídas ('+(d.arquivos||0)+' arquivos)':esc(EV_TX[e.tipo]||humanizar(e.tipo)));return '<div class="idrow"><span class="a">'+dt(e.criado_em)+'</span><span class="b">'+tx+'</span></div>';}).join('');
-  var fotos=(cx.anexos||[]).map(function(a,i){return a.url?'<div class="slot"><img src="'+a.url+'" alt="Foto '+(i+1)+' do caso"></div>':'<div class="slot ok">'+(a.tipo==='video'?'Vídeo':'Arquivo')+'</div>';}).join('');
+  var fotos=(cx.anexos||[]).map(function(a,i){return a.url?'<div class="slot" data-foto="caso" data-src="'+a.url+'" style="cursor:zoom-in" role="button" tabindex="0" aria-label="Ampliar foto '+(i+1)+'"><img src="'+a.url+'" alt="Foto '+(i+1)+' do caso"></div>':'<div class="slot ok">'+(a.tipo==='video'?'Vídeo':'Arquivo')+'</div>';}).join('');
   return head()+'<div><button type="button" class="pbk" data-a="voltar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Voltar para '+TITULOS[destino]+'</button></div>'+
   '<section class="stage"><div style="min-width:0;flex:1 1 360px"><div class="lbl">'+mk(c.mk)+esc(MK[c.mk].nome+' · '+c.loja)+'</div><div class="tt">'+esc(c.problema)+'</div><div class="sub" style="color:var(--on-dark-muted);margin-top:6px">'+esc(c.pedido+' · solicitação '+c.solicitacao)+'</div></div><div class="sr"><div class="k">Prazo</div><div class="pv">'+(c.st>=6?'Encerrado':(c.semPrazo?'—':(c.prazo<=0?'Vencido':c.prazo+' h')))+'</div></div>'+proxPasso(c)+'</section>'+
   '<div class="cols"><div style="flex:1 1 440px">'+
@@ -941,7 +941,7 @@ function detalhe(){
     '</section>'+
     '</div>'+
   '<div style="flex:1 1 380px"><section class="card"><h2 class="sech">Fotos do caso</h2>'+(fotos?'<div class="slots">'+fotos+'</div><p class="sub">As fotos saem automaticamente quando o caso fica conciliado ou encerrado e o prazo de retenção passa.</p>':'<div class="empty">Nenhuma foto ligada a este caso. Lotes recebidos entram aqui depois de identificados.</div>')+'</section>'+
-    '<section class="card" style="gap:10px"><h2 class="sech">Análise da Sandy</h2>'+relatoHtml(cx.relato)+'</section></div></div>';
+    '<section class="card" style="gap:10px"><h2 class="sech">Análise da Sandy</h2>'+relatoHtml(cx.relato)+'</section>'+suporteHtml(c,cx)+'</div></div>';
 }
 
 function equipeHtml(l,carr){
@@ -955,7 +955,7 @@ function itensHtml(it){
   var lin=function(a){return a.map(function(x){return '<li>'+esc((x.qtd||1)+'× '+(x.sku||x.variacao||x.nome||'Item'))+'</li>';}).join('');};
   var qc=it.comprados.reduce(function(s,x){return s+(+x.qtd||1);},0),dv=Array.isArray(it.devolvidos)?it.devolvidos:[],qd=dv.reduce(function(s,x){return s+(+x.qtd||1);},0);
   var aviso=(dv.length&&qd<qc)?'<div class="tag warn" style="align-self:flex-start">O cliente pediu para devolver só '+qd+' de '+qc+' itens do pedido</div>':'';
-  return '<section class="card" style="gap:10px"><h2 class="sech">O pedido</h2>'+aviso+'<div class="idrow"><span class="a">Comprou</span><span class="b"><ul style="margin:0;padding-left:18px">'+lin(it.comprados)+'</ul></span></div>'+(dv.length?'<div class="idrow"><span class="a">Está devolvendo</span><span class="b"><ul style="margin:0;padding-left:18px">'+lin(dv)+'</ul></span></div>':'')+(it.motivo_comprador?'<div class="idrow"><span class="a">O cliente disse</span><span class="b">'+esc(it.motivo_comprador)+'</span></div>':'')+'</section>';
+  return '<section class="card" style="gap:10px"><h2 class="sech">O pedido</h2>'+aviso+'<div class="idrow"><span class="a">Comprou</span><span class="b"><ul style="margin:0;padding-left:18px">'+lin(it.comprados)+'</ul></span></div>'+(dv.length?'<div class="idrow"><span class="a">Está devolvendo</span><span class="b"><ul style="margin:0;padding-left:18px">'+lin(dv)+'</ul></span></div>':'')+'<div class="idrow"><span class="a">O cliente disse</span><span class="b">'+(it.motivo_comprador?esc(it.motivo_comprador):'<span class="sub">Não escreveu nada além do motivo marcado.</span>')+'</span></div>'+'</section>';
 }
 function proxPasso(c){
   if(c.expirado)return '<div style="flex:1 1 100%;font-size:16px;line-height:1.4;margin-top:4px">A devolução foi aceita e já voltou. O prazo da loja na Shopee <b>já encerrou</b>, então não há mais o que fazer neste caso.</div>';
@@ -978,12 +978,12 @@ function relatoHtml(r){
   var pv=(r.provas||[]).map(function(a){return '<li>'+esc(a)+'</li>';}).join('');
   var nm=NOME_MK[cs.mk]||'marketplace';
   var ind='<div style="display:flex;gap:12px;align-items:flex-start;background:#eef6ff;border:1px solid #cfe3fb;border-radius:16px;padding:14px"><img src="/chat/img/sandy-telegram.jpg" alt="Sandy" width="52" height="52" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex:none;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.15)"><div style="min-width:0;display:flex;flex-direction:column;gap:8px"><div class="row" style="gap:8px;flex-wrap:wrap"><b style="font-size:14px">Indicação da Sandy para vocês</b><span class="tag '+rec[1]+'">'+rec[0]+'</span>'+(r.categoria?'<span class="tag">'+esc(r.categoria)+'</span>':'')+'</div><p style="font-size:14.5px;line-height:1.45;margin:0">'+esc(r.motivo||'')+'</p>'+(ci?'<div style="font-size:13.5px;line-height:1.4"><b>Comprado × voltou:</b> '+esc(ci)+'</div>':'')+(pv?'<div><div class="kk" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Provas sugeridas</div><ul style="margin:4px 0 0;padding-left:18px;font-size:13.5px">'+pv+'</ul></div>':'')+al+'<div class="sub" style="font-size:12px">Isto é só para a equipe. Não vai para o marketplace.</div></div></div>';
-  var mkt=r.relato?'<div style="border:1.5px dashed var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px"><div class="kk" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Texto que a Sandy escreveu para o '+esc(nm)+' (é isto que será enviado)</div><div style="white-space:pre-wrap;font-size:14px;line-height:1.5">'+esc(r.relato)+'</div>'+(r.pedido_financeiro?'<div class="box az"><div class="kk">Pedido financeiro</div><div class="vl" style="font-weight:400">'+esc(r.pedido_financeiro)+'</div></div>':'')+'</div>':'';
+  var mkt=r.relato?'<div style="border:1.5px dashed var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px"><div class="kk" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Texto que a Sandy escreveu para o '+esc(nm)+' (é isto que será enviado; você pode editar na hora de enviar)</div><div style="white-space:pre-wrap;font-size:14px;line-height:1.5">'+esc(r.relato)+'</div>'+(r.pedido_financeiro?'<div class="box az"><div class="kk">Pedido financeiro</div><div class="vl" style="font-weight:400">'+esc(r.pedido_financeiro)+'</div></div>':'')+'</div>':'';
   var fim=cs.status&&['ENVIADO','EM_ANALISE','DECIDIDO'].indexOf(cs.status)>-1;
   var ac='';
   if(!fim&&!cs.expirado&&cs.st<6){
     var b=[];
-    if(r.recomendacao==='contestar')b.push('<button type="button" class="btn lg" data-a="aprovar" data-v="'+S.casoId+'">Revisar e contestar no '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução</button>');
+    if(r.recomendacao==='contestar')b.push('<button type="button" class="btn lg" data-a="aprovar" data-v="'+S.casoId+'">Aprovar e enviar ao '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução</button>');
     else if(r.recomendacao==='nao_contestar')b.push('<button type="button" class="btn lg" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução no '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+S.casoId+'">Contestar mesmo assim</button>'+(cs.decidir?'<button type="button" class="btn ghost" data-a="concordar" data-v="'+S.casoId+'">Só encerrar aqui</button>':''));
     else if(r.recomendacao==='pedir_informacao')b.push('<button type="button" class="btn lg" data-a="fotosCaso" data-v="'+S.casoId+'">Enviar mais fotos deste pedido</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução no '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+S.casoId+'">Contestar mesmo assim</button>');
     if(b.length)ac='<div class="row" style="gap:10px;flex-wrap:wrap">'+b.join('')+'</div><p class="sub" style="font-size:12.5px">Nada é enviado sem o seu toque e a sua confirmação. Depois de enviado, não dá para desfazer.</p>';
@@ -1050,7 +1050,7 @@ function regras(){
 
 function aprov(){
   var l=aplicar(S.casos.filter(function(c){return c.st===3;}),S.f.aprov);
-  var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(c.pedirInfo?'<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar mais fotos</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+c.id+'">Aceitar a devolução</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':c.decidir?'<button type="button" class="btn" data-a="concordar" data-v="'+c.id+'">Concordo, não contestar</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':'<button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">Aprovar</button>')+'</div></section>';}).join('');
+  var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(c.pedirInfo?'<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar mais fotos</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+c.id+'">Aceitar a devolução</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':c.decidir?'<button type="button" class="btn" data-a="concordar" data-v="'+c.id+'">Concordo, não contestar</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':'<button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">Aprovar e enviar</button>')+'</div></section>';}).join('');
   var vazio=S.casos.filter(function(c){return c.st===3;}).length===0?'Nada aguardando a sua aprovação agora.':'Nenhum caso com esses filtros.';
   return head()+'<section class="card tight">'+toolbar('aprov','Buscar por produto ou pedido')+'</section><p class="sub" style="margin:0 6px">Casos que a Sandy preparou e que só saem com o seu aprovado. Hoje ela só lê, em modo sombra: quando preparar um relato, ele aparece aqui.</p>'+(linhas||'<div class="empty">'+vazio+'</div>');
 }
@@ -1065,7 +1065,7 @@ function acomp(){
 
 
 function responder(){
-  var l=S.casos.filter(function(c){return c.mk==='ml'&&c.st<6&&((c.acoes.length>0&&!c.semPrazo)||clienteEsperaLoja(c)||(c.thread||[]).some(function(m){return m.origem==='loja';}));}).sort(function(a,b){var ea=esperaRetorno(a)?1:0,eb=esperaRetorno(b)?1:0;return ea-eb||(ea?String(b.atualizado).localeCompare(String(a.atualizado)):a.prazo-b.prazo);});
+  var l=S.casos.filter(function(c){return c.mk==='ml'&&c.st<6&&((temChat(c)&&!c.semPrazo)||clienteEsperaLoja(c)||(c.thread||[]).some(function(m){return m.origem==='loja';}));}).sort(function(a,b){var ea=esperaRetorno(a)?1:0,eb=esperaRetorno(b)?1:0;return ea-eb||(ea?String(b.atualizado).localeCompare(String(a.atualizado)):a.prazo-b.prazo);});
   S.ofTent=S.ofTent||{};
   var fmt=function(t){return esc(limpaMsg(t)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');};
   var cards=l.map(function(c,ix){var p=prazoInfo(c),env=S.enviandoId===c.id;
@@ -1193,7 +1193,8 @@ setInterval(function(){
 
 async function corpoErro(err){try{if(err&&err.context&&typeof err.context.json==='function')return await err.context.json();}catch(e){}return {};}
 function ultimaMsg(c){var t=(c.thread||[]).slice().sort(function(a,b){return String(a.enviado_em).localeCompare(String(b.enviado_em));});return t.length?t[t.length-1]:null;}
-function clienteEsperaLoja(c){var u=ultimaMsg(c);return !!u&&u.origem==='comprador'&&c.acoes.length>0;}
+function temChat(c){return c.acoes.indexOf('send_message_to_mediator')>-1||c.acoes.indexOf('send_message_to_complainant')>-1;}
+function clienteEsperaLoja(c){var u=ultimaMsg(c);return !!u&&u.origem==='comprador'&&temChat(c);}
 function esperaRetorno(c){return !clienteEsperaLoja(c)&&(c.semPrazo||!c.acoes.length);}
 function limpaMsg(t){
   t=String(t||'');
@@ -1262,10 +1263,10 @@ async function aprovar(id){
   var est='border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;background:#fff';
   var emailLoja=String(S.cfg['email_loja:'+String(c.loja||'').toLowerCase()]||'').trim();
   var emailCampo=(c.mk==='sp'&&!emailLoja)?'<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>E-mail de contato da loja (a Shopee exige)</b><input type="email" class="ct-e" placeholder="contato@sualoja.com.br" style="'+est+'"></label>':'';
-  var html='<h3>Contestar no '+esc(nome)+'</h3><p>Pedido '+esc(c.pedido)+(emailLoja?'. Contato da loja: '+esc(emailLoja):'')+'. Vão junto '+nf+' foto'+(nf===1?'':'s')+' da conferência. Depois de enviado, não dá para desfazer.</p>'+
+  var html='<h3>Enviar ao '+esc(nome)+'</h3><p>Pedido '+esc(c.pedido)+(emailLoja?'. Contato da loja: '+esc(emailLoja):'')+'. Vão junto '+nf+' foto'+(nf===1?'':'s')+' da conferência. O texto abaixo é o da Sandy, já pronto: <b>você pode editar à vontade</b>. Ao tocar em Enviar, vai direto ao '+esc(nome)+' e não dá para desfazer.</p>'+
     '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Motivo</b><select class="ct-m" style="'+est+'">'+opts+'</select></label><p class="ct-r" style="font-size:13px"></p>'+emailCampo+
-    '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Texto que vai ao '+esc(nome)+'</b><textarea class="ct-t" rows="6" style="'+est+';line-height:1.45;resize:vertical">'+esc(texto)+'</textarea></label>'+
-    '<div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">Enviar ao '+esc(nome)+'</button></div>';
+    '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Texto que vai ao '+esc(nome)+'</b><textarea class="ct-t" rows="9" style="'+est+';line-height:1.45;resize:vertical">'+esc(texto)+'</textarea></label>'+
+    '<div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">Enviar ao '+esc(nome)+' agora</button></div>';
   var m=modalMk(html,async function(b,m,fim){
     var t=String(m.querySelector('.ct-t').value||'').trim();
     if(t.length<20){toast('Escreva o texto da contestação.');return;}
@@ -1328,6 +1329,61 @@ async function ligarLote(id){
   }catch(e){toast((e&&e.message)||'Não consegui ligar');}
   finally{S.ligando=false;}
 }
+
+/* ---------- foto ampliada ---------- */
+function abrirFoto(grupo,idx){
+  var els=[].slice.call(document.querySelectorAll('[data-foto="'+grupo+'"]')),urls=els.map(function(e){return e.getAttribute('data-src');}).filter(Boolean);
+  if(!urls.length)return;
+  var i=Math.max(0,Math.min(idx||0,urls.length-1));
+  var m=document.createElement('div');
+  m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');m.setAttribute('aria-label','Foto ampliada');
+  m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:12px;touch-action:manipulation';
+  var btn='position:absolute;width:48px;height:48px;border-radius:24px;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center';
+  m.innerHTML='<img alt="Foto ampliada" style="max-width:96vw;max-height:88vh;object-fit:contain;border-radius:8px;background:#000"><button type="button" data-fx="x" aria-label="Fechar" style="'+btn+';top:12px;right:12px">×</button>'+(urls.length>1?'<button type="button" data-fx="p" aria-label="Foto anterior" style="'+btn+';left:10px;top:50%;margin-top:-24px">‹</button><button type="button" data-fx="n" aria-label="Próxima foto" style="'+btn+';right:10px;top:50%;margin-top:-24px">›</button>':'')+'<div data-fx="c" style="position:absolute;bottom:14px;left:0;right:0;text-align:center;color:#fff;font-size:14px"></div>';
+  var img=m.querySelector('img'),ct=m.querySelector('[data-fx=c]');
+  function mostra(){img.src=urls[i];ct.textContent=urls.length>1?(i+1)+' de '+urls.length:'';}
+  function fim(){document.removeEventListener('keydown',kd,true);m.remove();}
+  function ir(d){i=(i+d+urls.length)%urls.length;mostra();}
+  function kd(e){if(e.key==='Escape'){e.stopPropagation();fim();}else if(e.key==='ArrowLeft'&&urls.length>1)ir(-1);else if(e.key==='ArrowRight'&&urls.length>1)ir(1);}
+  m.addEventListener('click',function(e){var b=e.target.closest('[data-fx]'),k=b&&b.getAttribute('data-fx');if(k==='p')ir(-1);else if(k==='n')ir(1);else if(k==='x'||e.target===m)fim();});
+  var x0=null;m.addEventListener('touchstart',function(e){x0=e.touches[0].clientX;},{passive:true});
+  m.addEventListener('touchend',function(e){if(x0===null||urls.length<2)return;var d=e.changedTouches[0].clientX-x0;if(Math.abs(d)>50)ir(d>0?-1:1);x0=null;},{passive:true});
+  document.addEventListener('keydown',kd,true);document.body.appendChild(m);mostra();
+}
+document.addEventListener('click',function(e){
+  var f=e.target.closest&&e.target.closest('[data-foto]');if(!f)return;
+  e.preventDefault();e.stopPropagation();
+  var g=f.getAttribute('data-foto'),all=[].slice.call(document.querySelectorAll('[data-foto="'+g+'"]'));
+  abrirFoto(g,all.indexOf(f));
+},true);
+
+/* ---------- texto pronto para o suporte do marketplace ---------- */
+function copiarSup(id){
+  var el=document.getElementById('sup-'+id),tx=el?el.value:'';
+  if(!tx){toast('Não há texto para copiar.');return;}
+  function ok(){toast('Texto copiado. Cole no chamado do suporte.');}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(tx).then(ok,function(){el.select();try{document.execCommand('copy');ok();}catch(x){toast('Selecione o texto e copie.');}});}
+  else{el.select();try{document.execCommand('copy');ok();}catch(x){toast('Selecione o texto e copie.');}}
+}
+function suporteHtml(c,cx){
+  if(!c||c.mk!=='ml')return '';
+  var r=c.raw||{},rel=cx&&cx.relato,vis=(rel&&rel.visao)||{};
+  var cancelou=r.tipo_origem==='cancel_purchase';
+  var certo=!!rel&&rel.categoria==='retorno-conforme'&&vis.loja_enviou_errado!==true;
+  if(!cancelou&&!certo)return '';
+  var ped=String(c.pedido||'').replace('#',''),sol=String(c.solicitacao||'');
+  var tx,tit,sub;
+  if(cancelou){
+    tit='Cancelamento antes da entrega: pode estar afetando a reputação';
+    sub='O comprador cancelou antes de receber. Se a loja não errou, o Mercado Livre às vezes ainda desconta da reputação. Vale pedir ao suporte para não contar.';
+    tx='Olá. Peço a análise do pedido '+ped+' (reclamação '+sol+'). O comprador cancelou a compra antes de ela ser entregue, por iniciativa própria, sem falha da loja. Solicito que seja verificado e que esse cancelamento não seja contabilizado contra a reputação da loja '+c.loja+'. Obrigado.';
+  }else{
+    tit='O pedido foi enviado certo: peça ao suporte para isentar a loja';
+    sub='O comprador abriu a reclamação como erro da loja, mas a conferência com fotos mostrou que o produto devolvido é o que foi vendido. Peça ao Mercado Livre para tirar o impacto na reputação.';
+    tx='Olá. Peço a análise do pedido '+ped+' (reclamação '+sol+'). O comprador abriu a reclamação alegando erro da loja, mas, ao conferir o produto devolvido com fotos, ele corresponde ao anúncio e ao que foi vendido'+(vis.comparacao_itens?' ('+String(vis.comparacao_itens).replace(/\s+/g,' ').slice(0,300)+')':'')+'. O envio foi feito corretamente, sem erro da loja '+c.loja+'. Solicito a isenção de penalidade e do impacto na reputação por esta reclamação. Tenho as fotos da conferência à disposição. Obrigado.';
+  }
+  return '<section class="card" style="gap:10px"><h2 class="sech">'+esc(tit)+'</h2><p class="sub">'+esc(sub)+'</p><textarea id="sup-'+esc(c.id)+'" rows="6" style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;line-height:1.45;resize:vertical;width:100%;box-sizing:border-box">'+esc(tx)+'</textarea><div class="row" style="gap:10px;flex-wrap:wrap"><button type="button" class="btn" data-a="copiarSup" data-v="'+esc(c.id)+'">Copiar texto</button></div><p class="sub" style="font-size:12.5px">O Mercado Livre não deixa abrir esse chamado por sistema. Copie o texto, edite se quiser e abra o chamado no painel do vendedor (Ajuda, falar com o suporte).</p></section>';
+}
 document.addEventListener('click',function(e){
   if(S.mais&&!e.target.closest('.more,[data-a=mais]')&&!e.target.closest('[data-a]')){S.mais=false;render(true,false);return;}
   var t=e.target.closest('[data-a]');if(!t||t.type==='checkbox')return;
@@ -1344,6 +1400,7 @@ document.addEventListener('click',function(e){
   else if(a==='mais'){S.mais=!S.mais;render(true,false);}
       else if(a==='aprovar'){aprovar(v);}
   else if(a==='aceitarDev'){aceitarDev(v);}
+  else if(a==='copiarSup'){copiarSup(v);}
   else if(a==='fotosCaso'){var cc=caso(v);if(cc){S.lote.pedido=String(cc.raw.pedido||cc.raw.solicitacao_id||'');ir('receber');}}
   else if(a==='mesCusto'){S.mesCusto=v;render(true,false);}
   else if(a==='baixarMes'){baixarRelatorio(v);}
