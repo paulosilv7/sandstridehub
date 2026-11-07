@@ -49,6 +49,8 @@ function base64(bytes: Uint8Array): string {
 }
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+// O valor da conta fixa é só uma previsão: aceita até 40% de diferença, desde que só UMA conta da lista caiba.
+const perto = (lista: any[], valor: number) => { const ok = lista.filter((c: any) => Math.abs(+c.valor - valor) <= +c.valor * 0.4); return ok.length === 1 ? ok[0] : null; };
 
 async function ler(mime: string, bytes: Uint8Array, nome: string, categorias: string[], legenda = ""): Promise<any> {
   const dados = `data:${mime};base64,${base64(bytes)}`;
@@ -158,13 +160,15 @@ async function processar(u: any) {
   const sufixo = l.conta_ref || (origem ? String(origem.rotulo).trim().split(/\s+/).pop()!.toUpperCase() : "");
   const catAlvo = regra?.categoria ?? l.categoria ?? "";
   if (!conta && /^(I|II|III)$/.test(sufixo) && catAlvo) {
-    const doSufixo = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === catAlvo && String(c.nome).trim().toUpperCase().split(/\s+/).pop() === sufixo && Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
-    if (doSufixo.length === 1) conta = doSufixo[0];
+    const doSufixo = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === catAlvo && String(c.nome).trim().toUpperCase().split(/\s+/).pop() === sufixo);
+    const exatas = doSufixo.filter((c: any) => Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
+    conta = exatas.length === 1 ? exatas[0] : doSufixo.length === 1 ? doSufixo[0] : perto(doSufixo, valor);
   }
   // Sem nome que case, mas com regra de categoria: se só UMA conta fixa dessa categoria tem este valor, é ela.
   if (!conta && regra) {
-    const iguais = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === regra.categoria && Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
-    if (iguais.length === 1) conta = iguais[0];
+    const naCat = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === regra.categoria);
+    const iguais = naCat.filter((c: any) => Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
+    conta = iguais.length === 1 ? iguais[0] : perto(naCat, valor);
   }
   if (conta) liga = `Baixa a conta fixa ${conta.nome} (vence dia ${conta.dia})${mesRef ? " de " + MESES[+mesRef.slice(5) - 1] + "/" + mesRef.slice(0, 4) : ""}`;
 
@@ -224,7 +228,7 @@ async function lancamentoTexto(msg: any): Promise<boolean> {
   if (!conta) for (const c of contas ?? []) {
     if (jaPagas.has(c.id)) continue;
     const palavras = norm(c.nome).split(" ").filter((p) => p.length > 2 && !/^\d+$/.test(p) && !["fixa", "conta"].includes(p));
-    if (palavras.length && palavras.every((p) => fav.includes(p)) && Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01)) { conta = c; break; }
+    if (palavras.length && palavras.every((p) => fav.includes(p))) { conta = c; break; }
   }
   const hash = await sha256(new TextEncoder().encode(`texto:${chat}:${msg.message_id}`));
   const ins = await supabase.from("financeiro_comprovantes").insert({
@@ -274,8 +278,10 @@ async function complementar(msg: any) {
   if (mesRef) { upd.mes_referencia = mesRef + "-01"; partes.push(`referente a ${MESES[+mesRef.slice(5) - 1]}/${mesRef.slice(0, 4)}`); }
   if (c.conta_ref && alvo.categoria_sugerida) {
     const { data: contas } = await supabase.from("financeiro_contas_fixas").select("id,nome,categoria,valor,dia").eq("ativa", true);
-    const achou = (contas ?? []).filter((k: any) => k.categoria === alvo.categoria_sugerida && String(k.nome).trim().toUpperCase().split(/\s+/).pop() === c.conta_ref && Math.abs(+k.valor - +alvo.valor) <= Math.max(0.5, +k.valor * 0.01));
-    if (achou.length === 1) { upd.conta_fixa_id = achou[0].id; upd.liga = `Baixa a conta fixa ${achou[0].nome} (vence dia ${achou[0].dia})`; partes.push(`conta ${achou[0].nome}`); }
+    const doSuf = (contas ?? []).filter((k: any) => k.categoria === alvo.categoria_sugerida && String(k.nome).trim().toUpperCase().split(/\s+/).pop() === c.conta_ref);
+    const exatas = doSuf.filter((k: any) => Math.abs(+k.valor - +alvo.valor) <= Math.max(0.5, +k.valor * 0.01));
+    const achou = exatas.length === 1 ? exatas[0] : doSuf.length === 1 ? doSuf[0] : perto(doSuf, +alvo.valor);
+    if (achou) { upd.conta_fixa_id = achou.id; upd.liga = `Baixa a conta fixa ${achou.nome} (vence dia ${achou.dia})`; partes.push(`conta ${achou.nome}`); }
   }
   await supabase.from("financeiro_comprovantes").update(upd).eq("id", alvo.id);
   if (partes.length) await telegram("sendMessage", { chat_id: msg.chat.id, text: `Anotei no comprovante de ${brl(+alvo.valor)}: ${partes.join(" e ")}.`, reply_to_message_id: msg.message_id, allow_sending_without_reply: true }).catch(() => {});
