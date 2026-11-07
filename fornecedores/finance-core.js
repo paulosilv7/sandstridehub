@@ -82,12 +82,18 @@
   const rows=all.filter(e=>(!from||e.date>=from)&&(!to||e.date<=to)).map(e=>{balance=checked(BigInt(balance)+signed(e));return {...e,balance};});
   return{opening,closing:balance,rows,purchases:sum(rows,'purchase'),payments:sum(rows,'payment'),credits:sum(rows,'credit')};
  }
+ function movementPeriod(entries,from='',to=''){
+  if(from)validDate(from);if(to)validDate(to);if(from&&to&&from>to)throw new Error('A data inicial deve ser anterior ou igual à data final.');
+  const rows=entries.filter(entry=>!entry.cancelled&&(!from||entry.date>=from)&&(!to||entry.date<=to));
+  rows.forEach(entry=>validDate(entry.date));
+  return{rows,count:rows.length,purchases:sum(rows,'purchase'),payments:sum(rows,'payment'),credits:sum(rows,'credit')};
+ }
  function supplierView(db,supplier){
   if(!db.suppliers.includes(supplier))throw new Error('Fornecedor não encontrado.');
   const entries=db.entries.filter(entry=>entry.supplier===supplier),activeEntries=entries.filter(entry=>!entry.cancelled),products=db.products.filter(product=>product.supplier===supplier);
   const purchases=sum(activeEntries,'purchase'),payments=sum(activeEntries,'payment'),credits=sum(activeEntries,'credit');
   return{supplier,entries,activeEntries,products,purchases,payments,credits,balance:checked(BigInt(purchases)-BigInt(payments)-BigInt(credits)),months:monthly(db.entries,supplier)};
  }
- const api={parseCents,formatInput,formatMoney,quantity,total,validDate,monthRange,businessDate,priceAt,sum,allocationLedger,monthly,purchaseMonths,paymentMonths,name,nameKey,validateSnapshot,report,supplierView};
+ const api={parseCents,formatInput,formatMoney,quantity,total,validDate,monthRange,businessDate,priceAt,sum,allocationLedger,monthly,purchaseMonths,paymentMonths,name,nameKey,validateSnapshot,report,movementPeriod,supplierView};
  root.FinanceCore=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

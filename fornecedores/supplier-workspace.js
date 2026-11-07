@@ -4,6 +4,8 @@
  const stylesheet=document.createElement('link');stylesheet.rel='stylesheet';stylesheet.href='supplier-workspace.css';document.head.append(stylesheet);
  const operationalPages=new Set(['Contas a pagar','Retiradas','Pagamentos','Produtos e preços','Relatórios']);
  let selectedSupplier='';
+ let portfolioFrom='';
+ let portfolioTo='';
 
  function remember(value){
   selectedSupplier=db.suppliers.includes(value)?value:'';
@@ -118,10 +120,25 @@
  }
  function renderPortfolio(){
   const toolbar=app.querySelector('.toolbar'),tableElement=app.querySelector('.table');if(!toolbar||!tableElement)return;
+  const grid=app.querySelector('.grid'),period=F.movementPeriod(db.entries,portfolioFrom,portfolioTo);
+  const formatDate=value=>value.split('-').reverse().join('/');
+  const periodLabel=portfolioFrom&&portfolioTo?`${formatDate(portfolioFrom)} a ${formatDate(portfolioTo)}`:portfolioFrom?`A partir de ${formatDate(portfolioFrom)}`:portfolioTo?`Até ${formatDate(portfolioTo)}`:'Todo o período';
+  const movementLabel=`${period.count} ${period.count===1?'lançamento considerado':'lançamentos considerados'}`;
+  if(grid){
+   const values=[period.purchases,period.payments,period.credits];
+   grid.classList.add('portfolio-totals');grid.setAttribute('aria-live','polite');
+   grid.querySelectorAll('.card').forEach((card,index)=>{const total=card.querySelector('strong'),caption=card.querySelector('small');if(total)total.textContent=money(values[index]||0);if(caption)caption.textContent=periodLabel});
+   grid.insertAdjacentHTML('beforebegin',`<section class="portfolio-period" aria-labelledby="portfolioPeriodTitle"><div class="portfolio-period-heading"><div><span class="supplier-eyebrow">MOVIMENTAÇÃO FINANCEIRA</span><h2 id="portfolioPeriodTitle">Filtrar totais por data</h2><p>O período altera somente compras, pagamentos e abatimentos. O saldo devedor acima continua mostrando a dívida atual.</p></div><span class="portfolio-period-status"><b>${esc(periodLabel)}</b>${movementLabel}</span></div><div class="portfolio-period-fields"><div><label for="portfolioFrom">Data inicial</label><input id="portfolioFrom" type="date" value="${esc(portfolioFrom)}" max="${esc(portfolioTo)}"></div><div><label for="portfolioTo">Data final</label><input id="portfolioTo" type="date" value="${esc(portfolioTo)}" min="${esc(portfolioFrom)}"></div><button class="primary" onclick="applyPortfolioPeriod()">Aplicar período</button><button onclick="clearPortfolioPeriod()">Limpar filtro</button></div></section>`);
+  }
   toolbar.innerHTML='<div><span class="supplier-eyebrow">ACESSO RÁPIDO</span><h2>Abra um fornecedor</h2></div><span class="portfolio-hint">Compras e pagamentos ficam separados por parceiro.</span>';
   tableElement.replaceWith(document.createRange().createContextualFragment(supplierCards()));
   const title=app.querySelector('h1');if(title)title.textContent='Visão geral da carteira';
  }
+ window.applyPortfolioPeriod=()=>{
+  const from=document.getElementById('portfolioFrom')?.value||'',to=document.getElementById('portfolioTo')?.value||'';
+  try{F.movementPeriod(db.entries,from,to);portfolioFrom=from;portfolioTo=to;render()}catch(error){if(typeof announce==='function')announce(error.message);else alert(error.message)}
+ };
+ window.clearPortfolioPeriod=()=>{portfolioFrom='';portfolioTo='';render()};
  function preselectForm(type,id){
   if(!selectedSupplier||id||!['purchase','payment','credit','product'].includes(type)||!modal.open)return;
   const form=document.getElementById('form'),supplier=form.elements.namedItem('supplier');if(!supplier)return;
