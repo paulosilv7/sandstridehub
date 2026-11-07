@@ -558,9 +558,9 @@ function calc(){
 function adsCard(a,c){
   var ads={},tot=0;(S.ads||[]).forEach(function(r){ads[r.loja_id]=(ads[r.loja_id]||0)+ +r.valor;tot+= +r.valor});
   var lj=Object.keys(ads).map(function(id){var l=(S.lojasMap||{})[id]||{nome:'Loja',mkt:'mercado_livre'},ag=a.lojas.filter(function(x){return x.id===id})[0];return {nome:l.nome,mkt:l.mkt,v:ads[id],ped:ag?ag.ped:0}}).sort(function(x,y){return y.v-x.v});
-  var mx=Math.max.apply(null,lj.map(function(x){return x.v}).concat([1]));
-  return '<section class="card"><div class="ch">'+chip('mega','neu',1)+'<h2>Anúncios por loja</h2><div class="sp"></div>'+(tot?pill('neu','','Total '+brl0(tot))+pill('neu','','Por pedido '+brl(c.ped?tot/c.ped:0)):'')+'</div>'+
-   (lj.length?'<div class="adl">'+lj.map(function(x){var k=mkcod(x.mkt);return '<div class="al"><div class="top2">'+mk(k).replace('class="mkic"','class="mkic sm"')+'<span>'+esc(x.nome)+'</span><b>'+brl0(x.v)+'</b><small>'+(x.ped?brl(x.v/x.ped)+'/ped.':'')+'</small></div><div class="bar1"><span style="width:'+(x.v/mx*100).toFixed(0)+'%;background:'+MKC[k]+'"></span></div></div>'}).join('')+'</div>':'<p class="sub">Ainda não li o gasto com anúncios deste mês.</p>')+'</section>';
+  var mx=Math.max.apply(null,lj.map(function(x){return x.v}).concat([1])),pedL=lj.reduce(function(sm,x){return sm+x.ped},0),falta=['mercado_livre','shopee','tiktok_shop'].filter(function(k){return !lj.some(function(x){return x.mkt===k})}).map(function(k){return {mercado_livre:'Mercado Livre',shopee:'Shopee',tiktok_shop:'TikTok'}[k]});
+  return '<section class="card"><div class="ch">'+chip('mega','neu',1)+'<h2>Anúncios por loja</h2><div class="sp"></div>'+(tot?pill('neu','','Total '+brl0(tot))+pill('neu','','Por pedido '+brl(pedL?tot/pedL:0)):'')+'</div>'+
+   (lj.length?'<div class="adl">'+lj.map(function(x){var k=mkcod(x.mkt);return '<div class="al"><div class="top2">'+mk(k).replace('class="mkic"','class="mkic sm"')+'<span>'+esc(x.nome)+'</span><b>'+brl0(x.v)+'</b><small>'+(x.ped?brl(x.v/x.ped)+'/ped.':'')+'</small></div><div class="bar1"><span style="width:'+(x.v/mx*100).toFixed(0)+'%;background:'+MKC[k]+'"></span></div></div>'}).join('')+'</div>':'<p class="sub">Ainda não li o gasto com anúncios deste mês.</p>')+(lj.length&&falta.length?'<p class="sub" style="margin-top:10px">Ainda não li os anúncios d'+(falta.length>1?'a ':'o ')+falta.join(' e ')+'.</p>':'')+'</section>';
 }
 function estornos(L){
   var out=[],T={devolvido_com_produto:'Devolução aceita',reembolsado_total:'Reembolso total',reembolsado_parcial:'Reembolso parcial'};
