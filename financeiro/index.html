@@ -552,8 +552,8 @@ function calc(){
   var a=agreg(),t=a.t,porCat={},desp=0,fora=0;
   S.cats.forEach(function(c){if(c.entra_resultado)porCat[c.nome]=0});
   S.desp.forEach(function(d){var c=catInfo(d.categoria);if(c.entra_resultado){porCat[d.categoria]=(porCat[d.categoria]||0)+ +d.valor;desp+= +d.valor}else fora+= +d.valor});
-  var sobra=t.fat-t.tax-t.fr-t.cmv;
-  return {a:a,fat:t.fat,ped:t.ped,pares:t.pares,tax:t.tax,fr:t.fr,cmv:t.cmv,pend:t.pend,sobra:sobra,porCat:porCat,desp:desp,fora:fora,res:sobra-desp};
+  var est=totEst(),sobra=t.fat-est-t.tax-t.fr-t.cmv;
+  return {a:a,fat:t.fat,ped:t.ped,pares:t.pares,tax:t.tax,fr:t.fr,cmv:t.cmv,pend:t.pend,est:est,sobra:sobra,porCat:porCat,desp:desp,fora:fora,res:sobra-desp};
 }
 function adsCard(a,c){
   var ads={},tot=0;(S.ads||[]).forEach(function(r){ads[r.loja_id]=(ads[r.loja_id]||0)+ +r.valor;tot+= +r.valor});
@@ -570,7 +570,8 @@ function estornos(L){
   return out;
 }
 function totEst(){return (S.est||[]).reduce(function(s,e){return s+e.v},0)}
-function aviso(t){return (t.pend?pill('disp','alert',t.pend+(t.pend===1?' pedido sem custo cadastrado':' pedidos sem custo cadastrado')):'')+(t.nc?' '+pill('disp','alert',t.nc+(t.nc===1?' pedido sem taxa confirmada':' pedidos sem taxa confirmada')+' ('+brl0(t.ncv)+' fora dos números)'):'')}
+function avisoPrev(){var p=(S.prev||[]).filter(function(x){return +x.pedidos>0})[0];return p?' '+pill('disp','clock','TikTok: '+p.pedidos+' pedidos com taxa prévia, ainda não liquidada'):''}
+function aviso(t){return avisoPrev()+(t.pend?pill('disp','alert',t.pend+(t.pend===1?' pedido sem custo cadastrado':' pedidos sem custo cadastrado')):'')+(t.nc?' '+pill('disp','alert',t.nc+(t.nc===1?' pedido sem taxa confirmada':' pedidos sem taxa confirmada')+' ('+brl0(t.ncv)+' fora dos números)'):'')}
 function telaVendas(){
   if(S.vcarregando)return carregando('Vendas');
   if(S.verro)return falha('Vendas');
@@ -704,7 +705,7 @@ function telaResultado(){
   function R(nm,v,cls,ic1,zero){var neg=v<0;return '<div class="er '+(cls||'')+(zero?' z':'')+'"><span class="l">'+(ic1?ic(ic1,16):'')+'<span>'+nm+'</span></span><span class="r'+(neg&&!cls?' neg':'')+'">'+(zero?'—':brl(v))+'</span><span class="pc r">'+(zero?'':pct(v/fat))+'</span><span class="bar1"><span style="width:'+(zero?0:Math.min(100,Math.abs(v)/fat*100*2)).toFixed(0)+'%;background:'+(neg?'var(--sai)':'var(--pago)')+'"></span></span></div>'}
   var cols='--cols:minmax(0,1fr) 108px 58px 56px';
   h+='<div class="g2"><section class="card"><div class="ch">'+chip('cart','pago',1)+'<h2>Extrato das vendas</h2></div><div class="ext" style="'+cols+'"><div class="eh"><span>Linha</span><span class="r">Valor</span><span class="r">% fat.</span><span></span></div>'+
-    R('Faturamento',c.fat,'sub','cart')+R('Estornos e devoluções '+pill('neu','clock','em breve'),0,'ind','repeat',true)+R('Taxas dos marketplaces',-c.tax,'ind','tag')+R('Frete pago pela loja',-c.fr,'ind','truck')+R('Custo dos produtos vendidos',-c.cmv,'ind','box')+R('Sobra das vendas',c.sobra,'tot','trend')+'</div></section>';
+    R('Faturamento',c.fat,'sub','cart')+R('Estornos e devoluções',-c.est,'ind','repeat',!c.est)+R('Taxas dos marketplaces',-c.tax,'ind','tag')+R('Frete pago pela loja',-c.fr,'ind','truck')+R('Custo dos produtos vendidos',-c.cmv,'ind','box')+R('Sobra das vendas',c.sobra,'tot','trend')+'</div></section>';
   h+='<section class="card"><div class="ch">'+chip('receipt','sai',1)+'<h2>Extrato das despesas</h2></div><div class="ext" style="'+cols+'"><div class="eh"><span>Categoria</span><span class="r">Valor</span><span class="r">% fat.</span><span></span></div>'+
     S.cats.filter(function(k){return k.entra_resultado}).map(function(k){var v=c.porCat[k.nome]||0;return R(esc(k.nome)+(k.incluso_preco?' '+pill('neu','','incluso no preço'):''),-v,'',catI(k.nome),!v)}).join('')+R('Total de despesas',-c.desp,'tot','receipt')+'</div></section></div>';
   if(c.fora>0)h+='<p class="sub">Fora do resultado neste mês: '+brl(c.fora)+' (mercadoria, investimento, retirada de sócio e transferências).</p>';
@@ -795,6 +796,7 @@ async function carregarMes(sil){
     if(!S.cats.length)await carregarBase();
     var ini=S.ym+'-01',fim=ymSomar(S.ym,1)+'-01',rows=[],rr;
     rr=await SB.rpc('financeiro_vendas',{p_ini:ini,p_fim:fim});if(rr.error)throw rr.error;rows=rr.data||[];
+    var pv=await SB.rpc('financeiro_vendas_previa',{p_ini:ini,p_fim:fim});S.prev=(pv.error||!Array.isArray(pv.data))?[]:pv.data;
     S.v={rows:rows,lojas:S.lojasMap};
     var d=await SB.from('financeiro_despesas').select('*').or('and(mes_conta.gte.'+ini+',mes_conta.lt.'+fim+'),and(mes_conta.is.null,data.gte.'+ini+',data.lt.'+fim+')').order('data',{ascending:false}).order('criado_em',{ascending:false});if(d.error)throw d.error;S.desp=d.data||[];
     var cp=await SB.from('financeiro_comprovantes').select('*').in('estado',['novo','repetido']).order('criado_em',{ascending:false});S.comp=cp.error?[]:(cp.data||[]);
