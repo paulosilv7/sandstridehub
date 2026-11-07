@@ -887,16 +887,18 @@ async function modalDesp(id){
   if(d.comprovante_path){var u=await SB.storage.from('financeiro-comprovantes').createSignedUrl(d.comprovante_path,300);if(u.data&&u.data.signedUrl)link='<p><a href="'+esc(u.data.signedUrl)+'" target="_blank" rel="noopener" style="font-weight:600;text-decoration:underline">Abrir comprovante</a></p>'}
   var corpo='<label class="fld">Nome da despesa<input name="t" value="'+esc(d.descricao)+'" maxlength="120"></label>'+
     '<div class="fg"><label class="fld">Valor<input name="v" inputmode="decimal" value="'+NF.format(+d.valor)+'"></label><label class="fld">Data do pagamento<input type="date" name="dt" value="'+esc(d.data)+'"></label></div>'+
-    '<label class="fld">Conta referente a<select class="selx" name="m" aria-label="Mês da conta">'+mesesRef(d.data,d.mes_conta?d.mes_conta.slice(0,7):'',!d.conta_fixa_id)+'</select></label>'+
+    '<label class="fld">Conta fixa<select class="selx" name="cf" aria-label="Conta fixa"><option value="">Não é conta fixa</option>'+S.contas.filter(function(k){return k.ativa||k.id===d.conta_fixa_id}).map(function(k){return '<option value="'+k.id+'"'+(k.id===d.conta_fixa_id?' selected':'')+'>'+esc(k.nome)+' · dia '+k.dia+' · '+brl(+k.valor)+'</option>'}).join('')+'</select></label>'+
+    '<label class="fld">Conta referente a<select class="selx" name="m" aria-label="Mês da conta">'+mesesRef(d.data,d.mes_conta?d.mes_conta.slice(0,7):'',true)+'</select></label>'+
     '<p class="sub">É o mês em que a despesa conta no Resultado. A data acima é só quando o dinheiro saiu.</p>'+
     '<label class="fld">Categoria'+selCat(d.categoria,'c')+'</label>'+
-    (d.conta_fixa_id?'<p class="sub">Ligada a uma conta fixa. Valor, data e mês acompanham a conta; pagamentos em partes do mesmo mês somam.</p>':'')+link;
+    '<p class="sub">Ao ligar a uma conta fixa, ela aparece como paga no mês escolhido acima. Pagamentos em partes do mesmo mês somam.</p>'+link;
   modal('Editar despesa',corpo,[{t:'Salvar',fn:async function(m){
-    var t=mv(m,'t').trim(),v=parseBR(mv(m,'v')),nd=mv(m,'dt'),c=mv(m,'c'),nm=mv(m,'m');
+    var t=mv(m,'t').trim(),v=parseBR(mv(m,'v')),nd=mv(m,'dt'),c=mv(m,'c'),nm=mv(m,'m'),ncf=mv(m,'cf')||null;
     if(!t||!(v>0)||!/^\d{4}-\d{2}-\d{2}$/.test(nd)||!c){toast('Preencha nome, valor, data e categoria.');return false}
-    var mes=nm?nm+'-01':(d.conta_fixa_id?d.mes_conta:null),antes=d.mes_conta;
-    var r=await SB.from('financeiro_despesas').update({descricao:t,valor:v,data:nd,categoria:c,mes_conta:mes}).eq('id',id);if(r.error)throw r.error;
-    if(d.conta_fixa_id){await sincConta(d.conta_fixa_id,mes);if(antes&&antes!==mes)await sincConta(d.conta_fixa_id,antes)}
+    var mes=nm?nm+'-01':(ncf?nd.slice(0,7)+'-01':null),antes=d.mes_conta,antesCf=d.conta_fixa_id;
+    var r=await SB.from('financeiro_despesas').update({descricao:t,valor:v,data:nd,categoria:c,mes_conta:mes,conta_fixa_id:ncf}).eq('id',id);if(r.error)throw r.error;
+    if(ncf)await sincConta(ncf,mes);
+    if(antesCf&&antes&&(antesCf!==ncf||antes!==mes))await sincConta(antesCf,antes)
     var mudou=(mes||nd.slice(0,7)+'-01').slice(0,7)!==(antes||d.data.slice(0,7)+'-01').slice(0,7);
     toast(mudou?'Despesa atualizada. Agora ela conta em '+mesNome((mes||nd).slice(0,7)).toLowerCase()+'.':'Despesa atualizada.');carregarMes(1)}},
   {t:'Excluir despesa',fn:async function(){
