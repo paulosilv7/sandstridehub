@@ -538,12 +538,12 @@ function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(t
 
 // ---------- Vendas (Lucro ao Vivo) + cálculo do mês ----------
 function agreg(){
-  var R=(S.v&&S.v.rows)||[],L=(S.v&&S.v.lojas)||{},por={},t={fat:0,ped:0,pares:0,tax:0,fr:0,luc:0,pend:0,cmv:0},dias={};
+  var R=(S.v&&S.v.rows)||[],L=(S.v&&S.v.lojas)||{},por={},t={fat:0,ped:0,pares:0,tax:0,fr:0,luc:0,pend:0,cmv:0,nc:0,ncv:0},dias={};
   R.forEach(function(r){
     var f=+r.faturamento,l=L[r.loja_id]||{nome:'Loja',mkt:'mercado_livre'};
     var o=por[r.loja_id]=por[r.loja_id]||{id:r.loja_id,nome:l.nome,mkt:l.mkt,fat:0,ped:0,pares:0,tax:0,fr:0,luc:0};
     o.fat+=f;o.ped+=r.pedidos;o.pares+=r.pares;o.tax+=+r.taxas;o.fr+=+r.frete;o.luc+=+r.lucro;
-    t.fat+=f;t.ped+=r.pedidos;t.pares+=r.pares;t.tax+=+r.taxas;t.fr+=+r.frete;t.luc+=+r.lucro;t.cmv+=+r.custo_produtos;t.pend+=r.pendente_pedidos||0;
+    t.fat+=f;t.ped+=r.pedidos;t.pares+=r.pares;t.tax+=+r.taxas;t.fr+=+r.frete;t.luc+=+r.lucro;t.cmv+=+r.custo_produtos;t.pend+=r.pendente_pedidos||0;t.nc+=+r.nao_conf_pedidos||0;t.ncv+=+r.nao_conf_valor||0;
     dias[r.dia]=(dias[r.dia]||0)+f;
   });
   return {t:t,lojas:Object.keys(por).map(function(k){return por[k]}).sort(function(a,b){return b.fat-a.fat}),dias:dias};
@@ -570,7 +570,7 @@ function estornos(L){
   return out;
 }
 function totEst(){return (S.est||[]).reduce(function(s,e){return s+e.v},0)}
-function aviso(t){return t.pend?pill('disp','alert',t.pend+' pedidos sem custo cadastrado'):''}
+function aviso(t){return (t.pend?pill('disp','alert',t.pend+(t.pend===1?' pedido sem custo cadastrado':' pedidos sem custo cadastrado')):'')+(t.nc?' '+pill('disp','alert',t.nc+(t.nc===1?' pedido sem taxa confirmada':' pedidos sem taxa confirmada')+' ('+brl0(t.ncv)+' fora dos números)'):'')}
 function telaVendas(){
   if(S.vcarregando)return carregando('Vendas');
   if(S.verro)return falha('Vendas');
@@ -793,8 +793,8 @@ async function carregarMes(sil){
   if(!sil||!S.v){S.vcarregando=true;S.verro=false;seguro()}
   try{
     if(!S.cats.length)await carregarBase();
-    var ini=S.ym+'-01',fim=ymSomar(S.ym,1)+'-01',rows=[],from=0,rr;
-    while(true){rr=await SB.from('lucro_resumo_dia').select('dia,loja_id,faturamento,pedidos,pares,taxas,frete,lucro,custo_produtos,pendente_pedidos').gte('dia',ini).lt('dia',fim).order('dia').range(from,from+999);if(rr.error)throw rr.error;rows=rows.concat(rr.data||[]);if((rr.data||[]).length<1000)break;from+=1000}
+    var ini=S.ym+'-01',fim=ymSomar(S.ym,1)+'-01',rows=[],rr;
+    rr=await SB.rpc('financeiro_vendas',{p_ini:ini,p_fim:fim});if(rr.error)throw rr.error;rows=rr.data||[];
     S.v={rows:rows,lojas:S.lojasMap};
     var d=await SB.from('financeiro_despesas').select('*').or('and(mes_conta.gte.'+ini+',mes_conta.lt.'+fim+'),and(mes_conta.is.null,data.gte.'+ini+',data.lt.'+fim+')').order('data',{ascending:false}).order('criado_em',{ascending:false});if(d.error)throw d.error;S.desp=d.data||[];
     var cp=await SB.from('financeiro_comprovantes').select('*').in('estado',['novo','repetido']).order('criado_em',{ascending:false});S.comp=cp.error?[]:(cp.data||[]);
