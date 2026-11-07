@@ -48,10 +48,31 @@ test('abas operacionais abrem sem fornecedor pré-selecionado',async()=>{
   context.navTo('Pagamentos');
   assert.equal(context.payableSupplier,'');
   assert.equal(context.filter,'');
-  assert.match(context.app.innerHTML,/Qual fornecedor deseja consultar\?/);
+  assert.match(context.app.innerHTML,/Acompanhe pagamentos e abatimentos/);
+  assert.match(context.app.innerHTML,/supplier-context-payments/);
   assert.match(context.app.innerHTML,/Clique para selecionar/);
   assert.doesNotMatch(context.app.innerHTML,/supplier-required-icon/);
   assert.doesNotMatch(context.app.innerHTML,/value="W-BOX" selected/);
+});
+
+test('saldos, compras e pagamentos possuem identidades distintas',async()=>{
+  const source=await readFile(sourceUrl,'utf8');
+  const context=environment(source);
+
+  context.navTo('Contas a pagar');
+  const balances=context.app.innerHTML;
+  context.navTo('Retiradas');
+  const purchases=context.app.innerHTML;
+  context.navTo('Pagamentos');
+  const payments=context.app.innerHTML;
+
+  assert.match(balances,/Consulte os saldos por competência/);
+  assert.match(balances,/supplier-context-balances/);
+  assert.match(purchases,/Consulte as compras por mês/);
+  assert.match(purchases,/supplier-context-purchases/);
+  assert.match(payments,/Acompanhe pagamentos e abatimentos/);
+  assert.match(payments,/supplier-context-payments/);
+  assert.equal(new Set([balances,purchases,payments]).size,3);
 });
 
 test('último fornecedor salvo no navegador não é restaurado',async()=>{
@@ -60,5 +81,5 @@ test('último fornecedor salvo no navegador não é restaurado',async()=>{
 
   context.navTo('Relatórios');
   assert.equal(context.filter,'');
-  assert.match(context.app.innerHTML,/Qual fornecedor deseja consultar\?/);
+  assert.match(context.app.innerHTML,/Prepare o relatório de um fornecedor/);
 });
