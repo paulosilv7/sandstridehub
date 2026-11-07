@@ -499,8 +499,9 @@ async function carregarCaso(id){
     ]);
     var anexos=r[1].data||[],imgs=anexos.filter(function(a){return a.tipo!=='video';});
     var urls={};
-    if(imgs.length){var su=await SB.storage.from('devol-provas').createSignedUrls(imgs.map(function(a){return a.caminho;}),3600);(su.data||[]).forEach(function(u){urls[u.path]=u.signedUrl;});}
-    S.cx={id:id,carregando:false,relato:(r[2].data||[])[0]||null,equipe:(r[3].data||[]),eventos:r[0].data||[],anexos:anexos.map(function(a){return {url:urls[a.caminho]||null,tipo:a.tipo,bytes:a.bytes};})};
+    var turls={};
+    if(imgs.length){var cams=imgs.map(function(a){return a.caminho;});var su=await SB.storage.from('devol-provas').createSignedUrls(cams,3600);(su.data||[]).forEach(function(u){urls[u.path]=u.signedUrl;});var st=await SB.storage.from('devol-provas').createSignedUrls(cams.map(function(c){return c+'.t.jpg';}),3600);(st.data||[]).forEach(function(u){if(u.signedUrl&&!u.error)turls[u.path.replace(/\.t\.jpg$/,'')]=u.signedUrl;});}
+    S.cx={id:id,carregando:false,relato:(r[2].data||[])[0]||null,equipe:(r[3].data||[]),eventos:r[0].data||[],anexos:anexos.map(function(a){return {url:turls[a.caminho]||urls[a.caminho]||null,full:urls[a.caminho]||null,tipo:a.tipo,bytes:a.bytes};})};
   }catch(e){S.cx={id:id,carregando:false,eventos:[],anexos:[],erro:true};}
   if(S.tela==='caso'&&S.casoId===id)render(true,false);
 }
@@ -512,7 +513,8 @@ async function carregarLotes(){
     S.orfaos=o.data||[];
     var caminhos=[];S.orfaos.forEach(function(x){var f=(x.devol_anexos||[]).filter(function(a){return a.tipo!=='video'&&a.estado!=='excluido';})[0];x._foto=f?f.caminho:null;if(f)caminhos.push(f.caminho);});
     S.orfUrls={};
-    if(caminhos.length){var su=await SB.storage.from('devol-provas').createSignedUrls(caminhos,3600);(su.data||[]).forEach(function(u){S.orfUrls[u.path]=u.signedUrl;});}
+    S.orfThumb={};
+    if(caminhos.length){var su=await SB.storage.from('devol-provas').createSignedUrls(caminhos,3600);(su.data||[]).forEach(function(u){S.orfUrls[u.path]=u.signedUrl;});var st=await SB.storage.from('devol-provas').createSignedUrls(caminhos.map(function(c){return c+'.t.jpg';}),3600);(st.data||[]).forEach(function(u){if(u.signedUrl&&!u.error)S.orfThumb[u.path.replace(/\.t\.jpg$/,'')]=u.signedUrl;});}
   }catch(e){S.orfaos=S.orfaos||[];}
   if(S.tela==='receber')render(true,false);
 }
@@ -545,6 +547,7 @@ async function enviarLote(){
       var caminho='recebimentos/'+recId+'/'+(i+1)+'-'+crypto.randomUUID().slice(0,8)+arq.ext;
       var up=await SB.storage.from('devol-provas').upload(caminho,arq.blob,{contentType:arq.mime,upsert:false});
       if(up.error)throw up.error;
+      if(!f.video&&/^image\//.test(arq.mime)){try{var bm=await createImageBitmap(arq.blob),mm=Math.max(bm.width,bm.height),ec=mm>480?480/mm:1,cv2=document.createElement('canvas');cv2.width=Math.round(bm.width*ec);cv2.height=Math.round(bm.height*ec);cv2.getContext('2d').drawImage(bm,0,0,cv2.width,cv2.height);var tb=await new Promise(function(res){cv2.toBlob(res,'image/jpeg',0.6);});if(tb)await SB.storage.from('devol-provas').upload(caminho+'.t.jpg',tb,{contentType:'image/jpeg',upsert:false});}catch(e){}}
       var r2=await SB.from('devol_anexos').insert({recebimento_id:recId,caminho:caminho,tipo:f.video?'video':'foto',mime:arq.mime,bytes:arq.blob.size,sha256:arq.hash});
       if(r2.error)throw r2.error;
     }
@@ -907,7 +910,7 @@ function orfaosHtml(){
   var it=l.map(function(x){
     var et=((x.analise_resumo&&x.analise_resumo.etiqueta)||[]).filter(function(e){return e.confianca==='alta';}).map(function(e){return esc(e.tipo+' '+e.valor);}).join(' · ');
     var u=x._foto&&S.orfUrls?S.orfUrls[x._foto]:null;
-    var th=u?'<a href="'+u+'" data-foto="orf'+x.id+'" data-src="'+u+'" aria-label="Ampliar a foto do lote" style="cursor:zoom-in"><img src="'+u+'" alt="Foto do lote" width="64" height="64" style="width:64px;height:64px;object-fit:cover;border-radius:12px;flex:none"></a>':'<span class="tag mute">sem foto</span>';
+    var ut=(S.orfThumb&&S.orfThumb[x._foto])||u;var th=u?'<a href="'+u+'" data-foto="orf'+x.id+'" data-src="'+u+'" aria-label="Ampliar a foto do lote" style="cursor:zoom-in"><img src="'+ut+'" alt="Foto do lote" width="64" height="64" style="width:64px;height:64px;object-fit:cover;border-radius:12px;flex:none"></a>':'<span class="tag mute">sem foto</span>';
     return '<div class="cardrow" style="gap:10px"><div class="row" style="gap:12px;align-items:flex-start;flex-wrap:nowrap">'+th+'<span style="min-width:0;display:flex;flex-direction:column;gap:4px"><b>'+new Date(x.criado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</b><span class="sub">'+esc(x.descricao_equipe||'(sem descrição)')+'</span><span class="sub" style="font-size:12.5px">Lido na etiqueta: '+(et||'nada legível')+'</span></span></div>'+
       '<div class="row" style="gap:8px;flex-wrap:wrap"><input id="lg-'+x.id+'" class="inp" type="text" data-in="lg" data-k="'+x.id+'" value="'+esc(S.ligar[x.id]||'')+'" placeholder="Pedido, rastreio ou nome do cliente" autocomplete="off" aria-label="Número do pedido para ligar a este lote" style="flex:1 1 220px"><button type="button" class="btn" data-a="ligarLote" data-v="'+x.id+'">Ligar a um caso</button></div></div>';
   }).join('');
@@ -926,7 +929,7 @@ function detalhe(){
   var dt=function(x){return x?new Date(x).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';};
   var kv=function(a,b){return '<div class="idrow"><span class="a">'+a+'</span><span class="b">'+b+'</span></div>';};
   var evs=(cx.eventos||[]).map(function(e){var d=e.dados||{};var tx=e.tipo==='leitura_marketplace'?'Leitura do marketplace: '+esc(ST_MKT[d.status]||String(d.status||'—'))+(d.stage?' · etapa '+esc(ETAPA_MKT[d.stage]||d.stage):'')+' → '+esc(ROT[d.estado_local]||d.estado_local||''):(e.tipo==='fotos_excluidas'?'Fotos excluídas ('+(d.arquivos||0)+' arquivos)':esc(EV_TX[e.tipo]||humanizar(e.tipo)));return '<div class="idrow"><span class="a">'+dt(e.criado_em)+'</span><span class="b">'+tx+'</span></div>';}).join('');
-  var fotos=(cx.anexos||[]).map(function(a,i){return a.url?'<div class="slot" data-foto="caso" data-src="'+a.url+'" style="cursor:zoom-in" role="button" tabindex="0" aria-label="Ampliar foto '+(i+1)+'"><img src="'+a.url+'" alt="Foto '+(i+1)+' do caso"></div>':'<div class="slot ok">'+(a.tipo==='video'?'Vídeo':'Arquivo')+'</div>';}).join('');
+  var fotos=(cx.anexos||[]).map(function(a,i){return a.url?'<div class="slot" data-foto="caso" data-src="'+(a.full||a.url)+'" style="cursor:zoom-in" role="button" tabindex="0" aria-label="Ampliar foto '+(i+1)+'"><img src="'+a.url+'" alt="Foto '+(i+1)+' do caso"></div>':'<div class="slot ok">'+(a.tipo==='video'?'Vídeo':'Arquivo')+'</div>';}).join('');
   return head()+'<div><button type="button" class="pbk" data-a="voltar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Voltar para '+TITULOS[destino]+'</button></div>'+
   '<section class="stage"><div style="min-width:0;flex:1 1 360px"><div class="lbl">'+mk(c.mk)+esc(MK[c.mk].nome+' · '+c.loja)+'</div><div class="tt">'+esc(c.problema)+'</div><div class="sub" style="color:var(--on-dark-muted);margin-top:6px">'+esc(c.pedido+' · solicitação '+c.solicitacao)+'</div></div><div class="sr"><div class="k">Prazo</div><div class="pv">'+(c.st>=6?'Encerrado':(c.semPrazo?'—':(c.prazo<=0?'Vencido':c.prazo+' h')))+'</div></div>'+proxPasso(c)+'</section>'+
   '<div class="cols"><div style="flex:1 1 440px">'+
