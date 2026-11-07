@@ -1278,7 +1278,7 @@ async function aprovar(id){
       var r=await SB.functions.invoke('devol-contestar',{body:corpo});
       var x=r.data||{};if(r.error&&!x.mensagem){x=await corpoErro(r.error);}
       toast(x.mensagem||(x.ok?'Enviado.':'Não foi possível enviar.'));
-      if(x.ok){fim();await carregar();render(true,false);}else{b.disabled=false;b.textContent='Enviar ao '+nome;}
+      if(x.ok){fim();await aposEnvio();}else{b.disabled=false;b.textContent='Enviar ao '+nome;}
     }catch(err){toast('Não consegui enviar: '+((err&&err.message)||'erro'));b.disabled=false;b.textContent='Enviar ao '+nome;}
   });
   var sel=m.querySelector('.ct-m'),req=m.querySelector('.ct-r');
@@ -1297,9 +1297,15 @@ async function aceitarDev(id){
       var r=await SB.functions.invoke('devol-contestar',{body:{modo:'aceitar',caso_id:id,confirmado:true}});
       var x=r.data||{};if(r.error&&!x.mensagem){x=await corpoErro(r.error);}
       toast(x.mensagem||(x.ok?'Devolução aceita.':'Não foi possível aceitar.'));
-      if(x.ok){fim();await carregar();render(true,false);}else{b.disabled=false;b.textContent='Aceitar a devolução';}
+      if(x.ok){fim();await aposEnvio();}else{b.disabled=false;b.textContent='Aceitar a devolução';}
     }catch(err){toast('Não consegui enviar: '+((err&&err.message)||'erro'));b.disabled=false;b.textContent='Aceitar a devolução';}
   });
+}
+
+async function aposEnvio(){
+  await carregar();
+  if(S.tela==='caso'){ir(S.prev&&S.prev!=='caso'?S.prev:'aprov');}
+  else render(true,false);
 }
 
 async function decidirCaso(id,acao){
