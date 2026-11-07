@@ -450,7 +450,7 @@ function adaptar(r){
     mkt:r.situacao_mkt||'',desfecho:r.desfecho||null,reemb:r.valor_reembolsado==null?null:+r.valor_reembolsado,vped:+(r.valor_pedido||r.valor_em_risco)||0,cob:r.cobertura_ml===true,arq:!!r.arquivado_em,decEm:r.decidido_em||null,custoFrete:r.custo_frete==null?null:+r.custo_frete,freteLido:r.frete_lido===true,protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
 function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-01';}
-async function carregar(){
+async function carregar(){S.supCarregado=false;
   var q=await Promise.all([
     SB.from('lojas').select('id,marketplace,apelido,ativa').eq('ativa',true),
     SB.from('devol_casos').select('*').order('atualizado_em',{ascending:false}).limit(1000),
@@ -1052,7 +1052,7 @@ function aprov(){
   var l=aplicar(S.casos.filter(function(c){return c.st===3;}),S.f.aprov);
   var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(c.pedirInfo?'<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar mais fotos</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+c.id+'">Aceitar a devolução</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':c.decidir?'<button type="button" class="btn" data-a="concordar" data-v="'+c.id+'">Concordo, não contestar</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':'<button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">Aprovar e enviar</button>')+'</div></section>';}).join('');
   var vazio=S.casos.filter(function(c){return c.st===3;}).length===0?'Nada aguardando a sua aprovação agora.':'Nenhum caso com esses filtros.';
-  return head()+'<section class="card tight">'+toolbar('aprov','Buscar por produto ou pedido')+'</section><p class="sub" style="margin:0 6px">Casos que a Sandy preparou e que só saem com o seu aprovado. Hoje ela só lê, em modo sombra: quando preparar um relato, ele aparece aqui.</p>'+(linhas||'<div class="empty">'+vazio+'</div>');
+  return head()+blocoSuporte()+'<section class="card tight">'+toolbar('aprov','Buscar por produto ou pedido')+'</section><p class="sub" style="margin:0 6px">Casos que a Sandy preparou e que só saem com o seu aprovado. Hoje ela só lê, em modo sombra: quando preparar um relato, ele aparece aqui.</p>'+(linhas||'<div class="empty">'+vazio+'</div>');
 }
 
 function acomp(){
@@ -1390,6 +1390,64 @@ function suporteHtml(c,cx){
   }
   return '<section class="card" style="gap:10px"><h2 class="sech">'+esc(tit)+'</h2><p class="sub">'+esc(sub)+'</p><textarea id="sup-'+esc(c.id)+'" rows="6" style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;line-height:1.45;resize:vertical;width:100%;box-sizing:border-box">'+esc(tx)+'</textarea><div class="row" style="gap:10px;flex-wrap:wrap"><button type="button" class="btn" data-a="copiarSup" data-v="'+esc(c.id)+'" style="display:inline-flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar texto</button><a class="btn ghost" href="https://www.mercadolivre.com.br/ajuda" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>Abrir o suporte do Mercado Livre</a></div><p class="sub" style="font-size:12.5px">O Mercado Livre não deixa abrir esse chamado por sistema. Copie o texto, abra o suporte (entre com a conta da loja, vá em Vendas e Fale conosco) e cole lá. Você pode editar o texto antes.</p></section>';
 }
+
+/* ---------- pedido de isenção ao suporte do Mercado Livre, em lote por loja ---------- */
+var SUP_LOTE=12;
+async function carregarSup(){
+  S.supCarregando=true;
+  try{
+    var r=await SB.rpc('devol_candidatos_suporte');
+    if(r.error)throw new Error(r.error.message);
+    S.sup=Array.isArray(r.data)?r.data:[];
+  }catch(e){S.sup=[];S.supErro=(e&&e.message)||'erro';}
+  S.supCarregando=false;S.supCarregado=true;
+  if(S.tela==='aprov')render(true,false);
+}
+function supGrupos(){
+  var por={};(S.sup||[]).forEach(function(x){var k=x.loja+'|'+x.tipo;(por[k]=por[k]||{loja:x.loja,tipo:x.tipo,itens:[]}).itens.push(x);});
+  var out=[];
+  Object.keys(por).sort(function(a,b){var x=por[a],y=por[b];return x.loja<y.loja?-1:x.loja>y.loja?1:(x.tipo<y.tipo?-1:x.tipo>y.tipo?1:0);}).forEach(function(k){
+    var g=por[k];
+    for(var i=0;i<g.itens.length;i+=SUP_LOTE){out.push({key:k+'|'+(i/SUP_LOTE),loja:g.loja,tipo:g.tipo,parte:i/SUP_LOTE+1,partes:Math.ceil(g.itens.length/SUP_LOTE),itens:g.itens.slice(i,i+SUP_LOTE)});}
+  });
+  return out;
+}
+function supTexto(g){
+  var n=g.itens.length,um=n===1;
+  var lista=g.itens.map(function(x,i){return (i+1)+') Pedido '+String(x.pedido||'').replace('#','')+(x.solicitacao_id?' (reclamação '+x.solicitacao_id+')':'');}).join('\n');
+  var ped=um?'do pedido abaixo':'dos '+n+' pedidos abaixo',nes=um?'neste pedido':'nesses pedidos';
+  if(g.tipo==='cancelamento'){
+    return 'Olá. Peço a análise '+ped+' da loja '+g.loja+'. '+(um?'O comprador cancelou':'Em todos, o comprador cancelou')+' a compra antes de ela ser entregue, por iniciativa própria, sem falha da loja. Solicito, com prioridade, que a loja seja isenta de qualquer custo de frete '+nes+' (envio e eventual devolução), já que não houve falha da loja. Solicito também que '+(um?'esse cancelamento não seja contabilizado':'esses cancelamentos não sejam contabilizados')+' contra a reputação da loja.\n\n'+lista+'\n\nObrigado.';
+  }
+  return 'Olá. Peço a análise '+ped+' da loja '+g.loja+'. '+(um?'O comprador abriu':'Em todos, o comprador abriu')+' a reclamação alegando erro da loja, mas, ao conferir o produto devolvido com fotos, '+(um?'ele corresponde':'ele corresponde')+' ao anúncio e ao que foi vendido. O envio foi feito corretamente, sem erro da loja. Solicito, com prioridade, a isenção do custo do frete (ida e devolução) cobrado da loja '+nes+', e também a isenção de penalidade e do impacto na reputação '+(um?'por esta reclamação':'por essas reclamações')+'.\n\n'+lista+'\n\nTenho as fotos da conferência à disposição. Obrigado.';
+}
+function blocoSuporte(){
+  if(!S.supCarregado&&!S.supCarregando)carregarSup();
+  var gs=supGrupos();
+  if(!gs.length)return '';
+  var ico1='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+  var ico2='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
+  var total=gs.reduce(function(n,g){return n+g.itens.length;},0);
+  var cards=gs.map(function(g,i){
+    var tit=(g.tipo==='cancelamento'?'Cancelaram antes da entrega':'Pedido enviado certo')+' · '+g.loja+(g.partes>1?' · parte '+g.parte+' de '+g.partes:'');
+    return '<div style="border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px"><div><b>'+esc(tit)+'</b><span class="sub" style="display:block">'+g.itens.length+' pedido'+(g.itens.length===1?'':'s')+'. Abra o chamado na conta da loja '+esc(g.loja)+'.</span></div><textarea id="sup-g'+i+'" rows="8" style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;line-height:1.45;resize:vertical;width:100%;box-sizing:border-box">'+esc(supTexto(g))+'</textarea><div class="row" style="gap:10px;flex-wrap:wrap"><button type="button" class="btn" data-a="copiarSup" data-v="g'+i+'" style="display:inline-flex;align-items:center;gap:8px">'+ico1+'Copiar texto</button><a class="btn ghost" href="https://www.mercadolivre.com.br/ajuda" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none">'+ico2+'Abrir o suporte do Mercado Livre</a></div><div style="border-top:1px solid var(--line);padding-top:10px"><button type="button" class="btn ghost" data-a="aprovarGrupo" data-v="'+i+'">Já abri o chamado: concordar com estes '+g.itens.length+'</button><span class="sub" style="display:block;margin-top:6px;font-size:12.5px">Encerra os '+g.itens.length+' casos de uma vez, sem contestar. Nada é enviado ao Mercado Livre por aqui.</span></div></div>';
+  }).join('');
+  return '<section class="card" style="gap:12px"><h2 class="sech">Pedir isenção ao suporte do Mercado Livre</h2><p class="sub">'+total+' caso'+(total===1?'':'s')+' desta tela em que a Sandy conferiu que o pedido foi enviado certo (ou que o cliente cancelou antes de receber). Em vez de um chamado por pedido, copie o texto de cada loja, abra um chamado só e, depois, concorde com todos de uma vez. Peça primeiro a isenção do frete e depois a da reputação. Você pode editar o texto antes de copiar.</p>'+cards+'</section>';
+}
+function aprovarGrupo(i){
+  var g=supGrupos()[+i];if(!g)return;
+  var ids=g.itens.map(function(x){return x.caso_id;});
+  modalMk('<h3>Concordar com '+ids.length+' casos?</h3><p>Confirme que você já abriu o chamado de isenção no Mercado Livre para a loja '+esc(g.loja)+'. Os '+ids.length+' casos serão encerrados sem contestação e saem desta tela. Nada é enviado ao Mercado Livre por aqui.</p><div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Ainda não</button><button type="button" class="btn" data-r="1">Sim, concordar com os '+ids.length+'</button></div>',async function(b,m,fim){
+    b.disabled=true;b.textContent='Registrando…';
+    try{
+      var r=await SB.rpc('devol_decidir_lote',{p_casos:ids});
+      if(r.error)throw new Error(r.error.message);
+      var d=r.data||{},nf=(d.falhas||[]).length;
+      toast(d.ok+' caso'+(d.ok===1?'':'s')+' encerrado'+(d.ok===1?'':'s')+(nf?'. '+nf+' não deu certo (talvez já tenham mudado de fase).':'.'));
+      fim();await carregar();render(true,false);
+    }catch(e){toast('Não consegui registrar: '+((e&&e.message)||'erro'));b.disabled=false;b.textContent='Sim, concordar';}
+  });
+}
 document.addEventListener('click',function(e){
   if(S.mais&&!e.target.closest('.more,[data-a=mais]')&&!e.target.closest('[data-a]')){S.mais=false;render(true,false);return;}
   var t=e.target.closest('[data-a]');if(!t||t.type==='checkbox')return;
@@ -1407,6 +1465,7 @@ document.addEventListener('click',function(e){
       else if(a==='aprovar'){aprovar(v);}
   else if(a==='aceitarDev'){aceitarDev(v);}
   else if(a==='copiarSup'){copiarSup(v);}
+  else if(a==='aprovarGrupo'){aprovarGrupo(v);}
   else if(a==='fotosCaso'){var cc=caso(v);if(cc){S.lote.pedido=String(cc.raw.pedido||cc.raw.solicitacao_id||'');ir('receber');}}
   else if(a==='mesCusto'){S.mesCusto=v;render(true,false);}
   else if(a==='baixarMes'){baixarRelatorio(v);}
