@@ -561,10 +561,10 @@ async function prepararArquivo(f){
   var file=f.file;
   if(!f.video&&/^image\//.test(file.type)){
     try{
-      var bmp=await createImageBitmap(file),m=Math.max(bmp.width,bmp.height),esc2=m>2000?2000/m:1;
+      var bmp=await createImageBitmap(file),m=Math.max(bmp.width,bmp.height),esc2=m>1600?1600/m:1;
       var cv=document.createElement('canvas');cv.width=Math.round(bmp.width*esc2);cv.height=Math.round(bmp.height*esc2);
       cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);
-      var blob=await new Promise(function(res){cv.toBlob(res,'image/jpeg',0.85);});
+      var blob=await new Promise(function(res){cv.toBlob(res,'image/jpeg',0.8);});
       if(blob)return {blob:blob,mime:'image/jpeg',ext:'.jpg',hash:hex(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))};
     }catch(e){}
   }
