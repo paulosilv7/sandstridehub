@@ -152,7 +152,7 @@ function conversaMudou(payload) {
   if (!velho) return true;
   let mudou = false;
   for (const k of Object.keys(novo)) {
-    if (CAMPOS_IGNORADOS.has(k)) continue;
+    if (CAMPOS_IGNORADOS.has(k) || !(k in velho)) continue;
     if (JSON.stringify(novo[k]) !== JSON.stringify(velho[k])) { mudou = true; break; }
   }
   RAW_CONV.set(novo.id, { ...velho, ...novo });
@@ -160,7 +160,7 @@ function conversaMudou(payload) {
 }
 async function carregarConversas() {
   const { data, error } = await sb.from('conversas')
-    .select('*, conversa_etiquetas(etiqueta_id)')
+    .select('id, loja_id, tipo, cliente_nome, pedido_id_externo, bloqueada, motivo_bloqueio, ultima_mensagem_em, ultima_mensagem_de, ultima_mensagem_texto, aguardando_resposta, atendente_id, atendida_por_ia, escalada_motivo, produto_titulo, dados_extras, situacao, situacao_detalhe, conversa_etiquetas(etiqueta_id)')
     .order('ultima_mensagem_em', { ascending: false, nullsFirst: false }).limit(500);
   if (error) { console.error(error); return; }
   const antes = S.conhecidas;
@@ -881,13 +881,15 @@ function marcarConexao(ok) {
 /* ------------------------------------------------------------------ */
 /* Tempo real                                                          */
 /* ------------------------------------------------------------------ */
-let canal = null, tRecarga = null;
-function agendarRecarga() {
+let canal = null, tRecarga = null, recargaHoje = false;
+function agendarRecarga(daMensagem) {
+  if (daMensagem === true) recargaHoje = true;
   clearTimeout(tRecarga);
   tRecarga = setTimeout(async () => {
     await carregarConversas();
     if (S.sel && S.msgsDe === S.sel) await carregarMensagens(S.sel);
-    await carregarHoje();
+    // O contador "respondidos hoje" só muda quando entra mensagem nova.
+    if (recargaHoje) { recargaHoje = false; await carregarHoje(); }
     if (S.view === 'inbox') { renderLeve(); renderThread(); }
   }, 350);
 }
@@ -896,7 +898,7 @@ function ligarTempoReal() {
   const tabela = (t) => ({ event: '*', schema: 'public', table: t });
   canal = sb.channel('caixa-de-entrada')
     .on('postgres_changes', tabela('conversas'), (p) => { if (conversaMudou(p)) agendarRecarga(); })
-    .on('postgres_changes', tabela('mensagens'), agendarRecarga)
+    .on('postgres_changes', tabela('mensagens'), () => agendarRecarga(true))
     .on('postgres_changes', tabela('conversa_etiquetas'), agendarRecarga)
     .subscribe((st) => marcarConexao(st === 'SUBSCRIBED'));
 }
