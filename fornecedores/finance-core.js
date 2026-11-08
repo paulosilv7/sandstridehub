@@ -95,6 +95,10 @@
   const purchases=sum(activeEntries,'purchase'),payments=sum(activeEntries,'payment'),credits=sum(activeEntries,'credit');
   return{supplier,entries,activeEntries,products,purchases,payments,credits,balance:checked(BigInt(purchases)-BigInt(payments)-BigInt(credits)),months:monthly(db.entries,supplier)};
  }
- const api={parseCents,formatInput,formatMoney,quantity,total,validDate,monthRange,businessDate,priceAt,sum,allocationLedger,monthly,purchaseMonths,paymentMonths,name,nameKey,validateSnapshot,report,movementPeriod,supplierView};
+ function supplierPortfolio(db){
+  const inactive=new Set(db.inactiveSuppliers||[]),rows=db.suppliers.filter(supplier=>!inactive.has(supplier)).map(supplier=>{const view=supplierView(db,supplier);return{supplier,balance:view.balance}}).sort((a,b)=>b.balance-a.balance||a.supplier.localeCompare(b.supplier,'pt-BR'));
+  return{withBalance:rows.filter(row=>row.balance!==0),settled:rows.filter(row=>row.balance===0)};
+ }
+ const api={parseCents,formatInput,formatMoney,quantity,total,validDate,monthRange,businessDate,priceAt,sum,allocationLedger,monthly,purchaseMonths,paymentMonths,name,nameKey,validateSnapshot,report,movementPeriod,supplierView,supplierPortfolio};
  root.FinanceCore=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);
