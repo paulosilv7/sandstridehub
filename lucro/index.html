@@ -1340,11 +1340,13 @@ function aplicarDados(D){
   if(pill){
     var min=ult?Math.round((Date.now()-ult)/60000):null;
     pill.textContent=min===null?'Aguardando primeira atualização':(erros?erros+' loja'+(erros>1?'s':'')+' com falha na última atualização':(min<1?'Atualizado agora':'Atualizado há '+min+' min')+' · a cada 5 min');
-    pill.className='pill '+((min===null||erros||min>30)?'warn':'good');pill.title='Os dados dos marketplaces são atualizados a cada 5 minutos.';
+    pill.className='pill '+((min===null||erros||min>30)?'warn':'good');pill.title='Os dados dos marketplaces e esta tela são atualizados a cada 5 minutos.';
   }
   relogio();
 }
+var ULT_CARGA=0;
 async function carregar(){
+  ULT_CARGA=Date.now();
   var r=await SB.rpc('lucro_painel');
   if(r.error||!r.data){var pill=$('#sincPill');if(pill){pill.textContent='Sem conexão com o banco';pill.className='pill bad'}return}
   aplicarDados(r.data);render();
@@ -1453,9 +1455,9 @@ function semAcesso(){
     await carregarMetas();
     await carregar();
     await carregarResumo();
-    setInterval(carregar,60000);
+    setInterval(function(){if(!document.hidden)carregar()},300000);
     setInterval(relogio,15000);
-    document.addEventListener('visibilitychange',function(){if(!document.hidden)carregar()});
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&Date.now()-ULT_CARGA>60000)carregar()});
   }catch(e){var pill=$('#sincPill');if(pill){pill.textContent='Erro ao carregar';pill.className='pill bad'}console.error(e)}
 })();
 })();
