@@ -38,6 +38,11 @@ h1,h2,h3,p{margin:0}
 .head h1{font-size:26px;font-weight:400;letter-spacing:-.7px}
 .hlogo{height:24px;width:auto;display:block}
 .hsep{width:1px;height:26px;background:#CFCFCB}
+.atz{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+.atzt{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.atzb{height:34px;border-radius:17px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-weight:500;font-size:13px;padding:0 14px}
+.atzb:hover,.atzb:focus-visible{background:var(--hover)}.atzb:disabled{opacity:.6}
+@media (max-width:700px){.atz{width:100%;justify-content:space-between;margin-left:0}.atzt{font-size:12px}}
 .meuav{margin-left:auto;width:38px;height:38px;border-radius:50%;background:#1A1A1A;color:#fff;display:grid;place-items:center;font-weight:600;font-size:16px;overflow:hidden;text-decoration:none;flex:none}.meuav img{width:100%;height:100%;object-fit:cover;display:block}
 .mkimg{padding:0 11px!important;min-width:0!important}
 .mkic{width:36px;height:36px;border-radius:10px;object-fit:cover;display:block;flex:none}.mkic.lg{width:44px;height:44px;border-radius:12px}
@@ -523,9 +528,9 @@ async function carregar(){S.supCarregado=false;
   S.uso=(q[6].data||[]).map(function(u){return {dia:new Date(u.criado_em).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}),etapa:u.origem,custo_brl:(+u.custo_usd||0)*cambio};});
   GASTO_IA_MES=S.uso.reduce(function(s,u){return s+u.custo_brl;},0);
   S.modelos=q[8].data||[];
-  S.erro='';S.carregando=false;
+  S.erro='';S.carregando=false;S.ultCarga=Date.now();
 }
-async function carregarSilencioso(){S.ultSilenc=Date.now();var ae=document.activeElement;if(ae&&ae.closest&&ae.closest('.rc-f'))return;var rf=document.querySelector('.rc-f input');if(rf&&rf.value)return;try{await carregar();render(true,false);}catch(e){}}
+async function carregarSilencioso(){var ae=document.activeElement;if(ae&&ae.closest&&ae.closest('.rc-f'))return;var rf=document.querySelector('.rc-f input');if(rf&&rf.value)return;try{await carregar();render(true,false);}catch(e){}}
 async function carregarCaso(id){
   S.cx={id:id,carregando:true,eventos:[],anexos:[]};
   try{
@@ -756,8 +761,15 @@ var tt=null;
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true;},3200);}
 
 /* ---------- peças comuns ---------- */
+var INTERV_MS=1800000;
+function hm(t){return new Date(t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});}
+function atzHtml(){
+  var u=S.ultCarga;
+  var txt=u?'Atualizado às '+hm(u)+' · próxima às '+hm(u+INTERV_MS):'Carregando…';
+  return '<div class="atz"><span class="atzt" title="A tela se atualiza sozinha a cada 30 minutos enquanto está aberta.">'+txt+'</span><button type="button" class="atzb" data-a="atz"'+(S.atualizando?' disabled':'')+'>'+(S.atualizando?'Atualizando…':'Atualizar agora')+'</button></div>';
+}
 function head(){
-  return '<header class="head"><img class="hlogo" alt="Sandstride" src="'+LOGO+'"><span class="hsep" aria-hidden="true"></span><h1>'+TITULOS[S.tela]+'</h1></header>';
+  return '<header class="head"><img class="hlogo" alt="Sandstride" src="'+LOGO+'"><span class="hsep" aria-hidden="true"></span><h1>'+TITULOS[S.tela]+'</h1>'+atzHtml()+'</header>';
 }
 function avatarHtml(){var ini=esc(String(S.nome||'?').trim().charAt(0).toUpperCase());return '<a class="meuav" href="../" title="Voltar ao hub" aria-label="Voltar ao hub">'+(S.fotoUrl?'<img src="'+esc(S.fotoUrl)+'" alt="">':ini)+'</a>';}
 
@@ -1494,6 +1506,13 @@ document.addEventListener('click',function(e){
   var t=e.target.closest('[data-a]');if(!t||t.type==='checkbox')return;
   var a=t.getAttribute('data-a'),v=t.getAttribute('data-v'),k=t.getAttribute('data-k');
   if(S.mais&&a!=='mais'&&!t.closest('.more')){S.mais=false;}
+  if(a==='atz'){
+    if(S.atualizando)return;
+    S.atualizando=true;render(true,false);
+    carregar().then(function(){S.atualizando=false;render(true,false);toast('Atualizado às '+hm(S.ultCarga)+'.');})
+      .catch(function(er){S.atualizando=false;render(true,false);toast('Não consegui atualizar: '+((er&&er.message)||'erro'));});
+    return;
+  }
   if(a==='go'){ir(v);}
   else if(a==='caso'){ir('caso',v);}
   else if(a==='voltar'){ir(S.prev&&S.prev!=='caso'?S.prev:'home');}
@@ -1568,8 +1587,8 @@ async function iniciar(){
     await carregar();
     lerHash();render(false,true);
     if(S.tela==='receber')carregarLotes();
-    setInterval(function(){if(!document.hidden&&S.tela!=='receber')carregarSilencioso();},300000);
-    document.addEventListener('visibilitychange',function(){if(!document.hidden&&S.tela!=='receber'&&Date.now()-(S.ultSilenc||0)>120000)carregarSilencioso();});
+    setInterval(function(){if(!document.hidden&&S.tela!=='receber')carregarSilencioso();},1800000);
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&S.tela!=='receber'&&Date.now()-(S.ultCarga||0)>=1800000)carregarSilencioso();});
   }catch(e){
     app.innerHTML='<main class="main"><section class="card"><h2 class="sech">Não consegui carregar</h2><p class="sub">'+esc((e&&e.message)||'erro')+'</p><button type="button" class="btn" style="align-self:flex-start" onclick="location.reload()">Tentar de novo</button></section></main>';
   }
