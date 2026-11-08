@@ -525,7 +525,7 @@ async function carregar(){S.supCarregado=false;
   S.modelos=q[8].data||[];
   S.erro='';S.carregando=false;
 }
-async function carregarSilencioso(){var ae=document.activeElement;if(ae&&ae.closest&&ae.closest('.rc-f'))return;var rf=document.querySelector('.rc-f input');if(rf&&rf.value)return;try{await carregar();render(true,false);}catch(e){}}
+async function carregarSilencioso(){S.ultSilenc=Date.now();var ae=document.activeElement;if(ae&&ae.closest&&ae.closest('.rc-f'))return;var rf=document.querySelector('.rc-f input');if(rf&&rf.value)return;try{await carregar();render(true,false);}catch(e){}}
 async function carregarCaso(id){
   S.cx={id:id,carregando:true,eventos:[],anexos:[]};
   try{
@@ -1568,8 +1568,8 @@ async function iniciar(){
     await carregar();
     lerHash();render(false,true);
     if(S.tela==='receber')carregarLotes();
-    setInterval(function(){if(!document.hidden&&S.tela!=='receber')carregarSilencioso();},60000);
-    document.addEventListener('visibilitychange',function(){if(!document.hidden&&S.tela!=='receber')carregarSilencioso();});
+    setInterval(function(){if(!document.hidden&&S.tela!=='receber')carregarSilencioso();},300000);
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&S.tela!=='receber'&&Date.now()-(S.ultSilenc||0)>120000)carregarSilencioso();});
   }catch(e){
     app.innerHTML='<main class="main"><section class="card"><h2 class="sech">Não consegui carregar</h2><p class="sub">'+esc((e&&e.message)||'erro')+'</p><button type="button" class="btn" style="align-self:flex-start" onclick="location.reload()">Tentar de novo</button></section></main>';
   }
