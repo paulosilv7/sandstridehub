@@ -39,7 +39,8 @@
   priorNavTo(destination);
  };
 
- function options(){return db.suppliers.map(value=>`<option value="${esc(value)}" ${value===selectedSupplier?'selected':''}>${esc(value)}${inactive(value)?' · Inativo':''}</option>`).join('')}
+ function selectableSuppliers(){return db.suppliers.filter(value=>!inactive(value)||value===selectedSupplier)}
+ function options(){return selectableSuppliers().map(value=>`<option value="${esc(value)}" ${value===selectedSupplier?'selected':''}>${esc(value)}${inactive(value)?' · Inativo':''}</option>`).join('')}
  function monthCount(view){return view.months.filter(row=>row[3]>0).length}
  function lastMovement(view){return [...view.activeEntries].sort((a,b)=>b.date.localeCompare(a.date)).at(0)?.date||''}
  function dateLabel(value){return value?value.split('-').reverse().join('/'):'Nenhum movimento'}
@@ -141,7 +142,7 @@
    grid.insertAdjacentHTML('beforebegin',`<section class="portfolio-period" aria-labelledby="portfolioPeriodTitle"><div class="portfolio-period-heading"><div><span class="supplier-eyebrow">MOVIMENTAÇÃO FINANCEIRA</span><h2 id="portfolioPeriodTitle">Filtrar totais por data</h2><p>O período altera somente compras, pagamentos e abatimentos. O saldo devedor acima continua mostrando a dívida atual.</p></div><span class="portfolio-period-status"><b>${esc(periodLabel)}</b>${movementLabel}</span></div><div class="portfolio-period-fields"><div><label for="portfolioFrom">Data inicial</label><input id="portfolioFrom" type="date" value="${esc(portfolioFrom)}" max="${esc(portfolioTo)}"></div><div><label for="portfolioTo">Data final</label><input id="portfolioTo" type="date" value="${esc(portfolioTo)}" min="${esc(portfolioFrom)}"></div><button class="primary" onclick="applyPortfolioPeriod()">Aplicar período</button><button onclick="clearPortfolioPeriod()">Limpar filtro</button></div></section>`);
   }
   toolbar.innerHTML='<div><span class="supplier-eyebrow">ACESSO RÁPIDO</span><h2>Abra um fornecedor</h2></div><span class="portfolio-hint">Compras e pagamentos ficam separados por parceiro.</span>';
-  tableElement.replaceWith(document.createRange().createContextualFragment(supplierCards()));
+  tableElement.replaceWith(document.createRange().createContextualFragment(supplierCards(db.suppliers.filter(name=>!inactive(name)))));
   const title=app.querySelector('h1');if(title)title.textContent='Visão geral da carteira';
  }
  window.applyPortfolioPeriod=()=>{

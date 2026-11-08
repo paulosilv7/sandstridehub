@@ -83,3 +83,26 @@ test('último fornecedor salvo no navegador não é restaurado',async()=>{
   assert.equal(context.filter,'');
   assert.match(context.app.innerHTML,/Prepare o relatório de um fornecedor/);
 });
+
+test('fornecedores inativos não aparecem nos seletores operacionais',async()=>{
+  const source=await readFile(sourceUrl,'utf8');
+  const context=environment(source);
+  context.window.isInactiveSupplier=name=>name==='PECHINCHA LIVRE';
+
+  context.navTo('Retiradas');
+
+  assert.match(context.app.innerHTML,/W-BOX/);
+  assert.doesNotMatch(context.app.innerHTML,/PECHINCHA LIVRE/);
+});
+
+test('fornecedor inativo aberto pelo cadastro permanece consultável no próprio contexto',async()=>{
+  const source=await readFile(sourceUrl,'utf8');
+  const context=environment(source);
+  context.window.isInactiveSupplier=name=>name==='PECHINCHA LIVRE';
+
+  context.window.openSupplierWorkspace(1,'Relatórios');
+
+  assert.equal(context.filter,'PECHINCHA LIVRE');
+  assert.equal(context.window.currentWorkspaceSupplier(),'PECHINCHA LIVRE');
+  assert.equal(context.page,'Relatórios');
+});
