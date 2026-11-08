@@ -1,0 +1,45 @@
+# Backup automático: todo dia baixa as funções do Supabase e guarda aqui no GitHub (só cria commit se algo mudou).
+name: Backup das funções do Supabase
+
+on:
+  schedule:
+    - cron: "30 8 * * *"   # todos os dias às 05h30 (Brasília)
+  workflow_dispatch: {}     # também pode ser rodado à mão na aba Actions
+
+permissions:
+  contents: write
+
+env:
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  REF: imlgfmaqmzfonvbmlwpd
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Baixar as funções
+        run: |
+          [ -f supabase/config.toml ] || supabase init --force || true
+          supabase link --project-ref "$REF"
+          # Lista as funções publicadas; as fin-* (do Lucas) ficam de fora.
+          supabase functions list --project-ref "$REF" -o json \
+            | python3 -c "import sys,json; print('\n'.join(f['slug'] for f in json.load(sys.stdin) if not f['slug'].startswith('fin-')))" \
+            > /tmp/funcoes.txt
+          test -s /tmp/funcoes.txt
+          while read -r f; do
+            echo "Baixando $f"
+            supabase functions download "$f" --use-api
+          done < /tmp/funcoes.txt
+      - name: Guardar se mudou
+        run: |
+          git config user.name "Backup automático"
+          git config user.email "backup@users.noreply.github.com"
+          git add supabase/functions
+          if git diff --cached --quiet; then echo "Nada mudou."; else
+            git commit -m "Backup automático das funções do Supabase"
+            git push
+          fi
