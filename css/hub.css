@@ -40,4 +40,5 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink)}
 .meu-av .cam{position:absolute;right:-2px;bottom:-2px;width:18px;height:18px;border-radius:50%;background:#fff;color:#1A1A1A;font-size:14px;font-weight:800;line-height:18px;text-align:center}
 .meu-av.envia{opacity:.5}
 .meu-av.erro-foto .cam{background:var(--bad-bg);color:var(--bad)}
+.coruja-linha{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.coruja-linha .btn{margin-left:auto}.coruja-linha .btn:disabled{opacity:.5;cursor:default}
 @media (max-width:520px){.top .eu{display:none}}

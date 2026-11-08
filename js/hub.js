@@ -124,11 +124,32 @@ async function tela() {
   }).join('');
   let h = `<div class="wrap">${topo()}<div><h1>Olá, ${esc(eu.nome.split(' ')[0])}.</h1><p class="sub" style="margin:4px 0 0">Escolha uma ferramenta.</p></div>` +
     (tiles ? `<div class="tiles">${tiles}</div>` : '<div class="card"><p class="muted" style="margin:0">Você ainda não tem acesso a nenhuma ferramenta. Peça a um administrador para liberar.</p></div>');
+  h += '<section class="card" id="coruja" aria-label="Modo Corujão"><h2>Modo Corujão</h2><p class="sub" style="margin:0">Das 00h às 06h as atualizações automáticas rodam de hora em hora, para economizar. Vai trabalhar de madrugada? Ligue o modo: tudo volta ao ritmo normal e ele desliga sozinho às 6h.</p><div id="coruja-st" class="coruja-linha"><span class="muted">Carregando…</span></div></section>';
   if (eu.papel === 'admin') h += '<section class="card" id="acessos" aria-label="Acessos da equipe"><h2>Quem acessa o quê</h2><p class="sub" style="margin:0">Marque as ferramentas que cada pessoa pode abrir. Administradores acessam tudo.</p><div id="tab" class="tbl"><p class="muted">Carregando…</p></div></section>';
   $('raiz').innerHTML = h + '</div>';
   $('sair').onclick = async () => { await sb.auth.signOut(); location.reload(); };
   $('foto').onchange = (ev) => { const f = ev.target.files[0]; if (f) trocarFoto(f); };
+  carregarCoruja();
   if (eu.papel === 'admin') tabelaAcessos();
+}
+const fHora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+function desenharCoruja(st, erro = '') {
+  const el = $('coruja-st'); if (!el) return;
+  if (!st) { el.innerHTML = '<span class="muted">Não foi possível carregar o estado do modo.</span>'; return; }
+  el.innerHTML = (st.ativo
+    ? `<span class="ok">Ligado até as ${fHora.format(new Date(st.ate))}</span><button class="btn" id="coruja-bt" type="button">Desligar</button>`
+    : '<span class="muted">Desligado: de madrugada as atualizações rodam de hora em hora.</span><button class="btn dark" id="coruja-bt" type="button">Ligar até as 6h</button>') +
+    (erro ? `<span class="erro">${esc(erro)}</span>` : '');
+  $('coruja-bt').onclick = async () => {
+    $('coruja-bt').disabled = true;
+    const { data, error } = await sb.rpc('corujao_definir', { p_ativar: !st.ativo });
+    if (error) return desenharCoruja(st, 'Não consegui mudar o modo. Tente de novo.');
+    desenharCoruja(data);
+  };
+}
+async function carregarCoruja() {
+  const { data, error } = await sb.rpc('corujao_obter');
+  desenharCoruja(error ? null : data);
 }
 async function tabelaAcessos() {
   const [{ data: eq }, { data: ac }] = await Promise.all([
