@@ -422,6 +422,44 @@ function motivoPt(c){c=String(c||'');if(/^PDD/.test(c))return 'Produto diferente
 var TIPOS_ML={mediations:'Reclamação',returns:'Devolução',change:'Troca',cancel_purchase:'Cancelamento',cancel_sale:'Cancelamento'};
 var MOTIVOS_SP={ITEM_NOT_FIT:'Não serviu',ITEM_MISSING:'Item faltando',CHANGE_MIND:'Mudou de ideia',DAMAGED_OTHERS:'Produto danificado',NOT_RECEIPT:'Não recebeu o pedido',WRONG_ITEM:'Item errado',DIFFERENT_DESCRIPTION:'Diferente do anunciado',DAMAGED_ITEM:'Produto danificado',NONFUNCTIONAL:'Não funciona',MISSING_ITEM:'Item faltando',PHYSICAL_DMG:'Produto danificado'};
 var LOJAID={},ANEXOS={},REC={},MSG={},SUG={},THR={},ENV={};
+// Fotos de provas: o link assinado é reaproveitado enquanto vale (o navegador só guarda a imagem se o link for o mesmo)
+// e as miniaturas que faltam nas fotos antigas são geradas uma vez, no próprio aparelho.
+var URLC={};try{URLC=JSON.parse(sessionStorage.getItem('devolUrlC')||'{}')||{};}catch(e){URLC={};}
+async function assinar(paths){
+  var agora=Date.now(),res={},falta=[];
+  paths.forEach(function(p){var c=URLC[p];if(c&&c.exp>agora+300000)res[p]=c.url;else if(falta.indexOf(p)<0)falta.push(p);});
+  if(falta.length){
+    var su=await SB.storage.from('devol-provas').createSignedUrls(falta,21600);
+    var ok={};(su.data||[]).forEach(function(u){if(u.signedUrl&&!u.error){ok[u.path]=1;URLC[u.path]={url:u.signedUrl,exp:agora+21600*1000};res[u.path]=u.signedUrl;}});
+    falta.forEach(function(p){if(!ok[p]){URLC[p]={url:null,exp:agora+600000};res[p]=null;}});
+    try{sessionStorage.setItem('devolUrlC',JSON.stringify(URLC));}catch(e){}
+  }
+  return res;
+}
+var MINI_FILA=[],MINI_TENT={},MINI_RODANDO=false;
+function garantirMiniaturas(lista){
+  (lista||[]).forEach(function(x){if(x&&x.caminho&&x.url&&!MINI_TENT[x.caminho]){MINI_TENT[x.caminho]=1;MINI_FILA.push(x);}});
+  if(MINI_RODANDO)return;MINI_RODANDO=true;
+  (async function(){
+    while(MINI_FILA.length){
+      var x=MINI_FILA.shift();
+      try{
+        var img=new Image();img.crossOrigin='anonymous';
+        await new Promise(function(ok,er){img.onload=ok;img.onerror=er;img.src=x.url;});
+        var m=Math.max(img.naturalWidth,img.naturalHeight),ec=m>480?480/m:1,cv=document.createElement('canvas');
+        cv.width=Math.max(1,Math.round(img.naturalWidth*ec));cv.height=Math.max(1,Math.round(img.naturalHeight*ec));
+        cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+        var tb=await new Promise(function(res){cv.toBlob(res,'image/jpeg',0.6);});
+        if(tb&&tb.type==='image/jpeg'){
+          var up=await SB.storage.from('devol-provas').upload(x.caminho+'.t.jpg',tb,{contentType:'image/jpeg',upsert:false,cacheControl:'31536000'});
+          if(!up.error||/exists|Duplicate/i.test(String(up.error.message||'')))delete URLC[x.caminho+'.t.jpg'];
+        }
+      }catch(e){}
+      await new Promise(function(r){setTimeout(r,400);});
+    }
+    MINI_RODANDO=false;
+  })();
+}
 var S={
   tela:'home',prev:'home',humor:'auto',fala:'',pula:false,mais:false,casoId:null,regraMk:'ml',nome:'',papelAdmin:false,
   f:{home:{q:'',mk:'todos',loja:'todas',grupo:'todos'},aprov:{q:'',mk:'todos',loja:'todas'},acomp:{q:'',mk:'todos',loja:'todas'}},
@@ -500,7 +538,7 @@ async function carregarCaso(id){
     var anexos=r[1].data||[],imgs=anexos.filter(function(a){return a.tipo!=='video';});
     var urls={};
     var turls={};
-    if(imgs.length){var cams=imgs.map(function(a){return a.caminho;});var su=await SB.storage.from('devol-provas').createSignedUrls(cams,3600);(su.data||[]).forEach(function(u){urls[u.path]=u.signedUrl;});var st=await SB.storage.from('devol-provas').createSignedUrls(cams.map(function(c){return c+'.t.jpg';}),3600);(st.data||[]).forEach(function(u){if(u.signedUrl&&!u.error)turls[u.path.replace(/\.t\.jpg$/,'')]=u.signedUrl;});}
+    if(imgs.length){var cams=imgs.map(function(a){return a.caminho;});var su=await assinar(cams.concat(cams.map(function(c){return c+'.t.jpg';})));cams.forEach(function(c){urls[c]=su[c]||null;if(su[c+'.t.jpg'])turls[c]=su[c+'.t.jpg'];});garantirMiniaturas(cams.filter(function(c){return urls[c]&&!turls[c];}).map(function(c){return {caminho:c,url:urls[c]};}));}
     S.cx={id:id,carregando:false,relato:(r[2].data||[])[0]||null,equipe:(r[3].data||[]),eventos:r[0].data||[],anexos:anexos.map(function(a){return {url:turls[a.caminho]||urls[a.caminho]||null,full:urls[a.caminho]||null,tipo:a.tipo,bytes:a.bytes};})};
   }catch(e){S.cx={id:id,carregando:false,eventos:[],anexos:[],erro:true};}
   if(S.tela==='caso'&&S.casoId===id)render(true,false);
@@ -514,7 +552,7 @@ async function carregarLotes(){
     var caminhos=[];S.orfaos.forEach(function(x){var f=(x.devol_anexos||[]).filter(function(a){return a.tipo!=='video'&&a.estado!=='excluido';})[0];x._foto=f?f.caminho:null;if(f)caminhos.push(f.caminho);});
     S.orfUrls={};
     S.orfThumb={};
-    if(caminhos.length){var su=await SB.storage.from('devol-provas').createSignedUrls(caminhos,3600);(su.data||[]).forEach(function(u){S.orfUrls[u.path]=u.signedUrl;});var st=await SB.storage.from('devol-provas').createSignedUrls(caminhos.map(function(c){return c+'.t.jpg';}),3600);(st.data||[]).forEach(function(u){if(u.signedUrl&&!u.error)S.orfThumb[u.path.replace(/\.t\.jpg$/,'')]=u.signedUrl;});}
+    if(caminhos.length){var su=await assinar(caminhos.concat(caminhos.map(function(c){return c+'.t.jpg';})));caminhos.forEach(function(c){S.orfUrls[c]=su[c]||null;if(su[c+'.t.jpg'])S.orfThumb[c]=su[c+'.t.jpg'];});garantirMiniaturas(caminhos.filter(function(c){return S.orfUrls[c]&&!S.orfThumb[c];}).map(function(c){return {caminho:c,url:S.orfUrls[c]};}));}
   }catch(e){S.orfaos=S.orfaos||[];}
   if(S.tela==='receber')render(true,false);
 }
@@ -545,9 +583,9 @@ async function enviarLote(){
     for(var i=0;i<L.fotos.length;i++){
       var f=L.fotos[i],arq=await prepararArquivo(f);
       var caminho='recebimentos/'+recId+'/'+(i+1)+'-'+crypto.randomUUID().slice(0,8)+arq.ext;
-      var up=await SB.storage.from('devol-provas').upload(caminho,arq.blob,{contentType:arq.mime,upsert:false});
+      var up=await SB.storage.from('devol-provas').upload(caminho,arq.blob,{contentType:arq.mime,upsert:false,cacheControl:'31536000'});
       if(up.error)throw up.error;
-      if(!f.video&&/^image\//.test(arq.mime)){try{var bm=await createImageBitmap(arq.blob),mm=Math.max(bm.width,bm.height),ec=mm>480?480/mm:1,cv2=document.createElement('canvas');cv2.width=Math.round(bm.width*ec);cv2.height=Math.round(bm.height*ec);cv2.getContext('2d').drawImage(bm,0,0,cv2.width,cv2.height);var tb=await new Promise(function(res){cv2.toBlob(res,'image/jpeg',0.6);});if(tb)await SB.storage.from('devol-provas').upload(caminho+'.t.jpg',tb,{contentType:'image/jpeg',upsert:false});}catch(e){}}
+      if(!f.video&&/^image\//.test(arq.mime)){try{var bm=await createImageBitmap(arq.blob),mm=Math.max(bm.width,bm.height),ec=mm>480?480/mm:1,cv2=document.createElement('canvas');cv2.width=Math.round(bm.width*ec);cv2.height=Math.round(bm.height*ec);cv2.getContext('2d').drawImage(bm,0,0,cv2.width,cv2.height);var tb=await new Promise(function(res){cv2.toBlob(res,'image/jpeg',0.6);});if(tb)await SB.storage.from('devol-provas').upload(caminho+'.t.jpg',tb,{contentType:'image/jpeg',upsert:false,cacheControl:'31536000'});}catch(e){}}
       var r2=await SB.from('devol_anexos').insert({recebimento_id:recId,caminho:caminho,tipo:f.video?'video':'foto',mime:arq.mime,bytes:arq.blob.size,sha256:arq.hash});
       if(r2.error)throw r2.error;
     }
