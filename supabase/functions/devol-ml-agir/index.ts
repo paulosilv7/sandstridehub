@@ -128,8 +128,9 @@ Deno.serve(async (req) => {
     const acao = String(corpo.acao ?? "");
     if (!ACAO_ML[acao]) return resp({ ok: false, mensagem: "Ação desconhecida." }, 400);
 
-    const { data: cfg } = await admin.from("devol_config").select("chave, valor").in("chave", ["kill_switch"]);
+    const { data: cfg } = await admin.from("devol_config").select("chave, valor").in("chave", ["kill_switch", "envio_real"]);
     if ((cfg ?? []).find((x: any) => x.chave === "kill_switch")?.valor === "true") return resp({ ok: false, mensagem: "O interruptor geral está ligado. Nada é enviado." }, 423);
+    if ((cfg ?? []).find((x: any) => x.chave === "envio_real")?.valor !== "true") return resp({ ok: false, mensagem: "O envio ao marketplace está desligado nas configurações." }, 423);
     if (corpo.confirmado !== true) return resp({ ok: false, mensagem: "Falta a confirmação da pessoa." }, 400);
     if (c.j?.status !== "opened") return resp({ ok: false, mensagem: "Esta reclamação já não está aberta." }, 409);
     if (!disponiveis.includes(ACAO_ML[acao])) return resp({ ok: false, mensagem: "O Mercado Livre não oferece mais essa ação para a loja neste caso." }, 409);
