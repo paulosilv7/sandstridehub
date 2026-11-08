@@ -109,7 +109,7 @@ function msDoTexto(t: string): number | null {
   if (!m) return null;
   return Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4] + 3, +m[5]); // Brasília = UTC-3
 }
-const semAcento = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 const limpaNome = (s: string) => semAcento(S(s)).toUpperCase().replace(/\s+/g, ' ');
 const SIGLAS: Record<string, string> = { 'VERMELHO': 'VML', 'VERDE': 'VRD', 'PRETO/BRANCO': 'PTB', 'BRANCO/PRETO': 'BPT' };
 function siglaCor(cor: string) {

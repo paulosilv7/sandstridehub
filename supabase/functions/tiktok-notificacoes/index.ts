@@ -83,7 +83,7 @@ async function sincronizar(shopId: string, conversaId: string) {
   const cred = await credenciais(loja.id);
   if (!cred?.cipher) { await diag("tiktok-notificacoes", `sem credenciais para a loja ${shopId}`); return; }
 
-  // Mensagens mais recentes primeiro.
+  // Mensagens mais recentes primeiro (o TikTok aceita no máximo 10 por página).
   const dados = await ttsGet(`/customer_service/202309/conversations/${conversaId}/messages`, cred.token, cred.cipher, cred.app, {
     page_size: "10", sort_order: "DESC", sort_field: "create_time",
   });

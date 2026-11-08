@@ -160,11 +160,12 @@ async function processar(u: any) {
   const sufixo = l.conta_ref || (origem ? String(origem.rotulo).trim().split(/\s+/).pop()!.toUpperCase() : "");
   const catAlvo = regra?.categoria ?? l.categoria ?? "";
   if (!conta && /^(I|II|III)$/.test(sufixo) && catAlvo) {
+    // O valor da conta fixa é uma previsão: se bate (±1%), ótimo; se não, vale a única conta do sufixo e da categoria, ou a única de valor próximo.
     const doSufixo = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === catAlvo && String(c.nome).trim().toUpperCase().split(/\s+/).pop() === sufixo);
     const exatas = doSufixo.filter((c: any) => Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
     conta = exatas.length === 1 ? exatas[0] : doSufixo.length === 1 ? doSufixo[0] : perto(doSufixo, valor);
   }
-  // Sem nome que case, mas com regra de categoria: se só UMA conta fixa dessa categoria tem este valor, é ela.
+  // Sem nome que case, mas com regra de categoria: se só UMA conta fixa dessa categoria tem este valor (ou valor próximo), é ela.
   if (!conta && regra) {
     const naCat = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === regra.categoria);
     const iguais = naCat.filter((c: any) => Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));

@@ -1,4 +1,5 @@
-// Avisa a equipe no grupo do Telegram quando a Sandy passa uma conversa para uma pessoa.
+// Avisa a equipe no grupo do Telegram quando a Sandy passa uma conversa do CHAT para uma pessoa.
+// (Avisos de devoluções vêm de outra função: devol-avisar-telegram.)
 // Chamada pelo banco (gatilho em sandy_registros) com o cabeçalho x-lucro-token.
 // Modos: {registro_id}     avisa sobre um registro da Sandy
 //        {descobrir: true} acha o grupo em que o bot foi adicionado e guarda o id (configuracoes.telegram_chat_id)
@@ -47,7 +48,6 @@ async function descobrir() {
   await diag(`grupo conectado: ${c.title ?? c.id}`);
 }
 
-// Troca a foto de perfil do bot (JPG publicado no site).
 async function trocarFoto(url: string) {
   if (!TOKEN) throw new Error("segredo TELEGRAM_BOT_TOKEN não cadastrado");
   if (!url.startsWith(SITE + "/")) throw new Error("a foto precisa estar no site da Central");
@@ -68,7 +68,6 @@ async function avisar(registroId: number) {
   const { data: r } = await supabase.from("sandy_registros").select("id, conversa_id, decisao, motivo, resposta").eq("id", registroId).maybeSingle();
   if (!r) return;
   // Só avisa quando a Sandy precisa de ajuda (escalou ou erro). O que ela resolveu sozinha não gera aviso.
-  const acolheu = false;
   if (!["escalou", "erro"].includes(r.decisao)) return;
   // Um aviso só por necessidade: se a equipe já foi avisada desta conversa e ninguém da loja respondeu depois, não repete.
   const { data: antes } = await supabase.from("sandy_registros").select("id, criado_em, decisao, motivo")
@@ -86,15 +85,24 @@ async function avisar(registroId: number) {
   const loja: any = Array.isArray(c.lojas) ? c.lojas[0] : c.lojas;
   const { data: ult } = await supabase.from("mensagens").select("texto").eq("conversa_id", c.id).eq("de", "cliente")
     .not("texto", "is", null).order("enviada_em", { ascending: false }).limit(1).maybeSingle();
-  // Aviso curto: quem, onde, o que precisa e o link. Tudo em uma mensagem.
-  const icone = acolheu ? "💬" : r.decisao === "erro" ? "⚠️" : "🙋";
-  const motivo = String(r.motivo ?? "").replace(/^\[acolhimento\]\s*/, "").slice(0, 160);
+  const erro = r.decisao === "erro";
+  const motivo = String(r.motivo ?? "").replace(/^\[acolhimento\]\s*/, "").slice(0, 220);
+  // Aviso do CHAT: cabeçalho diz do que se trata, blocos separados por linha em branco.
   const linhas = [
-    `${icone} <b>${esc(c.cliente_nome || "Cliente")}</b> · ${esc(loja?.nome ?? "")} (${esc(MK[loja?.marketplace] ?? loja?.marketplace ?? "")})`,
-    acolheu ? "Sandy acolheu; falta dar andamento." : motivo ? esc(motivo) : null,
-    ult?.texto ? `“${esc(String(ult.texto).slice(0, 140))}”` : null,
+    erro ? "⚠️ <b>CHAT · PROBLEMA COM A SANDY</b>" : "💬 <b>CHAT · MENSAGEM PARA UMA PESSOA</b>",
+    erro ? "A Sandy não conseguiu atender esta conversa." : "A Sandy não conseguiu resolver sozinha.",
+    "",
+    `<b>Cliente:</b> ${esc(c.cliente_nome || "Cliente")}`,
+    `<b>Loja:</b> ${esc(loja?.nome ?? "")} · ${esc(MK[loja?.marketplace] ?? loja?.marketplace ?? "")}`,
+    motivo ? "" : null,
+    motivo ? "<b>Por que a Sandy chamou:</b>" : null,
+    motivo ? esc(motivo) : null,
+    ult?.texto ? "" : null,
+    ult?.texto ? "<b>O cliente escreveu:</b>" : null,
+    ult?.texto ? `“${esc(String(ult.texto).slice(0, 220))}”` : null,
+    "",
     `<a href="${SITE}/chat/?c=${c.id}">Abrir conversa</a>`,
-  ].filter(Boolean).join("\n");
+  ].filter((l) => l !== null).join("\n");
   await telegram("sendMessage", { chat_id: chat, text: linhas, parse_mode: "HTML", disable_web_page_preview: true });
 }
 
