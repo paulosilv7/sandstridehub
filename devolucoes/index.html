@@ -50,7 +50,17 @@ h1,h2,h3,p{margin:0}
 .rc{gap:10px;padding:16px;overflow:visible}
 .rc-top{display:flex;align-items:center;gap:10px}.rc-t{display:flex;flex-direction:column;min-width:0}.fx-hero{border-radius:24px;padding:20px 24px;display:flex;flex-direction:column;gap:4px}.fx-hero.bad{background:var(--bad-bg);color:var(--bad)}.fx-hero.good{background:var(--good-bg);color:var(--good)}.fx-k{font-size:11px;font-weight:500;letter-spacing:1.3px;text-transform:uppercase;opacity:.85}.fx-v{font-size:40px;font-weight:500;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}.fx-s{font-size:12.5px;color:var(--muted)}.fx-hero .fx-s{color:inherit;opacity:.85}.fx-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.fx-box{background:var(--hover);border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:3px;min-width:0}.fx-box .fx-k{color:var(--muted);opacity:1}.fx-b{font-size:28px;font-weight:500;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.fx-panel{background:var(--hover);border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;gap:2px}.fx-panel.soft{background:var(--accent-soft)}.fx-h{font-size:12px;font-weight:500;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin:0 0 6px}.fx-panel.soft .fx-h{color:var(--accent-ink)}.fx-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-size:14px}.fx-h+.fx-row{border-top:0}.fx-nm{flex:1;min-width:0;font-weight:500}.fx-n{color:var(--muted);font-size:13px;white-space:nowrap}.fx-val{font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:64px;text-align:right}.fx-dot{width:10px;height:10px;border-radius:50%;flex:none}@media (max-width:640px){.fx-grid{grid-template-columns:minmax(0,1fr)}.fx-v{font-size:34px}}.g2 .eco{grid-template-columns:minmax(0,1fr)}.rc-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rc-t b{font-size:15px}.rc-t .sub{font-size:12.5px;letter-spacing:0;white-space:nowrap;line-height:1.4}.rc-p{font-size:13.5px;color:var(--muted)}
 .rc-m{background:var(--chip);border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.5;max-height:250px;overflow:auto}.rc-m .kk{margin-bottom:6px}
-.mdl{position:fixed;inset:0;background:rgba(20,20,20,.55);display:grid;place-items:center;z-index:200;padding:16px;animation:mdlin .15s ease}@keyframes mdlin{from{opacity:0}to{opacity:1}}.mdl-c{background:#fff;border-radius:28px;padding:24px;max-width:440px;width:100%;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}.mdl-c h3{font-size:20px;font-weight:500;letter-spacing:-.4px;margin:0}.mdl-c p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.45}.mdl-c blockquote{margin:0;background:var(--chip);border-radius:14px;padding:12px 14px;font-size:14.5px;line-height:1.45}.mdl-a{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+.mdl{position:fixed;inset:0;background:rgba(20,20,20,.55);display:grid;place-items:center;z-index:200;padding:16px;animation:mdlin .15s ease}@keyframes mdlin{from{opacity:0}to{opacity:1}}.mdl-c{background:#fff;border-radius:28px;padding:24px;max-width:440px;width:100%;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}.mdl-c h3{font-size:20px;font-weight:500;letter-spacing:-.4px;margin:0}.mdl-c p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.45}.mdl-c blockquote{margin:0;background:var(--chip);border-radius:14px;padding:12px 14px;font-size:14.5px;line-height:1.45}.mdl-a{display:flex;gap:10px;justify-content:flex-end;margin-top:4px;flex-wrap:wrap}
+.mdl-sum{display:flex;align-items:center;gap:12px;background:var(--chip);border-radius:16px;padding:12px 14px}.mdl-sum i{width:40px;height:40px;border-radius:12px;background:#fff;display:grid;place-items:center;color:var(--muted);flex:none}.mdl-sum b{display:block;font-weight:600;font-size:14.5px}.mdl-sum small{display:block;color:var(--muted);font-size:12.5px;font-weight:500}
+.mdl-custo{border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}.mdl-custo .l{flex:1;min-width:140px}.mdl-custo small{display:block;font-size:12.5px;font-weight:600}.mdl-custo b{display:block;font-size:28px;font-weight:600;letter-spacing:-.03em;line-height:1.15}.mdl-custo .tag{background:rgba(255,255,255,.7);color:inherit}
+.mdl-custo.bad{background:var(--bad-bg);color:var(--bad)}.mdl-custo.warn{background:var(--warn-bg);color:var(--warn)}.mdl-custo.info{background:var(--info-bg);color:var(--info)}
+.mdl-av{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--muted)}
+.btn.bad{background:var(--bad)}.btn.bad:hover{background:#8F1B12}
+.btn.out{background:transparent;color:var(--bad);border:1.5px solid var(--bad)}.btn.out:hover{background:var(--bad-bg)}
+.btn.dl{flex-direction:column;gap:1px;height:auto;min-height:48px;padding:7px 16px;line-height:1.2}.btn.dl small{font-size:11.5px;font-weight:600;opacity:.8}
+.btn svg,.mdl-av svg,.tag svg{flex:none}
+.rc-op.perigo{border-color:var(--bad);color:var(--bad)}.rc-v{font-style:normal;font-weight:600;white-space:nowrap}
+#toast .tmr{display:block;height:3px;border-radius:2px;background:#3A3A3A;overflow:hidden;margin-top:8px}#toast .tmr i{display:block;height:100%;width:100%;background:#BCCBF5}#toast .un{margin-left:12px;color:#BCCBF5;text-decoration:underline;font-weight:600;cursor:pointer;background:none;border:0;font:inherit;font-weight:600}
 .rc-ok{display:flex;gap:10px;align-items:flex-start;background:#E3F4EA;color:#1E6B3F;border-radius:14px;padding:11px 14px;font-size:13.5px;line-height:1.4}.rc-up{margin-left:6px;border:0;background:transparent;color:#1E6B3F;font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0}
 .rc-ok b{width:20px;height:20px;border-radius:50%;background:#2E9D5B;color:#fff;display:grid;place-items:center;font-size:12px;flex:none}
 .rc.espera{background:#E1E1DD;opacity:.82}.rc.espera .rc-bl{background:#F0F0ED}.rc.espera .rc-bl.eu{background:#DADFEE}.rc.espera .rc-chat{background:#D6D6D2}
@@ -769,6 +779,13 @@ function ecoCalc(){
   return {tot:tot,conf:conf,aconc:tot-conf,porT:porT,nT:nT,porM:porM,ganhas:S.eco.length,ret:GASTO_IA_MES>0?tot/GASTO_IA_MES:0};
 }
 var tt=null;
+function toastDesfazer(m,desfazer){
+  var t=document.getElementById('toast');clearTimeout(tt);t.innerHTML='<span class="tm"></span><button type="button" class="un">Desfazer</button><span class="tmr"><i></i></span>';
+  t.querySelector('.tm').textContent=m;t.hidden=false;
+  t.querySelector('.un').addEventListener('click',function(){t.hidden=true;desfazer();});
+  var b=t.querySelector('.tmr i');b.style.transition='width 10s linear';requestAnimationFrame(function(){requestAnimationFrame(function(){b.style.width='0%';});});
+  tt=setTimeout(function(){t.hidden=true;},10000);
+}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true;},3200);}
 
 /* ---------- peças comuns ---------- */
@@ -938,7 +955,7 @@ function home(){
   '<section class="card" aria-label="Casos"><div class="chead"><h2 class="sech">Casos</h2><span class="pill">'+lista.length+(lista.length===1?' caso':' casos')+'</span><span class="sub">Ordenados pelo menor prazo</span></div>'+
   '<div class="gtabs" role="group" aria-label="Filtrar casos por situação">'+gt+'</div><p class="ghint"><b>'+gSel[1]+':</b> '+gSel[2]+'</p>'+
   toolbar('home','Buscar por produto ou pedido')+'<div class="lista">'+rows+'</div></section>'+
-  '<p class="foot">Modo sombra: a Sandy lê os marketplaces e prepara, mas nada é enviado, respondido ou contestado. Os dados vêm direto dos marketplaces e atualizam sozinhos a cada minuto.</p>';
+  '<div class="row" style="gap:8px;flex-wrap:wrap;padding:0 6px"><span class="tag info">A Sandy só prepara: nunca envia sozinha</span><span class="tag bad">'+ICO.enviar+'&nbsp;Os botões com avião enviam de verdade, depois da sua confirmação</span></div>';
 }
 
 function receber(){
@@ -1047,9 +1064,9 @@ function relatoHtml(r){
   var ac='';
   if(!fim&&!cs.expirado&&cs.st<6){
     var b=[];
-    if(r.recomendacao==='contestar')b.push('<button type="button" class="btn lg" data-a="aprovar" data-v="'+S.casoId+'">Aprovar e enviar ao '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução</button>');
-    else if(r.recomendacao==='nao_contestar')b.push('<button type="button" class="btn lg" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução no '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+S.casoId+'">Contestar mesmo assim</button>'+(cs.decidir?'<button type="button" class="btn ghost" data-a="concordar" data-v="'+S.casoId+'">Só encerrar aqui</button>':''));
-    else if(r.recomendacao==='pedir_informacao')b.push('<button type="button" class="btn lg" data-a="fotosCaso" data-v="'+S.casoId+'">Enviar mais fotos deste pedido</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">Aceitar a devolução no '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+S.casoId+'">Contestar mesmo assim</button>');
+    if(r.recomendacao==='contestar')b.push('<button type="button" class="btn lg" data-a="aprovar" data-v="'+S.casoId+'">'+ICO.enviar+'Aprovar e enviar ao '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">'+ICO.enviar+'Aceitar a devolução</button>');
+    else if(r.recomendacao==='nao_contestar')b.push('<button type="button" class="btn lg" data-a="aceitarDev" data-v="'+S.casoId+'">'+ICO.enviar+'Aceitar a devolução no '+esc(nm)+'</button><button type="button" class="btn ghost dl" data-a="forcar" data-v="'+S.casoId+'">Pedir contestação à Sandy<small>Não envia nada</small></button>'+(cs.decidir?'<button type="button" class="btn ghost dl" data-a="concordar" data-v="'+S.casoId+'">Encerrar sem contestar<small>Não envia nada</small></button>':''));
+    else if(r.recomendacao==='pedir_informacao')b.push('<button type="button" class="btn lg" data-a="fotosCaso" data-v="'+S.casoId+'">Enviar mais fotos deste pedido</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">'+ICO.enviar+'Aceitar a devolução no '+esc(nm)+'</button><button type="button" class="btn ghost dl" data-a="forcar" data-v="'+S.casoId+'">Pedir contestação à Sandy<small>Não envia nada</small></button>');
     if(b.length)ac='<div class="row" style="gap:10px;flex-wrap:wrap">'+b.join('')+'</div><p class="sub" style="font-size:12.5px">Nada é enviado sem o seu toque e a sua confirmação. Depois de enviado, não dá para desfazer.</p>';
   }
   return ind+mkt+ac;
@@ -1057,7 +1074,7 @@ function relatoHtml(r){
 function custos(){
   var e=ecoCalc(),admin=S.papelAdmin;
   var tg=function(chave,nome,desc,somenteLeitura){var on=S.cfg[chave]==='true';return '<div class="setrow"><span><b>'+nome+'</b><small>'+desc+'</small></span>'+(somenteLeitura?'<span class="tag '+(on?'warn':'mute')+'">'+(on?'Ligado':'Desligado')+'</span>':'<button type="button" class="sw'+(on?' on':'')+'" data-a="chave" data-v="'+chave+'" role="switch" aria-checked="'+on+'" aria-label="'+nome+'"'+(admin?'':' disabled')+'><i></i></button>')+'</div>';};
-  var ch=tg('kill_switch','Interruptor geral (parar tudo)','Quando ligado, as leituras e a limpeza de fotos param',false)+tg('modo_sombra','Modo sombra','A Sandy só prepara, sem enviar nada',true)+tg('envio_real','Envio real aos marketplaces','Desligado: nada sai deste sistema',true);
+  var ch=tg('kill_switch','Interruptor geral (parar tudo)','Quando ligado, as leituras e a limpeza de fotos param',false)+tg('modo_sombra','Modo sombra','A Sandy só prepara; quem envia é uma pessoa',true)+tg('envio_real','Envio automático pela Sandy','Quando desligado, ela prepara e nunca envia sozinha',true)+'<div class="setrow"><span><b>Envio pela equipe</b><small>Os botões com avião enviam de verdade ao marketplace</small></span><span class="tag bad">'+ICO.enviar+'&nbsp;Sempre que confirmado</span></div>';
   var cnx=['ml','sp','tt'].map(function(m){var n=S.casos.filter(function(c){return c.mk===m;}).length;var ult=S.cfg[{ml:'ultima_leitura_ml',sp:'ultima_leitura_shopee',tt:'ultima_leitura_tiktok'}[m]];var min=ult?Math.max(0,Math.round((Date.now()-new Date(ult).getTime())/60000)):null;return '<div class="cnx">'+mk(m)+'<span class="nm">'+MK[m].nome+' · '+n+' casos lidos</span><small>'+(min===null?'sem leitura':'há '+(min<60?min+' min':Math.round(min/60)+' h'))+'</small><span class="tag '+(min!==null&&min<45?'good':'warn')+'">'+(min!==null&&min<45?'Lendo':'Atrasada')+'</span></div>';}).join('');
   var arm=S.cfg.armazenamento_uso_pct,limp=null;try{limp=JSON.parse(S.cfg.ultima_limpeza_fotos||'null');}catch(x){}
   var hoje=new Date().toISOString().slice(0,10),gHoje=S.uso.filter(function(u){return u.dia===hoje;}).reduce(function(s,u){return s+(+u.custo_brl||0);},0);
@@ -1106,7 +1123,7 @@ function regras(){
   var nr=S.nr;
   var form=admin?'<div class="addrule"><h3 class="sech">'+(nr.id?'Editar regra':'Adicionar regra')+' em '+MK[S.regraMk].nome+'</h3><label class="field"><span>Título</span><input id="nr-t" type="text" data-in="nr-t" value="'+esc(nr.t)+'" placeholder="Ex.: Caixa amassada" autocomplete="off"></label><label class="field"><span>Regra</span><textarea id="nr-b" rows="3" data-in="nr-b" placeholder="O que vale e o que não vale neste marketplace">'+esc(nr.b)+'</textarea></label><label class="field"><span>Link da fonte oficial (opcional)</span><input id="nr-f" type="text" data-in="nr-f" value="'+esc(nr.f)+'" autocomplete="off"></label><div class="row" style="gap:10px"><button type="button" class="btn" data-a="addRegra">Salvar regra</button>'+(nr.id?'<button type="button" class="btn ghost" data-a="cancRegra">Cancelar</button>':'')+'</div></div>':'<p class="sub" style="font-size:12.5px">Só administradores adicionam ou editam regras.</p>';
   var modelos=S.modelos.map(function(m){return '<div class="idrow"><span class="a">v'+esc(m.versao)+'</span><span class="b">'+esc(m.titulo)+'</span></div>';}).join('');
-  return head()+'<div class="cols"><section class="card" style="flex:1 1 380px"><h2 class="sech">Autonomia</h2><div class="lvl" aria-pressed="true"><b>Sempre pedir a minha aprovação</b><small>Modo sombra: a Sandy só prepara. Nada é enviado aos marketplaces e não existe envio automático.</small></div>'+
+  return head()+'<div class="cols"><section class="card" style="flex:1 1 380px"><h2 class="sech">Autonomia</h2><div class="lvl" aria-pressed="true"><b>Sempre pedir a minha aprovação</b><small>A Sandy só prepara e nunca envia sozinha. Quem confirma, envia: os botões com avião vão de verdade ao marketplace.</small></div>'+
   '<h2 class="sech" style="margin-top:8px">Modelos de contestação</h2><p class="sub">Categorias que a Sandy usa para montar o relato (somente leitura).</p>'+modelos+'</section>'+
   '<section class="card" style="flex:1.4 1 460px"><h2 class="sech">Regras por marketplace</h2><p class="sub">Elas não são fixas: a Sandy consulta estas regras ao analisar cada caso.</p><div class="row" style="gap:6px">'+tabs+'</div>'+rl+form+'</section></div>';
 }
@@ -1114,9 +1131,9 @@ function regras(){
 
 function aprov(){
   var l=aplicar(S.casos.filter(function(c){return c.st===3;}),S.f.aprov);
-  var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(c.pedirInfo?'<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar mais fotos</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+c.id+'">Aceitar a devolução</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':c.decidir?'<button type="button" class="btn" data-a="concordar" data-v="'+c.id+'">Concordo, não contestar</button><button type="button" class="btn ghost" data-a="forcar" data-v="'+c.id+'">Contestar mesmo assim</button>':'<button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">Aprovar e enviar</button>')+'</div></section>';}).join('');
+  var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(c.pedirInfo?'<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar mais fotos</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+c.id+'">'+ICO.enviar+'Aceitar a devolução</button><button type="button" class="btn ghost dl" data-a="forcar" data-v="'+c.id+'">Pedir contestação à Sandy<small>Não envia nada</small></button>':c.decidir?'<button type="button" class="btn dl" data-a="concordar" data-v="'+c.id+'">Encerrar sem contestar<small>Não envia nada</small></button><button type="button" class="btn ghost dl" data-a="forcar" data-v="'+c.id+'">Pedir contestação à Sandy<small>Não envia nada</small></button>':'<button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">'+ICO.enviar+'Aprovar e enviar</button>')+'</div></section>';}).join('');
   var vazio=S.casos.filter(function(c){return c.st===3;}).length===0?'Nada aguardando a sua aprovação agora.':'Nenhum caso com esses filtros.';
-  return head()+blocoSuporte()+'<section class="card tight">'+toolbar('aprov','Buscar por produto ou pedido')+'</section><p class="sub" style="margin:0 6px">Casos que a Sandy preparou e que só saem com o seu aprovado. Hoje ela só lê, em modo sombra: quando preparar um relato, ele aparece aqui.</p>'+(linhas||'<div class="empty">'+vazio+'</div>');
+  return head()+blocoSuporte()+'<section class="card tight">'+toolbar('aprov','Buscar por produto ou pedido')+'</section><p class="sub" style="margin:0 6px">Casos que a Sandy preparou e que só saem com o seu aprovado. Quando ela prepara um relato, ele aparece aqui. Nada sai sem o seu toque e a sua confirmação.</p>'+(linhas||'<div class="empty">'+vazio+'</div>');
 }
 
 function acomp(){
@@ -1166,14 +1183,15 @@ function responder(){
 }
 function opcoesML(t){var r=[];String(t||'').split('\n').forEach(function(l){var m=l.match(/^\s*(\d+)\.\s*\*\*(.+?)\*\*\s*[—\-:]\s*(.+)$/);if(m)r.push({n:+m[1],titulo:m[2].trim(),desc:m[3]});});return r;}
 function agirHtml(c){
-  var t=c.acoes,b='';
-  if(t.indexOf('refund')>-1)b+='<button type="button" class="rc-op" data-a="mlAgir" data-v="'+c.id+'|refund"><b>$</b><span>Reembolso total</span></button>';
-  if(t.indexOf('allow_return')>-1)b+='<button type="button" class="rc-op" data-a="mlAgir" data-v="'+c.id+'|allow_return"><b>↩</b><span>Aceitar a devolução</span></button>';
+  /* Ordem: o que custa menos primeiro; o reembolso total (perde tudo) por último, em vermelho */
+  var t=c.acoes,b='',v=c.vped>0?c.vped:0;
   if(t.indexOf('allow_partial_refund')>-1){
     var of=S.ofertas&&S.ofertas[c.id];
-    if(of&&of.length)b+=of.map(function(o){return '<button type="button" class="chipb" data-a="mlAgir" data-v="'+c.id+'|partial_refund|'+o.percentage+'">'+o.percentage+'% · '+brl(o.amount)+'</button>';}).join('');
+    if(of&&of.length)b+='<div class="rc-pcts">'+of.map(function(o){return '<button type="button" class="chipb" data-a="mlAgir" data-v="'+c.id+'|partial_refund|'+o.percentage+'">'+o.percentage+'% · '+brl(o.amount)+'</button>';}).join('')+'</div>';
     else b+='<button type="button" class="rc-op" data-a="mlOfertas" data-v="'+c.id+'"><b>%</b><span>Reembolso parcial…</span></button>';
   }
+  if(t.indexOf('allow_return')>-1)b+='<button type="button" class="rc-op" data-a="mlAgir" data-v="'+c.id+'|allow_return"><b>↩</b><span>Aceitar a devolução</span>'+((c.custoFrete!=null&&c.freteLido)?'<em class="rc-v">frete '+brl(c.custoFrete)+'</em>':'')+'</button>';
+  if(t.indexOf('refund')>-1)b+='<button type="button" class="rc-op perigo" data-a="mlAgir" data-v="'+c.id+'|refund"><b>$</b><span>Reembolso total</span>'+(v?'<em class="rc-v">você perde '+brl(v)+'</em>':'')+'</button>';
   return b;
 }
 async function mlOfertas(id,quieto){
@@ -1200,17 +1218,21 @@ async function enviarAoML(id,corpo,fim){
   }catch(e){toast('Não consegui enviar: '+((e&&e.message)||'erro'));}
   finally{S.agindo=false;S.enviandoId=null;render(true,false);}
 }
-async function mlAgir(v){
-  var p=String(v).split('|'),id=p[0],acao=p[1],n=p[2]?Number(p[2]):null;
-  var c=caso(id),nome=c?c.pedido:'',tit='';
-  if(acao==='mediador_opcao'&&c&&c.msg){var o=opcoesML(c.msg.texto).filter(function(x){return x.n===n;})[0];tit=o?o.titulo:'';}
+async function mlAgir(arg){
+  var p=String(arg).split('|'),id=p[0],acao=p[1],n=p[2]?Number(p[2]):null;
+  var c=caso(id),tit='',x=null;
+  var v=c&&c.vped>0?c.vped:0;
+  if(acao==='mediador_opcao'&&c&&c.msg){var o=opcoesML(c.msg.texto).filter(function(y){return y.n===n;})[0];tit=o?o.titulo:'';}
+  if(c&&c.sug&&c.sug.comparacao&&n!=null){x=c.sug.comparacao.filter(function(y){return Number(y.opcao)===Number(n);})[0]||null;}
+  var pct=function(){return v?v*n/100:null;};
   var T={
-    refund:{titulo:'Devolver 100% do valor ao comprador?',texto:'Pedido '+nome+'. Isso encerra a reclamação e não dá para desfazer.',ok:'Reembolsar'},
-    allow_return:{titulo:'Aceitar a devolução?',texto:'Pedido '+nome+'. O comprador devolve o produto e a loja devolve 100% do valor. O Mercado Livre pode cobrar o frete de devolução da loja.',ok:'Aceitar'},
-    partial_refund:{titulo:'Oferecer '+n+'% de reembolso parcial?',texto:'Pedido '+nome+'. O comprador fica com o produto. Se ele aceitar, o caso fecha.',ok:'Oferecer'},
-    mediador_opcao:{titulo:'Enviar a sua escolha ao Mercado Livre?',texto:'Pedido '+nome+'. Isso responde ao assistente do ML e não dá para desfazer.',citacao:'Escolho a opção '+n+': '+tit+'.',ok:'Enviar'},
-    mediador_pct:{titulo:'Enviar a porcentagem ao Mercado Livre?',texto:'Pedido '+nome+'. Isso responde ao assistente do ML e não dá para desfazer.',citacao:'Quero oferecer '+n+'% de reembolso parcial.',ok:'Enviar'}
+    refund:{titulo:v?'Reembolsar '+brl(v)+' ao comprador?':'Devolver 100% do valor ao comprador?',texto:'Isso encerra a reclamação.',ok:v?'Reembolsar '+brl(v):'Reembolsar',perigo:true,custo:v?{tone:'bad',lab:'Você perde',val:brl(v),chip:'100% do valor · o produto não volta'}:null},
+    allow_return:{titulo:'Aceitar a devolução deste pedido?',texto:(v?'O comprador recebe '+brl(v)+' de volta. ':'')+'O produto volta ao estoque.',ok:'Aceitar e enviar ao ML',custo:{tone:'warn',lab:'Custo para a loja',val:(c&&c.custoFrete!=null&&c.freteLido)?brl(c.custoFrete):'Frete de devolução',chip:(c&&c.custoFrete!=null&&c.freteLido)?'só a etiqueta de devolução':'o valor é informado pelo Mercado Livre'}},
+    partial_refund:{titulo:v?'Oferecer '+n+'% de reembolso ('+brl(pct())+')?':'Oferecer '+n+'% de reembolso parcial?',texto:'Se o comprador aceitar, o caso fecha.',ok:v?'Oferecer '+brl(pct()):'Oferecer',custo:v?{tone:'warn',lab:'Você paga',val:brl(pct()),chip:n+'% de '+brl(v)+' · o comprador fica com o produto'}:null},
+    mediador_opcao:{titulo:'Enviar a sua escolha ao Mercado Livre?',texto:'Isso responde ao assistente do ML.',citacao:'Escolho a opção '+n+': '+tit+'.',ok:'Enviar a opção '+n,custo:(x&&x.custo_brl!=null)?{tone:'info',lab:'Custo estimado pela Sandy',val:brl(x.custo_brl),chip:'opção '+n}:null},
+    mediador_pct:{titulo:'Enviar a porcentagem ao Mercado Livre?',texto:'Isso responde ao assistente do ML.',citacao:'Quero oferecer '+n+'% de reembolso parcial.',ok:'Enviar '+n+'%',custo:v?{tone:'warn',lab:'Você paga',val:brl(pct()),chip:n+'% de '+brl(v)}:null}
   }[acao];
+  T.caso=c;T.destino='Mercado Livre';
   if(!(await confirmar(T)))return;
   await enviarAoML(id,{acao:acao,percentual:(acao==='partial_refund'||acao==='mediador_pct')?n:null,opcao:acao==='mediador_opcao'?n:null});
 }
@@ -1221,18 +1243,26 @@ document.addEventListener('submit',function(e){
   if(!t)return;
   var cc=caso(id);
   var paraC=f.getAttribute('data-para')==='comprador';
-  confirmar({titulo:paraC?'Enviar ao comprador?':'Enviar ao mediador do Mercado Livre?',texto:'Pedido '+(cc?cc.pedido:'')+'. A mensagem não pode ser editada depois de enviada.',citacao:t,ok:'Enviar'}).then(function(ok){if(ok)enviarAoML(id,{acao:paraC?'comprador_texto':'mediador_texto',texto:t},function(){f.reset();});});
+  confirmar({titulo:paraC?'Enviar ao comprador?':'Enviar ao mediador do Mercado Livre?',texto:'A mensagem não pode ser editada depois de enviada.',citacao:t,ok:'Enviar',caso:cc,destino:'Mercado Livre'}).then(function(ok){if(ok)enviarAoML(id,{acao:paraC?'comprador_texto':'mediador_texto',texto:t},function(){f.reset();});});
 });
 
 function confirmar(o){return new Promise(function(res){
   var m=document.createElement('div');m.className='mdl';
-  m.innerHTML='<div class="mdl-c" role="dialog" aria-modal="true" aria-label="'+esc(o.titulo)+'"><h3>'+esc(o.titulo)+'</h3><p>'+esc(o.texto)+'</p>'+(o.citacao?'<blockquote>'+esc(o.citacao)+'</blockquote>':'')+'<div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">'+esc(o.ok||'Confirmar')+'</button></div></div>';
+  m.innerHTML='<div class="mdl-c" role="dialog" aria-modal="true" aria-label="'+esc(o.titulo)+'"><h3>'+esc(o.titulo)+'</h3>'+(o.caso?resumoCaso(o.caso):'')+(o.custo?custoHtml(o.custo):'')+(o.texto?'<p>'+esc(o.texto)+'</p>':'')+(o.citacao?'<blockquote>'+esc(o.citacao)+'</blockquote>':'')+'<div class="mdl-av">'+ICO.alerta+'<span>Vai direto ao '+esc(o.destino||'marketplace')+'. Não dá para desfazer.</span></div><div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn'+(o.perigo?' bad':'')+'" data-r="1">'+ICO.enviar+esc(o.ok||'Confirmar')+'</button></div></div>';
   function fim(v){document.removeEventListener('keydown',kd);m.remove();res(v);}
   function kd(e){if(e.key==='Escape')fim(false);}
   m.addEventListener('click',function(e){var b=e.target.closest('[data-r]');if(b)fim(b.getAttribute('data-r')==='1');else if(e.target===m)fim(false);});
   document.addEventListener('keydown',kd);document.body.appendChild(m);
-  var b=m.querySelector('[data-r="1"]');if(b)b.focus();
+  var b=m.querySelector('[data-r="0"]');if(b)b.focus();
 });}
+/* Peças dos modais de envio: ícones, resumo do pedido e bloco de custo em R$ */
+var ICO={
+  alerta:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  enviar:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>',
+  caixa:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>'
+};
+function resumoCaso(c){return '<div class="mdl-sum"><i>'+ICO.caixa+'</i><div><b>'+esc(c.produto)+'</b><small>'+esc(c.loja)+' · '+esc(NOME_MK[c.mk]||'')+' · Pedido '+esc(String(c.pedido).replace('#',''))+'</small></div></div>';}
+function custoHtml(x){return '<div class="mdl-custo '+x.tone+'"><div class="l"><small>'+esc(x.lab)+'</small><b>'+esc(x.val)+'</b></div>'+(x.chip?'<span class="tag">'+esc(x.chip)+'</span>':'')+'</div>';}
 function avisoEnvio(c){
   var e=c.env;if(!e)return '';
   var t=new Date(e.criado_em);if(c.msg&&new Date(c.msg.enviado_em)>t)return '';
@@ -1308,7 +1338,7 @@ function modalMk(html,aoClicar){
   function fim(){document.removeEventListener('keydown',kd);m.remove();}
   function kd(e){if(e.key==='Escape')fim();}
   m.addEventListener('click',function(e){var b=e.target.closest('[data-r]');if(!b){if(e.target===m)fim();return;}if(b.getAttribute('data-r')==='0'){fim();return;}aoClicar(b,m,fim);});
-  document.addEventListener('keydown',kd);document.body.appendChild(m);return m;
+  document.addEventListener('keydown',kd);document.body.appendChild(m);var fc=m.querySelector('[data-r="0"]');if(fc)fc.focus();return m;
 }
 async function consultarMk(id){
   var nome=NOME_MK[(caso(id)||{}).mk]||'o marketplace';
@@ -1333,10 +1363,10 @@ async function aprovar(id){
   var est='border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;background:#fff';
   var emailLoja=String(S.cfg['email_loja:'+String(c.loja||'').toLowerCase()]||'').trim();
   var emailCampo=(c.mk==='sp'&&!emailLoja)?'<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>E-mail de contato da loja (a Shopee exige)</b><input type="email" class="ct-e" placeholder="contato@sualoja.com.br" style="'+est+'"></label>':'';
-  var html='<h3>Enviar ao '+esc(nome)+'</h3><p>Pedido '+esc(c.pedido)+(emailLoja?'. Contato da loja: '+esc(emailLoja):'')+'. Vão junto '+nf+' foto'+(nf===1?'':'s')+' da conferência. O texto abaixo é o da Sandy, já pronto: <b>você pode editar à vontade</b>. Ao tocar em Enviar, vai direto ao '+esc(nome)+' e não dá para desfazer.</p>'+
+  var html='<h3>Enviar a contestação ao '+esc(nome)+'?</h3>'+resumoCaso(c)+custoHtml({tone:'info',lab:'Em disputa',val:c.vped>0?brl(c.vped):'Valor não informado',chip:nf+' foto'+(nf===1?'':'s')+' da conferência vão junto'})+'<p>'+(emailLoja?'Contato da loja: '+esc(emailLoja)+'. ':'')+'O texto abaixo é o da Sandy, já pronto: <b>você pode editar</b>.</p>'+
     '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Motivo</b><select class="ct-m" style="'+est+'">'+opts+'</select></label><p class="ct-r" style="font-size:13px"></p>'+emailCampo+
     '<label style="display:flex;flex-direction:column;gap:6px;font-size:13.5px"><b>Texto que vai ao '+esc(nome)+'</b><textarea class="ct-t" rows="9" style="'+est+';line-height:1.45;resize:vertical">'+esc(texto)+'</textarea></label>'+
-    '<div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">Enviar ao '+esc(nome)+' agora</button></div>';
+    '<div class="mdl-av">'+ICO.alerta+'<span>Vai direto ao '+esc(nome)+'. Não dá para desfazer.</span></div><div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">'+ICO.enviar+'Enviar ao '+esc(nome)+'</button></div>';
   var m=modalMk(html,async function(b,m,fim){
     var t=String(m.querySelector('.ct-t').value||'').trim();
     if(t.length<20){toast('Escreva o texto da contestação.');return;}
@@ -1361,14 +1391,15 @@ async function aceitarDev(id){
   if(c.mk==='tt'){toast('No TikTok Shop, se a loja não recusar, a devolução é aprovada sozinha no prazo.');return;}
   S.contestando=true;var d=await consultarMk(id);S.contestando=false;if(!d)return;
   if(!d.pode_aceitar){toast(nome+' não oferece mais essa ação neste caso (prazo encerrado ou já respondido).');return;}
-  modalMk('<h3>Aceitar a devolução no '+esc(nome)+'</h3><p>Pedido '+esc(c.pedido)+'. O cliente recebe o reembolso e a loja não contesta. Depois de enviado, não dá para desfazer.</p><div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">Aceitar a devolução</button></div>',async function(b,m,fim){
+  var freteOk=c.custoFrete!=null&&c.freteLido;
+  modalMk('<h3>Aceitar a devolução deste pedido?</h3>'+resumoCaso(c)+custoHtml({tone:'warn',lab:'Custo para a loja',val:freteOk?brl(c.custoFrete):'Frete de devolução',chip:freteOk?'só a etiqueta de devolução':'o valor é informado pelo '+nome})+'<p>'+(c.vped>0?'O cliente recebe '+brl(c.vped)+' de volta e a loja não contesta. ':'O cliente recebe o reembolso e a loja não contesta. ')+'O produto volta ao estoque.</p><div class="mdl-av">'+ICO.alerta+'<span>Vai direto ao '+esc(nome)+'. Não dá para desfazer.</span></div><div class="mdl-a"><button type="button" class="btn ghost" data-r="0">Cancelar</button><button type="button" class="btn" data-r="1">'+ICO.enviar+'Aceitar e enviar ao '+esc(nome)+'</button></div>',async function(b,m,fim){
     b.disabled=true;b.textContent='Enviando…';
     try{
       var r=await SB.functions.invoke('devol-contestar',{body:{modo:'aceitar',caso_id:id,confirmado:true}});
       var x=r.data||{};if(r.error&&!x.mensagem){x=await corpoErro(r.error);}
       toast(x.mensagem||(x.ok?'Devolução aceita.':'Não foi possível aceitar.'));
-      if(x.ok){fim();await aposEnvio();}else{b.disabled=false;b.textContent='Aceitar a devolução';}
-    }catch(err){toast('Não consegui enviar: '+((err&&err.message)||'erro'));b.disabled=false;b.textContent='Aceitar a devolução';}
+      if(x.ok){fim();await aposEnvio();}else{b.disabled=false;b.textContent='Aceitar e enviar ao '+nome;}
+    }catch(err){toast('Não consegui enviar: '+((err&&err.message)||'erro'));b.disabled=false;b.textContent='Aceitar e enviar ao '+nome;}
   });
 }
 
@@ -1378,7 +1409,16 @@ async function aposEnvio(){
   else render(true,false);
 }
 
-async function decidirCaso(id,acao){
+var PEND={};
+function decidirCaso(id,acao){
+  /* Nada é gravado na hora: a pessoa tem 10 s para desfazer. Se fechar a aba antes, a decisão não é gravada. */
+  if(PEND[id])return;
+  var msg=acao==='concordar_nao_contestar'?'Caso encerrado sem contestação. Nada foi enviado.':'A Sandy vai preparar o texto. Nada foi enviado.';
+  var rot=setTimeout(function(){delete PEND[id];decidirCasoJa(id,acao);},10000);
+  PEND[id]={rot:rot,acao:acao};
+  toastDesfazer(msg,function(){clearTimeout(rot);delete PEND[id];toast('Desfeito. O caso continua como estava.');});
+}
+async function decidirCasoJa(id,acao){
   if(S.decidindo)return;S.decidindo=true;
   try{
     var r=await SB.rpc('devol_decidir',{p_caso:id,p_acao:acao});
