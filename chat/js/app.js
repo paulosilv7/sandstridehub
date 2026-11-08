@@ -142,12 +142,29 @@ async function carregarBase() {
   S.lojas = l.data || []; S.etiquetas = e.data || []; S.rapidas = r.data || []; S.equipe = q.data || [];
   lerConfig(c.data);
 }
+// Última versão conhecida de cada conversa, para o tempo real ignorar atualizações sem mudança útil.
+let RAW_CONV = new Map();
+const CAMPOS_IGNORADOS = new Set(['sincronizada_em', 'sandy_trava_em']);
+function conversaMudou(payload) {
+  if (payload.eventType !== 'UPDATE') { return true; }
+  const novo = payload.new || {};
+  const velho = RAW_CONV.get(novo.id);
+  if (!velho) return true;
+  let mudou = false;
+  for (const k of Object.keys(novo)) {
+    if (CAMPOS_IGNORADOS.has(k)) continue;
+    if (JSON.stringify(novo[k]) !== JSON.stringify(velho[k])) { mudou = true; break; }
+  }
+  RAW_CONV.set(novo.id, { ...velho, ...novo });
+  return mudou;
+}
 async function carregarConversas() {
   const { data, error } = await sb.from('conversas')
     .select('*, conversa_etiquetas(etiqueta_id)')
     .order('ultima_mensagem_em', { ascending: false, nullsFirst: false }).limit(500);
   if (error) { console.error(error); return; }
   const antes = S.conhecidas;
+  RAW_CONV = new Map((data || []).map((r) => [r.id, r]));
   S.convs = (data || []).map(normalizar);
   // Aviso de mensagem nova
   const agora = new Map(S.convs.map((c) => [c.id, c]));
@@ -878,7 +895,7 @@ function ligarTempoReal() {
   if (canal) sb.removeChannel(canal);
   const tabela = (t) => ({ event: '*', schema: 'public', table: t });
   canal = sb.channel('caixa-de-entrada')
-    .on('postgres_changes', tabela('conversas'), agendarRecarga)
+    .on('postgres_changes', tabela('conversas'), (p) => { if (conversaMudou(p)) agendarRecarga(); })
     .on('postgres_changes', tabela('mensagens'), agendarRecarga)
     .on('postgres_changes', tabela('conversa_etiquetas'), agendarRecarga)
     .subscribe((st) => marcarConexao(st === 'SUBSCRIBED'));
