@@ -1339,8 +1339,8 @@ function aplicarDados(D){
   var pill=$('#sincPill');
   if(pill){
     var min=ult?Math.round((Date.now()-ult)/60000):null;
-    pill.textContent=min===null?'Aguardando primeira atualização':(erros?erros+' loja'+(erros>1?'s':'')+' com falha na última atualização':(min<1?'Atualizado agora':'Atualizado há '+min+' min'));
-    pill.className='pill '+((min===null||erros||min>30)?'warn':'good');
+    pill.textContent=min===null?'Aguardando primeira atualização':(erros?erros+' loja'+(erros>1?'s':'')+' com falha na última atualização':(min<1?'Atualizado agora':'Atualizado há '+min+' min')+' · a cada 5 min');
+    pill.className='pill '+((min===null||erros||min>30)?'warn':'good');pill.title='Os dados dos marketplaces são atualizados a cada 5 minutos.';
   }
   relogio();
 }
