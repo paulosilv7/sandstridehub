@@ -1240,10 +1240,11 @@ function avisoEnvio(c){
   return '<div class="rc-ok"><b>✓</b><span>'+o+' às '+t.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' e o Mercado Livre aceitou. Aguardando o mediador responder. <button type="button" class="rc-up" data-a="mlAtualizar" data-v="'+c.id+'">Atualizar agora</button></span></div>';
 }
 
-async function mlAtualizar(id,quieto){
+async function mlAtualizar(id,quieto,semRecarga){
   try{
     var rr=await SB.functions.invoke('devol-ml-agir',{body:{modo:'mensagens',caso_id:id}});
     var d=rr.data||{};if(rr.error||!d.ok)throw new Error(d.mensagem||(rr.error&&rr.error.message)||'erro');
+    if(semRecarga)return;
     await carregar();render(true,false);
     if(!quieto)toast('Conversa atualizada.');
   }catch(e){if(!quieto)toast('Não consegui atualizar: '+((e&&e.message)||'erro'));}
@@ -1252,8 +1253,13 @@ setInterval(function(){
   if(document.hidden||S.tela!=='resp'||S.agindo)return;
   var ae=document.activeElement;if(ae&&ae.closest&&ae.closest('.rc-f')&&ae.value)return;
   var pend=S.casos.filter(function(c){return c.env&&(!c.msg||new Date(c.msg.enviado_em)<=new Date(c.env.criado_em));}).slice(0,3);
-  pend.forEach(function(c){mlAtualizar(c.id,true);});
-},20000);
+  if(!pend.length)return;
+  // Consulta cada caso e recarrega a lista uma única vez (antes recarregava a cada caso).
+  Promise.all(pend.map(function(c){return mlAtualizar(c.id,true,true);})).then(function(){
+    if(document.hidden||S.tela!=='resp'||S.agindo)return;
+    return carregar().then(function(){render(true,false);});
+  }).catch(function(){});
+},60000);
 
 async function corpoErro(err){try{if(err&&err.context&&typeof err.context.json==='function')return await err.context.json();}catch(e){}return {};}
 function ultimaMsg(c){var t=(c.thread||[]).slice().sort(function(a,b){return String(a.enviado_em).localeCompare(String(b.enviado_em));});return t.length?t[t.length-1]:null;}
