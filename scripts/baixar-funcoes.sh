@@ -11,6 +11,7 @@ FUNCOES=(
   devol-etapas-sincronizar devol-contestar devol-itens devol-ml-envios devol-aceitar-lote devol-conferir
   financeiro-anuncios
 )
+[ -f supabase/config.toml ] || supabase init   # se perguntar algo, responda n
 supabase link --project-ref "$REF"
 for f in "${FUNCOES[@]}"; do
   echo "Baixando $f ..."

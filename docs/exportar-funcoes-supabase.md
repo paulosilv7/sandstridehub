@@ -9,7 +9,8 @@ Hoje 22 das 39 funções do Supabase existem só lá dentro, sem cópia aqui. Es
 ## Passo a passo
 1. Abra o Terminal na pasta do repositório (`sandstridehub`) e atualize: `git pull`.
 2. Rode: `./scripts/baixar-funcoes.sh`. Ele baixa as 22 funções para `supabase/functions/<nome>/index.ts`.
-3. Confira o que mudou: `git status` (devem aparecer pastas novas em `supabase/functions/`).
+3. Confira: `./scripts/conferir-funcoes.sh`. Ele mostra quais funções já estão no repositório (deve dar "Faltando: 0 de 22") e avisa se achar algum segredo escrito no código. Se avisar, não faça o push e chame o Claude.
+   Depois veja `git status` (devem aparecer pastas novas em `supabase/functions/`).
 4. Guarde no GitHub:
    ```
    git add supabase/functions
