@@ -99,6 +99,12 @@
   const inactive=new Set(db.inactiveSuppliers||[]),rows=db.suppliers.filter(supplier=>!inactive.has(supplier)).map(supplier=>{const view=supplierView(db,supplier);return{supplier,balance:view.balance}}).sort((a,b)=>b.balance-a.balance||a.supplier.localeCompare(b.supplier,'pt-BR'));
   return{withBalance:rows.filter(row=>row.balance!==0),settled:rows.filter(row=>row.balance===0)};
  }
- const api={parseCents,formatInput,formatMoney,quantity,total,validDate,monthRange,businessDate,priceAt,sum,allocationLedger,monthly,purchaseMonths,paymentMonths,name,nameKey,validateSnapshot,report,movementPeriod,supplierView,supplierPortfolio};
+ function purchaseEntries(db,supplier,date,items,note='',ids=[]){
+  validDate(date);if(!db.suppliers.includes(supplier))throw new Error('Fornecedor não encontrado.');
+  if(!Array.isArray(items)||!items.length)throw new Error('Adicione ao menos um produto à compra.');
+  if(ids.length!==items.length||new Set(ids).size!==ids.length||ids.some(id=>!id))throw new Error('Identificação dos itens da compra inválida.');
+  return items.map((item,index)=>{const product=db.products.find(value=>value.id===item.product&&value.supplier===supplier);if(!product||product.active===false)throw new Error('Selecione somente produtos ativos deste fornecedor.');const qty=quantity(item.qty),unit=integer(item.unit);if(unit<=0)throw new Error('O preço unitário deve ser maior que zero.');return{id:ids[index],type:'purchase',date,supplier,product:product.name,qty,unit,value:total(qty,unit),note:note||'',cancelled:false}});
+ }
+ const api={parseCents,formatInput,formatMoney,quantity,total,validDate,monthRange,businessDate,priceAt,sum,allocationLedger,monthly,purchaseMonths,paymentMonths,name,nameKey,validateSnapshot,report,movementPeriod,supplierView,supplierPortfolio,purchaseEntries};
  root.FinanceCore=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);
