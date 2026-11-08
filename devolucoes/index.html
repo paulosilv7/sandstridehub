@@ -496,7 +496,7 @@ function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMont
 async function carregar(){S.supCarregado=false;
   var q=await Promise.all([
     SB.from('lojas').select('id,marketplace,apelido,ativa').eq('ativa',true),
-    SB.from('devol_casos').select('*').order('atualizado_em',{ascending:false}).limit(1000),
+    SB.from('devol_casos').select('id,loja_id,solicitacao_id,pedido,produto,motivo_original,status,prazo_em,valor_em_risco,valor_revertido,valor_conciliado,protocolo,atualizado_em,tipo_origem,etapa_origem,situacao_mkt,acoes_loja,desfecho,valor_reembolsado,valor_pedido,cobertura_ml,custo_frete,frete_lido,arquivado_em,decidido_em,etapa_fisica,etapa_fisica_em,enviado_mkt_em').order('atualizado_em',{ascending:false}).limit(1000),
     SB.from('devol_anexos').select('caso_id').neq('estado','excluido').not('caso_id','is',null),
     SB.from('devol_config').select('chave,valor'),
     SB.from('devol_regras').select('*').order('criado_em'),
@@ -538,13 +538,14 @@ async function carregarCaso(id){
       SB.from('devol_eventos').select('tipo,dados,criado_em').eq('caso_id',id).order('id',{ascending:false}).limit(40),
       SB.from('devol_anexos').select('caminho,tipo,estado,bytes').eq('caso_id',id).neq('estado','excluido'),
       SB.from('devol_relatos').select('recomendacao,motivo,relato,pedido_financeiro,provas,alertas,categoria,criado_em,visao').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1),
-      SB.from('devol_recebimentos').select('descricao_equipe,criado_em').eq('caso_id',id).order('criado_em',{ascending:false}).limit(3)
+      SB.from('devol_recebimentos').select('descricao_equipe,criado_em').eq('caso_id',id).order('criado_em',{ascending:false}).limit(3),
+      SB.from('devol_casos').select('itens_pedido').eq('id',id).maybeSingle()
     ]);
     var anexos=r[1].data||[],imgs=anexos.filter(function(a){return a.tipo!=='video';});
     var urls={};
     var turls={};
     if(imgs.length){var cams=imgs.map(function(a){return a.caminho;});var su=await assinar(cams.concat(cams.map(function(c){return c+'.t.jpg';})));cams.forEach(function(c){urls[c]=su[c]||null;if(su[c+'.t.jpg'])turls[c]=su[c+'.t.jpg'];});garantirMiniaturas(cams.filter(function(c){return urls[c]&&!turls[c];}).map(function(c){return {caminho:c,url:urls[c]};}));}
-    S.cx={id:id,carregando:false,relato:(r[2].data||[])[0]||null,equipe:(r[3].data||[]),eventos:r[0].data||[],anexos:anexos.map(function(a){return {url:turls[a.caminho]||urls[a.caminho]||null,full:urls[a.caminho]||null,tipo:a.tipo,bytes:a.bytes};})};
+    S.cx={id:id,carregando:false,itens:(r[4]&&r[4].data&&r[4].data.itens_pedido)||null,relato:(r[2].data||[])[0]||null,equipe:(r[3].data||[]),eventos:r[0].data||[],anexos:anexos.map(function(a){return {url:turls[a.caminho]||urls[a.caminho]||null,full:urls[a.caminho]||null,tipo:a.tipo,bytes:a.bytes};})};
   }catch(e){S.cx={id:id,carregando:false,eventos:[],anexos:[],erro:true};}
   if(S.tela==='caso'&&S.casoId===id)render(true,false);
 }
@@ -983,7 +984,7 @@ function detalhe(){
   return head()+'<div><button type="button" class="pbk" data-a="voltar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Voltar para '+TITULOS[destino]+'</button></div>'+
   '<section class="stage"><div style="min-width:0;flex:1 1 360px"><div class="lbl">'+mk(c.mk)+esc(MK[c.mk].nome+' · '+c.loja)+'</div><div class="tt">'+esc(c.problema)+'</div><div class="sub" style="color:var(--on-dark-muted);margin-top:6px">'+esc(c.pedido+' · solicitação '+c.solicitacao)+'</div></div><div class="sr"><div class="k">Prazo</div><div class="pv">'+(c.st>=6?'Encerrado':(c.semPrazo?'—':(c.prazo<=0?'Vencido':c.prazo+' h')))+'</div></div>'+proxPasso(c)+'</section>'+
   '<div class="cols"><div style="flex:1 1 440px">'+
-    itensHtml(r.itens_pedido)+
+    itensHtml(S.cx&&S.cx.id===c.id?S.cx.itens:null)+
     equipeHtml(cx.equipe,cx.carregando)+
     '<section class="card" style="gap:10px"><h2 class="sech">Situação no marketplace</h2>'+
       (c.mkt?kv('Resposta do marketplace','<b>'+esc(c.mkt)+'</b>'):'')+
