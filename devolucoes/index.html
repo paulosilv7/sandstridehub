@@ -493,10 +493,15 @@ function adaptar(r){
     mkt:r.situacao_mkt||'',desfecho:r.desfecho||null,reemb:r.valor_reembolsado==null?null:+r.valor_reembolsado,vped:+(r.valor_pedido||r.valor_em_risco)||0,cob:r.cobertura_ml===true,arq:!!r.arquivado_em,decEm:r.decidido_em||null,custoFrete:r.custo_frete==null?null:+r.custo_frete,freteLido:r.frete_lido===true,protocolo:r.protocolo,credito:Math.max(0,(+r.valor_revertido||0)-(+r.valor_conciliado||0)),risco:+r.valor_em_risco||0,solicitacao:r.solicitacao_id,atualizado:r.atualizado_em,raw:r};
 }
 function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-01';}
+/* Casos: a primeira carga traz todos; as seguintes trazem só os abertos e os arquivados que mudaram desde a última carga
+   (o banco atualiza atualizado_em a cada alteração). Os arquivados que não mudaram ficam guardados na memória. */
+var RAWCASOS={},WM_CASOS=null;
 async function carregar(){S.supCarregado=false;
+  var qCasos=SB.from('devol_casos').select('id,loja_id,solicitacao_id,pedido,produto,motivo_original,status,prazo_em,valor_em_risco,valor_revertido,valor_conciliado,protocolo,atualizado_em,tipo_origem,etapa_origem,situacao_mkt,acoes_loja,desfecho,valor_reembolsado,valor_pedido,cobertura_ml,custo_frete,frete_lido,arquivado_em,decidido_em,etapa_fisica,etapa_fisica_em,enviado_mkt_em').order('atualizado_em',{ascending:false}).limit(1000);
+  if(WM_CASOS)qCasos=qCasos.or('arquivado_em.is.null,atualizado_em.gt.'+WM_CASOS);
   var q=await Promise.all([
     SB.from('lojas').select('id,marketplace,apelido,ativa').eq('ativa',true),
-    SB.from('devol_casos').select('id,loja_id,solicitacao_id,pedido,produto,motivo_original,status,prazo_em,valor_em_risco,valor_revertido,valor_conciliado,protocolo,atualizado_em,tipo_origem,etapa_origem,situacao_mkt,acoes_loja,desfecho,valor_reembolsado,valor_pedido,cobertura_ml,custo_frete,frete_lido,arquivado_em,decidido_em,etapa_fisica,etapa_fisica_em,enviado_mkt_em').order('atualizado_em',{ascending:false}).limit(1000),
+    qCasos,
     SB.from('devol_anexos').select('caso_id').neq('estado','excluido').not('caso_id','is',null),
     SB.from('devol_config').select('chave,valor'),
     SB.from('devol_regras').select('*').order('criado_em'),
@@ -520,7 +525,12 @@ async function carregar(){S.supCarregado=false;
   MSG={};THR={};var _msgs=(q[10].data||[]);var _reais=_msgs.filter(function(x){return x.origem==='loja'&&String(x.chave).indexOf('loja-local:')!==0;});_msgs=_msgs.filter(function(x){if(String(x.chave).indexOf('loja-local:')!==0)return true;var t=new Date(x.enviado_em).getTime();return !_reais.some(function(y){return y.caso_id===x.caso_id&&Math.abs(new Date(y.enviado_em).getTime()-t)<180000;});});_msgs.forEach(function(x){if(x.origem==='mediador'&&!MSG[x.caso_id])MSG[x.caso_id]=x;(THR[x.caso_id]=THR[x.caso_id]||[]);if(THR[x.caso_id].length<6)THR[x.caso_id].push(x);});
   ENV={};(q[11].data||[]).forEach(function(x){if(!ENV[x.caso_id])ENV[x.caso_id]=x;});SUG={};(q[12].data||[]).forEach(function(x){SUG[x.caso_id]=x;});
   S.resumo=(q[13].data||[]).map(function(r){var lj=LOJAID[r.loja_id]||{};r.mk=MKS[lj.marketplace]||'ml';r.loja=lj.apelido||'—';return r;});
-  S.casos=(q[1].data||[]).map(adaptar);
+  var _bruto=WM_CASOS?(function(){var k={};Object.keys(RAWCASOS).forEach(function(i){if(RAWCASOS[i].arquivado_em)k[i]=RAWCASOS[i];});return k;})():{};
+  (q[1].data||[]).forEach(function(r){_bruto[r.id]=r;});
+  RAWCASOS=_bruto;
+  var _mx=0;Object.keys(RAWCASOS).forEach(function(i){var t=Date.parse(RAWCASOS[i].atualizado_em);if(t>_mx)_mx=t;});
+  WM_CASOS=_mx?new Date(_mx-120000).toISOString():null;
+  S.casos=Object.keys(RAWCASOS).map(function(i){return RAWCASOS[i];}).sort(function(a,b){return String(b.atualizado_em).localeCompare(String(a.atualizado_em));}).map(adaptar);
   S.cfg={};(q[3].data||[]).forEach(function(c){S.cfg[c.chave]=c.valor;});
   S.regras=q[4].data||[];
   S.eco=(q[5].data||[]).map(function(e){var c=e.devol_casos||{},lj=LOJAID[c.loja_id]||{};return {tipo:e.tipo,valor:+e.valor,conf:!!e.conferido,extrato:e.extrato_ref,mk:MKS[lj.marketplace]||'ml',loja:lj.apelido||'—',pedido:c.pedido,dia:new Date(e.criado_em).toLocaleDateString('pt-BR',{day:'numeric',month:'short'})};});
