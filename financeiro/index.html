@@ -808,7 +808,14 @@ function histRec(ym){ // quanto entrou na conta no mês (liberado pelos marketpl
 }
 function histMeses(){
   var M={};(S.hist||[]).forEach(function(r){if(r.mes>'2026-10')return;var m=M[r.mes]=M[r.mes]||{ml:[0,0,0,0],sp:[0,0,0,0],tt:[0,0,0,0]},a=m[r.mp];if(!a)return;a[0]+=+r.vendido;a[1]+=+r.liquido;a[2]+=+r.pedidos;a[3]+=+r.recebido});
-  return Object.keys(M).sort().map(function(k){var m=M[k],t=[0,0,0,0];['ml','sp','tt'].forEach(function(x){for(var i=0;i<4;i++)t[i]+=m[x][i]});return {ym:k,m:m,t:t}});
+  var L=Object.keys(M).sort().map(function(k){var m=M[k],t=[0,0,0,0];['ml','sp','tt'].forEach(function(x){for(var i=0;i<4;i++)t[i]+=m[x][i]});return {ym:k,m:m,t:t}});
+  if(S.hv&&S.lojasMap&&S.hv.ym>'2026-10'){ // mês em andamento: vendas do sistema ao vivo + recebido lido dos marketplaces
+    var mm={ml:[0,0,0,0],sp:[0,0,0,0],tt:[0,0,0,0]},R=histRec(S.hv.ym),t2=[0,0,0,0];
+    S.hv.rows.forEach(function(r){var l=S.lojasMap[r.loja_id],k=l?mkcod(l.mkt):null;if(!k)return;var a=mm[k];a[0]+=+r.faturamento;a[1]+=(+r.faturamento)-(+r.taxas)-(+r.frete);a[2]+=+r.pedidos});
+    ['ml','sp','tt'].forEach(function(k){mm[k][3]=R?R[k]:0;for(var i=0;i<4;i++)t2[i]+=mm[k][i]});
+    L.push({ym:S.hv.ym,m:mm,t:t2,atual:true});
+  }
+  return L;
 }
 function mes3(ym){return MESES[+ym.slice(5,7)-1].slice(0,3)}
 function histGrafico(L){
@@ -840,7 +847,7 @@ function telaHistorico(){
   var t='<div class="ext" style="'+cols+'"><div class="eh"><span>Mês</span><span class="r">Vendi</span><span class="r">Pedidos</span><span class="r">Líquido</span><span class="r">Recebi</span><span class="r">Recebi − líquido</span></div>';
   L.forEach(function(x,i){
     var d=x.t[3]-x.t[1],aberto=S.hopen===x.ym;
-    t+='<button type="button" class="er hm" data-hm="'+x.ym+'" aria-expanded="'+aberto+'" style="width:100%;background:none;cursor:pointer"><span class="l">'+'<span style="display:inline-flex;transition:transform .15s;transform:rotate('+(aberto?90:0)+'deg)">'+ic('r',16)+'</span>'+'<span style="font-weight:600">'+MESES[+x.ym.slice(5,7)-1]+'</span></span><span class="r hv">'+brl0(x.t[0])+'</span><span class="r hp">'+Math.round(x.t[2]).toLocaleString('pt-BR')+'</span><span class="r hl">'+brl0(x.t[1])+'</span><span class="r hr" style="font-weight:600">'+brl0(x.t[3])+'</span><span class="r hd">'+pill(d>=0?'pago':'sai','',(d>=0?'+ ':'− ')+brl0(Math.abs(d)).replace('− ',''))+'</span></button>';
+    t+='<button type="button" class="er hm" data-hm="'+x.ym+'" aria-expanded="'+aberto+'" style="width:100%;background:none;cursor:pointer"><span class="l">'+'<span style="display:inline-flex;transition:transform .15s;transform:rotate('+(aberto?90:0)+'deg)">'+ic('r',16)+'</span>'+'<span style="font-weight:600">'+MESES[+x.ym.slice(5,7)-1]+'</span>'+(x.atual?' '+pill('rec','clock','em andamento'):'')+'</span><span class="r hv">'+brl0(x.t[0])+'</span><span class="r hp">'+Math.round(x.t[2]).toLocaleString('pt-BR')+'</span><span class="r hl">'+brl0(x.t[1])+'</span><span class="r hr" style="font-weight:600">'+brl0(x.t[3])+'</span><span class="r hd">'+pill(d>=0?'pago':'sai','',(d>=0?'+ ':'− ')+brl0(Math.abs(d)).replace('− ',''))+'</span></button>';
     if(aberto)['ml','sp','tt'].forEach(function(k){var y=x.m[k];t+='<div class="er" style="background:var(--soft);padding-left:46px"><span class="l"><img class="mkic sm" alt="" src="'+IC[k]+'"><span>'+MKN[k]+'</span></span><span class="r hv">'+brl0(y[0])+'</span><span class="r hp">'+Math.round(y[2]).toLocaleString('pt-BR')+'</span><span class="r hl">'+brl0(y[1])+'</span><span class="r hr">'+brl0(y[3])+'</span><span class="r hd"></span></div>'});
   });
   var dt=T[3]-T[1];
@@ -913,6 +920,7 @@ async function carregarMes(sil){
 async function carregarHist(){
   S.hcarregando=!S.hist;S.herro=false;if(S.hcarregando&&rota()==='historico')seguro();
   try{var r=await SB.rpc('financeiro_historico');if(r.error)throw r.error;S.hist=r.data||[]}catch(e){S.herro=true;console.error(e)}
+  try{var hm=mesAtual();if(hm>'2026-10'){var vv=await SB.rpc('financeiro_vendas',{p_ini:hm+'-01',p_fim:ymSomar(hm,1)+'-01'});S.hv=vv.error?null:{ym:hm,rows:vv.data||[]}}}catch(e){S.hv=null}
   S.hcarregando=false;if(rota()==='historico'||rota()==='resultado'||rota()==='visao')seguro();
 }
 function carregar(force){carregarML(force);carregarMes();carregarHist()}
