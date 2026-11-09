@@ -22,6 +22,7 @@ function environment(source){
     FinanceCore:{
       supplierView(){return{months:[],activeEntries:[],products:[],balance:0}},
       purchaseMonths(){return[]},
+      purchaseOrderMonths(){return[]},
       allocationLedger(){return{transactions:[],months:[]}}
     },
     document,window,app,

@@ -1,0 +1,164 @@
+-- Agrupa vários produtos de uma mesma notinha em uma ordem de compra imutável.
+begin;
+
+alter table public.fin_entries
+ add column purchase_order_id text,
+ add constraint fin_entries_purchase_order_check check (
+  purchase_order_id is null or (
+   type='purchase' and purchase_order_id ~ '^OC-[0-9]{8}-[A-F0-9]{8}$'
+  )
+ );
+
+create index fin_entries_purchase_order_idx on public.fin_entries(purchase_order_id)
+ where purchase_order_id is not null;
+
+create or replace function public.fin_read() returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare result jsonb;
+begin
+ if not exists(select 1 from public.fin_access where user_id=auth.uid()) then
+  raise exception 'Acesso ao financeiro não autorizado' using errcode='42501';
+ end if;
+ select jsonb_build_object(
+ 'revision',c.revision,
+ 'suppliers',coalesce((select jsonb_agg(name order by name) from public.fin_suppliers),'[]'::jsonb),
+ 'inactiveSuppliers',coalesce((select jsonb_agg(name order by name) from public.fin_suppliers where not active),'[]'::jsonb),
+ 'products',coalesce((select jsonb_agg(jsonb_build_object('id',p.id,'supplier',p.supplier,'name',p.name,
+   'active',p.active,
+   'prices',coalesce((select jsonb_agg(jsonb_build_object('date',v.valid_from,'value',v.cents) order by v.valid_from)
+     from public.fin_prices v where v.product_id=p.id),'[]'::jsonb)) order by p.created_at,p.id)
+   from public.fin_products p),'[]'::jsonb),
+ 'entries',coalesce((select jsonb_agg(jsonb_build_object('id',e.id,'type',e.type,'date',e.date,
+  'supplier',e.supplier,'product',e.product,'qty',e.qty,'unit',e.unit,'value',e.value,
+  'note',e.note,'cancelled',e.cancelled,'purchaseOrderId',e.purchase_order_id)
+  order by e.date,e.created_at,e.id) from public.fin_entries e),'[]'::jsonb),
+ 'audit','[]'::jsonb) into result from public.fin_control c where id;
+ return result;
+end $$;
+
+create or replace function public.fin_commit(expected_revision bigint, payload jsonb) returns bigint
+language plpgsql security definer set search_path='' as $$
+declare current_revision bigint; r jsonb; pr jsonb; old_price public.fin_prices; inactive_data jsonb;
+begin
+ if not exists(select 1 from public.fin_access where user_id=auth.uid()) then
+  raise exception 'Acesso ao financeiro não autorizado' using errcode='42501';
+ end if;
+ if expected_revision is null or expected_revision<0 then raise exception 'Revisão obrigatória para evitar sobrescritas' using errcode='40001';end if;
+ select revision into current_revision from public.fin_control where id for update;
+ if current_revision<>expected_revision then
+  raise exception 'Outro usuário atualizou os dados. Recarregue e repita o lançamento.' using errcode='40001';
+ end if;
+ inactive_data:=coalesce(payload->'inactiveSuppliers','[]'::jsonb);
+ if jsonb_typeof(payload->'suppliers') is distinct from 'array'
+  or jsonb_typeof(inactive_data) is distinct from 'array'
+  or jsonb_typeof(payload->'products') is distinct from 'array'
+  or jsonb_typeof(payload->'entries') is distinct from 'array' then
+  raise exception 'Estrutura inválida';
+ end if;
+ if exists(select 1 from jsonb_array_elements(inactive_data) i
+   where jsonb_typeof(i)<>'string' or not exists(
+    select 1 from jsonb_array_elements(payload->'suppliers') s where s#>>'{}'=i#>>'{}')) then
+  raise exception 'Situação de fornecedor inválida';
+ end if;
+ if exists(select 1 from public.fin_entries e where not exists(
+   select 1 from jsonb_array_elements(payload->'entries') j where j->>'id'=e.id)) then
+  raise exception 'Registros financeiros não podem ser excluídos; utilize cancelamento.';
+ end if;
+ if (select count(*) from jsonb_array_elements(payload->'entries')) <>
+  (select count(distinct j->>'id') from jsonb_array_elements(payload->'entries') j) then
+  raise exception 'Registros duplicados';
+ end if;
+ if exists(select 1 from jsonb_array_elements(payload->'entries') j
+   where j ? 'purchaseOrderId' and j->'purchaseOrderId'<>'null'::jsonb and (
+    jsonb_typeof(j->'purchaseOrderId')<>'string'
+    or j->>'type'<>'purchase'
+    or (j->>'purchaseOrderId') !~ '^OC-[0-9]{8}-[A-F0-9]{8}$')) then
+  raise exception 'Ordem de compra inválida';
+ end if;
+ if exists(select 1 from jsonb_array_elements(payload->'entries') j
+   where nullif(j->>'purchaseOrderId','') is not null
+   group by j->>'purchaseOrderId'
+   having count(distinct jsonb_build_array(j->>'supplier',j->>'date'))>1) then
+  raise exception 'Itens da ordem de compra devem ter o mesmo fornecedor e a mesma data';
+ end if;
+ if exists(select 1 from public.fin_entries e
+   join jsonb_array_elements(payload->'entries') j on j->>'id'=e.id
+   where e.purchase_order_id is distinct from nullif(j->>'purchaseOrderId','')) then
+  raise exception 'A ordem de compra de um lançamento não pode ser alterada';
+ end if;
+ if (select coalesce(sum((j->>'value')::numeric),0) from jsonb_array_elements(payload->'entries') j where not coalesce((j->>'cancelled')::boolean,false))>9007199254740991 then raise exception 'O total excede o limite de precisão permitido';end if;
+ for r in select value from jsonb_array_elements(payload->'suppliers') loop
+  if jsonb_typeof(r)<>'string' then raise exception 'Fornecedor inválido'; end if;
+  insert into public.fin_suppliers(name) values(r#>>'{}') on conflict(name) do nothing;
+ end loop;
+ update public.fin_suppliers s set active=not exists(
+   select 1 from jsonb_array_elements(inactive_data) i where i#>>'{}'=s.name)
+ where exists(select 1 from jsonb_array_elements(payload->'suppliers') j where j#>>'{}'=s.name)
+   and s.active is distinct from (not exists(
+    select 1 from jsonb_array_elements(inactive_data) i where i#>>'{}'=s.name));
+ for r in select value from jsonb_array_elements(payload->'products') loop
+  if jsonb_typeof(coalesce(r->'active','true'::jsonb)) is distinct from 'boolean' then
+   raise exception 'Situação de produto inválida';
+  end if;
+  if exists(select 1 from public.fin_products p where p.id=r->>'id'
+    and (p.supplier is distinct from r->>'supplier' or p.name is distinct from r->>'name')) then
+   raise exception 'Alteração de identidade de produto não permitida';
+  end if;
+  if not exists(select 1 from public.fin_products p where p.id=r->>'id')
+    and not exists(select 1 from public.fin_suppliers s where s.name=r->>'supplier' and s.active) then
+   raise exception 'Reative o fornecedor antes de cadastrar um produto';
+  end if;
+  insert into public.fin_products as p(id,supplier,name,active)
+   values(r->>'id',r->>'supplier',r->>'name',coalesce((r->>'active')::boolean,true))
+  on conflict(id) do update set active=excluded.active
+  where p.active is distinct from excluded.active;
+  if jsonb_typeof(r->'prices') is distinct from 'array' or jsonb_array_length(r->'prices')=0 then
+   raise exception 'Produto sem preço';
+  end if;
+  for pr in select value from jsonb_array_elements(r->'prices') loop
+   select * into old_price from public.fin_prices where product_id=r->>'id' and valid_from=(pr->>'date')::date;
+   if found and old_price.cents<>(pr->>'value')::bigint then
+    raise exception 'Preços históricos não podem ser substituídos';
+   end if;
+   if not found and exists(select 1 from public.fin_prices where product_id=r->>'id'
+      and valid_from>=(pr->>'date')::date) then
+    raise exception 'A nova vigência deve ser posterior ao último preço';
+   end if;
+   insert into public.fin_prices(product_id,valid_from,cents)
+    values(r->>'id',(pr->>'date')::date,(pr->>'value')::bigint) on conflict do nothing;
+  end loop;
+ end loop;
+ for r in select value from jsonb_array_elements(payload->'entries') loop
+  if exists(select 1 from public.fin_entries e where e.id=r->>'id' and e.cancelled
+    and not coalesce((r->>'cancelled')::boolean,false)) then
+   raise exception 'Lançamento cancelado não pode ser reativado';
+  end if;
+  if r->>'type'='purchase' and not exists(select 1 from public.fin_products p
+   where p.supplier=r->>'supplier' and p.name=r->>'product') then
+   raise exception 'Produto não pertence ao fornecedor';
+  end if;
+  if r->>'type'='purchase' and not exists(select 1 from public.fin_entries e where e.id=r->>'id')
+    and not exists(select 1 from public.fin_suppliers s where s.name=r->>'supplier' and s.active) then
+   raise exception 'Reative o fornecedor antes de registrar uma compra';
+  end if;
+  insert into public.fin_entries as e(id,type,date,supplier,product,qty,unit,value,note,cancelled,purchase_order_id)
+   values(r->>'id',r->>'type',(r->>'date')::date,r->>'supplier',r->>'product',
+    (r->>'qty')::bigint,(r->>'unit')::bigint,(r->>'value')::bigint,
+    coalesce(r->>'note',''),coalesce((r->>'cancelled')::boolean,false),nullif(r->>'purchaseOrderId',''))
+  on conflict(id) do update set type=excluded.type,date=excluded.date,supplier=excluded.supplier,
+    product=excluded.product,qty=excluded.qty,unit=excluded.unit,value=excluded.value,
+    note=excluded.note,cancelled=excluded.cancelled,purchase_order_id=excluded.purchase_order_id
+  where (e.type,e.date,e.supplier,e.product,e.qty,e.unit,e.value,e.note,e.cancelled,e.purchase_order_id)
+   is distinct from (excluded.type,excluded.date,excluded.supplier,excluded.product,excluded.qty,
+    excluded.unit,excluded.value,excluded.note,excluded.cancelled,excluded.purchase_order_id);
+ end loop;
+ update public.fin_control set revision=revision+1 where id returning revision into current_revision;
+ return current_revision;
+end $$;
+
+revoke all on function public.fin_read() from public,anon;
+grant execute on function public.fin_read() to authenticated;
+revoke all on function public.fin_commit(bigint,jsonb) from public,anon;
+grant execute on function public.fin_commit(bigint,jsonb) to authenticated;
+
+commit;

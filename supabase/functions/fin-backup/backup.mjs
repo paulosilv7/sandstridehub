@@ -35,7 +35,7 @@ export function readableViews(p,capturedAt){
   Fornecedores:[['Fornecedor','Situação','Compras (R$)','Pagamentos (R$)','Abatimentos (R$)','Saldo a pagar (R$)','Compras registradas'],...supplierRows],
   Produtos:[['Fornecedor','Produto','Preço vigente (R$)','Vigente desde'],...p.products.map(x=>{const date=new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});const price=p.prices.filter(v=>v.product_id===x.id&&v.valid_from<=date).sort((a,b)=>a.valid_from.localeCompare(b.valid_from)).at(-1);return[x.supplier,x.name,price?currency(price.cents):'Sem preço vigente',price?day(price.valid_from):'']})],
   Precos:[['Fornecedor','Produto','Vigente desde','Preço unitário (R$)'],...p.prices.map(x=>[productById.get(x.product_id)?.supplier,productById.get(x.product_id)?.name,day(x.valid_from),currency(x.cents)])],
-  Lancamentos:[['Data','Fornecedor','Movimento','Produto / descrição','Quantidade','Unitário (R$)','Total (R$)','Situação','Observação','ID técnico'],...p.entries.map(x=>[day(x.date),x.supplier,typeName[x.type],x.product||'—',x.qty===null?'—':Number(x.qty),x.unit===null?'—':currency(x.unit),currency(x.value),x.cancelled?'Cancelado':'Registrado',String(x.note||'').slice(0,5000),x.id])],
+  Lancamentos:[['Data','Fornecedor','Movimento','Ordem de compra','Produto / descrição','Quantidade','Unitário (R$)','Total (R$)','Situação','Observação','ID técnico'],...p.entries.map(x=>[day(x.date),x.supplier,typeName[x.type],x.purchase_order_id||'—',x.product||'—',x.qty===null?'—':Number(x.qty),x.unit===null?'—':currency(x.unit),currency(x.value),x.cancelled?'Cancelado':'Registrado',String(x.note||'').slice(0,5000),x.id])],
   Historico:[['Data e hora (Brasília)','Registro','Ação','Descrição','Autor (ID técnico)'],...p.history.map(x=>{const record=x.new_record||x.old_record||{},entity={fin_suppliers:'Fornecedor',fin_products:'Produto',fin_prices:'Preço',fin_entries:'Lançamento'}[x.entity]||x.entity,operation=x.operation==='INSERT'?'Cadastro':x.operation==='UPDATE'?'Alteração':x.operation;return[timestamp(x.at),entity,operation,[record.name||record.supplier||'',record.product||'',record.type?typeName[record.type]:'',record.value?money(record.value):record.cents?money(record.cents):'',record.cancelled?'Cancelado':''].filter(Boolean).join(' · '),x.actor||'']})],
   Controle:[['INFORMAÇÕES DE RECUPERAÇÃO'],['Revisão',p.revision],['Data da cópia (Brasília)',timestamp(capturedAt)],['Comprovantes','Não incluídos'],['Consulta','Abra a aba Resumo. Os valores nas abas de consulta estão em reais.'],['Precisão','As versões v_ preservam os centavos exatos para restauração.'],['Não editar','As abas são atualizadas automaticamente pelo sistema.']]
  };
@@ -71,7 +71,7 @@ export async function planBackup(job,metadata){
    requests.push({repeatCell:{range,cell:{userEnteredFormat:{textFormat:{fontFamily:'Arial',fontSize:11},verticalAlignment:'MIDDLE',wrapStrategy:'CLIP'}},fields:'userEnteredFormat.textFormat.fontFamily,userEnteredFormat.textFormat.fontSize,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy'}});
    requests.push({updateDimensionProperties:{range:{sheetId:prop.sheetId,dimension:'COLUMNS',startIndex:0,endIndex:width},properties:{pixelSize:170},fields:'pixelSize'}});
    requests.push({updateDimensionProperties:{range:{sheetId:prop.sheetId,dimension:'ROWS',startIndex:0,endIndex:height},properties:{pixelSize:32},fields:'pixelSize'}});
-   const widths={Lancamentos:[110,145,120,190,90,120,145,120,420],Produtos:[160,260,170,160],Precos:[160,260,160,170],Historico:[190,140,120,480]}[title];
+   const widths={Lancamentos:[110,145,120,190,190,90,120,145,120,420],Produtos:[160,260,170,160],Precos:[160,260,160,170],Historico:[190,140,120,480]}[title];
    widths?.forEach((pixelSize,index)=>requests.push({updateDimensionProperties:{range:{sheetId:prop.sheetId,dimension:'COLUMNS',startIndex:index,endIndex:index+1},properties:{pixelSize},fields:'pixelSize'}}));
    if(title==='Historico')requests.push({updateDimensionProperties:{range:{sheetId:prop.sheetId,dimension:'COLUMNS',startIndex:4,endIndex:Math.max(width,prop.gridProperties?.columnCount||width)},properties:{hiddenByUser:true},fields:'hiddenByUser'}});
    requests.push({updateSheetProperties:{properties:{sheetId:prop.sheetId,hidden:title==='Controle',gridProperties:{frozenRowCount:title==='Resumo'?5:1,hideGridlines:true},...(title==='Resumo'?{index:0}:{})},fields:'hidden,gridProperties.frozenRowCount,gridProperties.hideGridlines'+(title==='Resumo'?',index':'')}});
@@ -82,8 +82,8 @@ export async function planBackup(job,metadata){
     requests.push({repeatCell:{range:{sheetId:prop.sheetId,startRowIndex:5,endRowIndex:6+supplierRowsLength(p),startColumnIndex:5,endColumnIndex:6},cell:{userEnteredFormat:{textFormat:{bold:true},backgroundColor:{red:.94,green:.96,blue:1}}},fields:'userEnteredFormat.textFormat.bold,userEnteredFormat.backgroundColor'}});
    }
    if(title==='Lancamentos'){
-    requests.push({updateDimensionProperties:{range:{sheetId:prop.sheetId,dimension:'COLUMNS',startIndex:8,endIndex:9},properties:{pixelSize:420},fields:'pixelSize'}});
-    requests.push({updateDimensionProperties:{range:{sheetId:prop.sheetId,dimension:'COLUMNS',startIndex:9,endIndex:Math.max(width,prop.gridProperties?.columnCount||width)},properties:{hiddenByUser:true},fields:'hiddenByUser'}});
+    requests.push({updateDimensionProperties:{range:{sheetId:prop.sheetId,dimension:'COLUMNS',startIndex:9,endIndex:10},properties:{pixelSize:420},fields:'pixelSize'}});
+    requests.push({updateDimensionProperties:{range:{sheetId:prop.sheetId,dimension:'COLUMNS',startIndex:10,endIndex:Math.max(width,prop.gridProperties?.columnCount||width)},properties:{hiddenByUser:true},fields:'hiddenByUser'}});
    }
   }
  }

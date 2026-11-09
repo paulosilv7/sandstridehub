@@ -1,5 +1,5 @@
 // Uma única operação por vez. Nunca volta ao estado antigo após confirmação de gravação.
-const normalizeEntry=e=>({id:e.id,type:e.type,date:e.date,supplier:e.supplier,product:e.product??null,qty:e.qty??null,unit:e.unit??null,value:e.value,note:e.note||'',cancelled:!!e.cancelled});
+const normalizeEntry=e=>({id:e.id,type:e.type,date:e.date,supplier:e.supplier,product:e.product??null,qty:e.qty??null,unit:e.unit??null,value:e.value,note:e.note||'',cancelled:!!e.cancelled,purchaseOrderId:e.purchaseOrderId??null});
 const normalizeProduct=p=>({id:p.id,supplier:p.supplier,name:p.name,active:p.active!==false,prices:[...p.prices].sort((a,b)=>a.date.localeCompare(b.date))});
 const normalizeInactive=value=>[...(value||[])].sort((a,b)=>a.localeCompare(b,'pt-BR'));
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
