@@ -1,0 +1,1 @@
+Função `financeiro-recebido-mes` (publicada direto no Supabase): calcula quanto cada loja recebeu (dinheiro liberado) no mês atual e no anterior e grava em `financeiro_hist_coleta`. Agendada a cada 3 horas (cron `financeiro-recebido-3h`). O Resultado do mês lê esse valor.
