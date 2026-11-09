@@ -51,7 +51,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .btn:hover{background:#2B2E34}
 .btn.sec{background:var(--soft);color:var(--ink)}.btn.sec:hover{background:#E8E8E5}
 .btn.sm{height:34px;font-size:13px;padding:0 14px;border-radius:17px}
-.seg{background:var(--soft);border-radius:20px;padding:3px;display:inline-flex;gap:2px}
+.dch{flex-wrap:wrap}@media (max-width:700px){.dch .sp{display:none}.dch .seg{max-width:100%;overflow-x:auto}}.dflt{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin:14px 0 4px}.dflt .fld{min-width:200px}.dflt .grow{flex:1;min-width:220px}.dflt .btn.sm{height:42px}.seg{background:var(--soft);border-radius:20px;padding:3px;display:inline-flex;gap:2px}
 .seg button{height:30px;border-radius:15px;padding:0 12px;font-size:13px;font-weight:600;color:var(--mut);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
 .mes{height:40px;border-radius:20px;background:var(--card);display:inline-flex;align-items:center;gap:4px;padding:0 6px}
@@ -430,7 +430,7 @@ function big(v,cls){var a=Math.abs(v),i=Math.floor(a),c=Math.round((a-i)*100);if
 
 // ===== Financeiro > Recebimentos (dados reais do Mercado Livre) =====
 var MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-var S={d:null,erro:null,carregando:true,per:'7',mes:0,nome:'',fotoUrl:'',uid:'',v:null,verro:false,vcarregando:true,ym:'',cats:[],contas:[],pagas:{},desp:[],filtro:'todas'};
+var S={d:null,erro:null,carregando:true,per:'7',mes:0,nome:'',fotoUrl:'',uid:'',v:null,verro:false,vcarregando:true,ym:'',cats:[],contas:[],pagas:{},desp:[],filtro:'todas',fcat:'',fq:''};
 var TELAS=[['visao','Visão geral','grid'],['recebimentos','Recebimentos','cardin'],['vendas','Vendas','cart'],['despesas','Despesas','receipt'],['contas','Contas fixas','cal'],['resultado','Resultado do mês','chart']];
 var ROTAS={visao:1,recebimentos:1,vendas:1,despesas:1,contas:1,resultado:1,config:1};
 function rota(){var h=location.hash.slice(1);return ROTAS[h]?h:'visao'}
@@ -553,8 +553,10 @@ function calc(){
   var a=agreg(),t=a.t,porCat={},desp=0,fora=0;
   S.cats.forEach(function(c){if(c.entra_resultado)porCat[c.nome]=0});
   S.desp.forEach(function(d){var c=catInfo(d.categoria);if(c.entra_resultado){porCat[d.categoria]=(porCat[d.categoria]||0)+ +d.valor;desp+= +d.valor}else fora+= +d.valor});
+  var adsLido=sum(S.ads||[],function(r){return +r.valor});
+  if(adsLido>0){if(catInfo('Ads').entra_resultado){porCat['Ads']=(porCat['Ads']||0)+adsLido;desp+=adsLido}else fora+=adsLido}
   var est=totEst(),liq=t.fat-est-t.tax-t.fr,F=S.forn||[],pf=sum(F,function(f){return f.pago}),apagar=sum(F,function(f){return f.saldo});
-  return {a:a,fat:t.fat,ped:t.ped,pares:t.pares,tax:t.tax,fr:t.fr,cmv:t.cmv,pend:t.pend,est:est,liq:liq,F:F,fornOk:!!S.forn,pf:pf,apagar:apagar,res:liq-pf-desp,porCat:porCat,desp:desp,fora:fora};
+  return {a:a,fat:t.fat,ped:t.ped,pares:t.pares,tax:t.tax,fr:t.fr,cmv:t.cmv,pend:t.pend,est:est,liq:liq,F:F,fornOk:!!S.forn,pf:pf,apagar:apagar,res:liq-pf-desp,porCat:porCat,desp:desp,fora:fora,adsLido:adsLido};
 }
 function adsCard(a,c){
   var ads={},tot=0;(S.ads||[]).forEach(function(r){ads[r.loja_id]=(ads[r.loja_id]||0)+ +r.valor;tot+= +r.valor});
@@ -690,6 +692,18 @@ async function verComp(id){
   var w=window.open('','_blank');var u=await SB.storage.from('financeiro-comprovantes').createSignedUrl(x.arquivo_path,300);
   if(u.data&&u.data.signedUrl&&w)w.location=u.data.signedUrl;else{if(w)w.close();toast('Não consegui abrir o arquivo.')}
 }
+function corpoDesp(){
+  var q=String(S.fq||'').trim().toLowerCase();
+  var lista=S.desp.filter(function(d){var c=catInfo(d.categoria);
+    if(S.filtro==='res'&&!c.entra_resultado)return false;if(S.filtro==='fora'&&c.entra_resultado)return false;
+    if(S.fcat&&d.categoria!==S.fcat)return false;
+    if(q&&(d.descricao+' '+d.categoria).toLowerCase().indexOf(q)<0)return false;return true});
+  var ad=sum(S.ads||[],function(r){return +r.valor}),ci=catInfo('Ads');
+  var mostraAds=ad>0&&(S.filtro==='todas'||(S.filtro==='res'?ci.entra_resultado:!ci.entra_resultado))&&(!S.fcat||S.fcat==='Ads')&&(!q||'ads anúncios anuncios lido dos marketplaces'.indexOf(q)>=0);
+  var h=(mostraAds?'<div class="er"><span>mês</span><span class="l"><span class="chip sm neu" style="width:30px;height:30px">'+ic(catI('Ads'),15)+'</span><span style="font-weight:600">Anúncios lidos dos marketplaces</span></span><span>Ads</span><span>'+pill('neu','','Automático')+'</span><span class="r" style="font-weight:600">'+brl(ad)+'</span></div>':'')+
+    (lista.length?lista.map(function(d){var c=catInfo(d.categoria);return '<div class="er" data-desp="'+d.id+'" style="cursor:pointer"><span>'+ddmm(d.data)+'</span><span class="l"><span class="chip sm neu" style="width:30px;height:30px">'+ic(catI(d.categoria),15)+'</span><span style="font-weight:600">'+esc(d.descricao)+'</span>'+(d.mes_conta&&d.data.slice(0,7)!==d.mes_conta.slice(0,7)?'<span class="refm" title="Paga em '+ddmm(d.data)+', mas a conta é de '+mesNome(d.mes_conta.slice(0,7)).toLowerCase()+'">Conta de '+mesNome(d.mes_conta.slice(0,7)).toLowerCase()+'</span>':'')+'</span><span style="'+(c.entra_resultado?'':'color:var(--mut)')+'">'+esc(d.categoria)+'</span><span>'+(d.comprovante_path?pill('rec','clip','Comprovante'):pill('disp','pencil','Sem comprovante'))+'</span><span class="r" style="font-weight:600">'+brl(+d.valor)+'</span></div>'}).join(''):(mostraAds?'':'<div class="er"><span></span><span class="sub">'+(S.fcat||q?'Nenhuma despesa com esse filtro.':'Nenhuma despesa neste mês.')+'</span></div>'));
+  return h+'<div class="er tot"><span></span><span>Total'+(S.fcat||q?' do filtro':'')+'</span><span></span><span></span><span class="r">'+brl(sum(lista,function(d){return +d.valor})+(mostraAds?ad:0))+'</span></div>';
+}
 function telaDespesas(){
   if(S.vcarregando)return carregando('Despesas');
   if(S.verro)return falha('Despesas');
@@ -702,11 +716,10 @@ function telaDespesas(){
     '<label class="fld">Comprovante<span class="anx">'+ic('clip',16)+'<input type="file" name="arq" accept="image/*,application/pdf"><span id="anxTxt">Anexar foto ou PDF</span></span></label>'+
     '<button class="btn" type="submit">'+ic('plus',16)+'Lançar</button></form></section>';
   h+=cardComp();
-  var lista=S.desp.filter(function(d){var c=catInfo(d.categoria);return S.filtro==='todas'||(S.filtro==='res'?c.entra_resultado:!c.entra_resultado)});
-  h+='<section class="card"><div class="ch">'+chip('receipt','sai',1)+'<h2>Despesas de '+mesNome(S.ym).toLowerCase()+'</h2><div class="sp"></div><div class="seg" role="group" aria-label="Filtro"><button type="button" data-fd="todas" aria-pressed="'+(S.filtro==='todas')+'">Todas</button><button type="button" data-fd="res" aria-pressed="'+(S.filtro==='res')+'">'+ic('check',14)+'No resultado</button><button type="button" data-fd="fora" aria-pressed="'+(S.filtro==='fora')+'">Fora do resultado</button></div></div>'+
-    '<div class="ext" style="--cols:64px minmax(0,1.5fr) minmax(0,1fr) 150px 120px"><div class="eh"><span>Pago em</span><span>Descrição</span><span>Categoria</span><span>Origem</span><span class="r">Valor</span></div>'+
-    (lista.length?lista.map(function(d){var c=catInfo(d.categoria);return '<div class="er" data-desp="'+d.id+'" style="cursor:pointer"><span>'+ddmm(d.data)+'</span><span class="l"><span class="chip sm neu" style="width:30px;height:30px">'+ic(catI(d.categoria),15)+'</span><span style="font-weight:600">'+esc(d.descricao)+'</span>'+(d.mes_conta&&d.data.slice(0,7)!==d.mes_conta.slice(0,7)?'<span class="refm" title="Paga em '+ddmm(d.data)+', mas a conta é de '+mesNome(d.mes_conta.slice(0,7)).toLowerCase()+'">Conta de '+mesNome(d.mes_conta.slice(0,7)).toLowerCase()+'</span>':'')+'</span><span style="'+(c.entra_resultado?'':'color:var(--mut)')+'">'+esc(d.categoria)+'</span><span>'+(d.comprovante_path?pill('rec','clip','Comprovante'):pill('disp','pencil','Sem comprovante'))+'</span><span class="r" style="font-weight:600">'+brl(+d.valor)+'</span></div>'}).join(''):'<div class="er"><span></span><span class="sub">Nenhuma despesa neste mês.</span></div>')+
-    '<div class="er tot"><span></span><span>Total</span><span></span><span></span><span class="r">'+brl(sum(lista,function(d){return +d.valor}))+'</span></div></div></section>';
+  h+='<section class="card"><div class="ch dch">'+chip('receipt','sai',1)+'<h2>Despesas de '+mesNome(S.ym).toLowerCase()+'</h2><div class="sp"></div><div class="seg" role="group" aria-label="Filtro"><button type="button" data-fd="todas" aria-pressed="'+(S.filtro==='todas')+'">Todas</button><button type="button" data-fd="res" aria-pressed="'+(S.filtro==='res')+'">'+ic('check',14)+'No resultado</button><button type="button" data-fd="fora" aria-pressed="'+(S.filtro==='fora')+'">Fora do resultado</button></div></div>'+
+    '<div class="dflt"><label class="fld">Categoria<select class="selx" data-fcat aria-label="Filtrar por categoria"><option value="">Todas as categorias</option>'+S.cats.map(function(k){return '<option value="'+esc(k.nome)+'"'+(S.fcat===k.nome?' selected':'')+'>'+esc(k.nome)+'</option>'}).join('')+'</select></label>'+
+    '<label class="fld grow">Buscar<input type="search" data-fq value="'+esc(S.fq||'')+'" placeholder="Nome da despesa, ex.: aluguel" autocomplete="off"></label>'+(S.fcat||S.fq?'<button type="button" class="btn sm" data-fclr>Limpar filtros</button>':'')+'</div>'+
+    '<div class="ext" style="--cols:64px minmax(0,1.5fr) minmax(0,1fr) 150px 120px"><div class="eh"><span>Pago em</span><span>Descrição</span><span>Categoria</span><span>Origem</span><span class="r">Valor</span></div><div id="dlist" style="display:contents">'+corpoDesp()+'</div></div></section>';
   return h;
 }
 
@@ -722,7 +735,7 @@ function telaResultado(){
   h+='<div class="g2"><section class="card"><div class="ch">'+chip('cart','pago',1)+'<h2>Extrato das vendas</h2></div><div class="ext" style="'+cols+'"><div class="eh"><span>Linha</span><span class="r">Valor</span><span class="r">% fat.</span><span></span></div>'+
     R('Faturamento',c.fat,'sub','cart')+R('Estornos e devoluções',-c.est,'ind','repeat',!c.est)+R('Taxas dos marketplaces',-c.tax,'ind','tag')+R('Frete pago pela loja',-c.fr,'ind','truck')+R('Líquido dos marketplaces',c.liq,'sub','wallet')+(c.fornOk?R('Pago a fornecedores',-c.pf,'ind','box',!c.pf):'')+R('Despesas',-c.desp,'ind','receipt',!c.desp)+R('Resultado do mês',c.res,'tot','chart')+'</div></section>';
   h+='<section class="card"><div class="ch">'+chip('receipt','sai',1)+'<h2>Extrato das despesas</h2></div><div class="ext" style="'+cols+'"><div class="eh"><span>Categoria</span><span class="r">Valor</span><span class="r">% fat.</span><span></span></div>'+
-    S.cats.filter(function(k){return k.entra_resultado}).map(function(k){var v=c.porCat[k.nome]||0;return R(esc(k.nome)+(k.incluso_preco?' '+pill('neu','','incluso no preço'):''),-v,'',catI(k.nome),!v)}).join('')+R('Total de despesas',-c.desp,'tot','receipt')+'</div></section></div>';
+    S.cats.filter(function(k){return k.entra_resultado}).map(function(k){var v=c.porCat[k.nome]||0;return R(esc(k.nome)+(k.incluso_preco?' '+pill('neu','','incluso no preço'):'')+(k.nome==='Ads'&&c.adsLido?' '+pill('neu','','lido dos marketplaces'):''),-v,'',catI(k.nome),!v)}).join('')+R('Total de despesas',-c.desp,'tot','receipt')+'</div></section></div>';
   if(c.fornOk){h+='<section class="card"><div class="ch">'+chip('box','neu',1)+'<h2>Fornecedores em '+mesNome(S.ym).toLowerCase()+'</h2><div class="sp"></div>'+pill('neu','','só o pago entra no resultado')+'</div><div class="ext" style="--cols:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)"><div class="eh"><span>Fornecedor</span><span class="r">Comprado no mês</span><span class="r">Pago no mês</span><span class="r">Ainda a pagar</span></div>'+(c.F.length?c.F.map(function(f){return '<div class="er"><span class="l">'+ic('box',16)+'<span>'+esc(f.n)+'</span></span><span class="r">'+(f.comp?brl(f.comp):'—')+'</span><span class="r" style="font-weight:600">'+(f.pago?brl(f.pago):'—')+'</span><span class="r'+(f.saldo>0?' amb':'')+'" style="font-weight:600">'+brl(f.saldo)+'</span></div>'}).join('')+'<div class="er tot"><span class="l">'+ic('box',16)+'<span>Total</span></span><span class="r">'+brl(sum(c.F,function(f){return f.comp}))+'</span><span class="r">'+brl(c.pf)+'</span><span class="r">'+brl(c.apagar)+'</span></div>':'<div class="er z"><span class="l"><span>Nenhuma compra ou pagamento neste mês.</span></span></div>')+'</div><p class="sub">O que ainda falta pagar fica fora do resultado e aparece aqui e no Painel.</p></section>';}
   if(c.fora>0)h+='<p class="sub">Fora do resultado neste mês: '+brl(c.fora)+' (mercadoria, investimento, retirada de sócio e transferências).</p>';
   return h;
@@ -945,6 +958,8 @@ document.addEventListener('submit',async function(e){
     carregarMes(1);
   }catch(x){console.error(x);toast('Não consegui lançar. Tente de novo.');btn.disabled=false}
 });
+document.addEventListener('change',function(e){if(e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-fcat')){S.fcat=e.target.value;seguro()}});
+document.addEventListener('input',function(e){if(e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-fq')){S.fq=e.target.value;var L=document.getElementById('dlist');if(L)L.innerHTML=corpoDesp()}});
 document.addEventListener('click',async function(e){
   var er=e.target.closest('[data-desp]');if(er)return modalDesp(er.dataset.desp);
   var b=e.target.closest('button');if(!b)return;var d=b.dataset;
@@ -953,6 +968,7 @@ document.addEventListener('click',async function(e){
   if(d.go){if(location.hash.slice(1)===d.go)return seguro();location.hash=d.go;return scrollTo({top:0})}
   if(d.mes){var n=ymSomar(S.ym,+d.mes);if(n>mesAtual())return;S.ym=n;return carregarMes()}
   if(d.fd){S.filtro=d.fd;return seguro()}
+  if(b.hasAttribute('data-fclr')){S.fcat='';S.fq='';return seguro()}
   if(d.per){S.per=d.per;return seguro()}
   if(d.agr){S.agr=d.agr;return seguro()}
   if(d.cal!=null){S.mes=+d.cal;return seguro()}
