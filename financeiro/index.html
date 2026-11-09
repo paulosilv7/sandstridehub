@@ -558,8 +558,10 @@ function calc(){
   S.desp.forEach(function(d){var c=catInfo(d.categoria);if(c.entra_resultado){porCat[d.categoria]=(porCat[d.categoria]||0)+ +d.valor;desp+= +d.valor}else fora+= +d.valor});
   var adsLido=sum(S.ads||[],function(r){return +r.valor});
   if(adsLido>0){if(catInfo('Ads').entra_resultado){porCat['Ads']=(porCat['Ads']||0)+adsLido;desp+=adsLido}else fora+=adsLido}
+  var H=histMes(S.ym),fat0=t.fat,ped0=t.ped,tax0=t.tax,fr0=t.fr;
   var est=totEst(),liq=t.fat-est-t.tax-t.fr,F=S.forn||[],pf=sum(F,function(f){return f.pago}),apagar=sum(F,function(f){return f.saldo});
-  return {a:a,fat:t.fat,ped:t.ped,pares:t.pares,tax:t.tax,fr:t.fr,cmv:t.cmv,pend:t.pend,est:est,liq:liq,F:F,fornOk:!!S.forn,pf:pf,apagar:apagar,res:liq-pf-desp,porCat:porCat,desp:desp,fora:fora,adsLido:adsLido};
+  if(H){fat0=H[0];ped0=H[2];tax0=H[0]-H[1];fr0=0;est=0;liq=H[1]}
+  return {hist:!!H,a:a,fat:fat0,ped:ped0,pares:t.pares,tax:tax0,fr:fr0,cmv:t.cmv,pend:t.pend,est:est,liq:liq,F:F,fornOk:!!S.forn,pf:pf,apagar:apagar,res:liq-pf-desp,porCat:porCat,desp:desp,fora:fora,adsLido:adsLido};
 }
 function adsCard(a,c){
   var ads={},tot=0;(S.ads||[]).forEach(function(r){ads[r.loja_id]=(ads[r.loja_id]||0)+ +r.valor;tot+= +r.valor});
@@ -731,15 +733,16 @@ function telaResultado(){
   if(S.vcarregando)return carregando('Resultado do mês');
   if(S.verro)return falha('Resultado do mês');
   var c=calc(),h=head('Resultado do mês',mesSel()),hj=hojeSP(),fat=c.fat||1;
-  h+='<section class="palco"><div><div class="top">'+chip('chart','p')+'<span class="k">Resultado de '+mesNome(S.ym).toLowerCase()+'</span>'+pill('dark','',ehAtual()?'até '+ddmm(hj):'mês fechado')+pill('dark',c.fornOk?'check':'alert',c.fornOk?'pelo que foi pago':'fornecedores indisponíveis')+'</div>'+big(c.res,c.res<0?' neg':'')+'<div class="trio"><div>'+chip('wallet','p',1)+'<div class="t"><span class="k">Líquido marketplaces</span><b>'+brl(c.liq)+'</b></div></div><div>'+chip('box','p',1)+'<div class="t"><span class="k">Pago a fornecedores</span><b>'+(c.fornOk?brl(c.pf):'—')+'</b></div></div><div>'+chip('receipt','p',1)+'<div class="t"><span class="k">Despesas</span><b>'+brl(c.desp)+'</b></div></div></div></div>'+
+  h+='<section class="palco"><div><div class="top">'+chip('chart','p')+'<span class="k">Resultado de '+mesNome(S.ym).toLowerCase()+'</span>'+pill('dark','',ehAtual()?'até '+ddmm(hj):'mês fechado')+pill('dark',c.fornOk?'check':'alert',c.fornOk?'pelo que foi pago':'fornecedores indisponíveis')+(c.hist?pill('dark','clock','vendas do histórico'):'')+'</div>'+big(c.res,c.res<0?' neg':'')+'<div class="trio"><div>'+chip('wallet','p',1)+'<div class="t"><span class="k">Líquido marketplaces</span><b>'+brl(c.liq)+'</b></div></div><div>'+chip('box','p',1)+'<div class="t"><span class="k">Pago a fornecedores</span><b>'+(c.fornOk?brl(c.pf):'—')+'</b></div></div><div>'+chip('receipt','p',1)+'<div class="t"><span class="k">Despesas</span><b>'+brl(c.desp)+'</b></div></div></div></div>'+
     '<div class="inset"><span class="k">Cada R$ 100 faturados viram</span><div class="big2">'+brl(c.res/fat*100)+'</div><div class="split" style="height:14px">'+[['Taxas',c.tax,'#5E7BEF'],['Frete',c.fr,'#3F9C95'],['Estornos',c.est,'#E5604F'],['Fornecedores',c.pf,'#8FA3FF'],['Despesas',c.desp,'#E0B93C'],['Sobrou',Math.max(0,c.res),'#4BC47C']].filter(function(p){return p[1]>0}).map(function(p){return '<span style="flex:'+p[1].toFixed(0)+';background:'+p[2]+'" title="'+p[0]+'"></span>'}).join('')+'</div><div class="slg" style="color:var(--on-p2)">'+[['Taxas','#5E7BEF'],['Frete','#3F9C95'],['Estornos','#E5604F'],['Fornecedores','#8FA3FF'],['Despesas','#E0B93C'],['Sobrou','#4BC47C']].map(function(p){return '<span><i style="background:'+p[1]+'"></i>'+p[0]+'</span>'}).join('')+'</div></div></section>';
   function R(nm,v,cls,ic1,zero){var neg=v<0;return '<div class="er '+(cls||'')+(zero?' z':'')+'"><span class="l">'+(ic1?ic(ic1,16):'')+'<span>'+nm+'</span></span><span class="r'+(neg&&!cls?' neg':'')+'">'+(zero?'—':brl(v))+'</span><span class="pc r">'+(zero?'':pct(v/fat))+'</span><span class="bar1"><span style="width:'+(zero?0:Math.min(100,Math.abs(v)/fat*100*2)).toFixed(0)+'%;background:'+(neg?'var(--sai)':'var(--pago)')+'"></span></span></div>'}
   var cols='--cols:minmax(0,1fr) 108px 58px 56px';
   h+='<div class="g2"><section class="card"><div class="ch">'+chip('cart','pago',1)+'<h2>Extrato das vendas</h2></div><div class="ext" style="'+cols+'"><div class="eh"><span>Linha</span><span class="r">Valor</span><span class="r">% fat.</span><span></span></div>'+
-    R('Faturamento',c.fat,'sub','cart')+R('Estornos e devoluções',-c.est,'ind','repeat',!c.est)+R('Taxas dos marketplaces',-c.tax,'ind','tag')+R('Frete pago pela loja',-c.fr,'ind','truck')+R('Líquido dos marketplaces',c.liq,'sub','wallet')+(c.fornOk?R('Pago a fornecedores',-c.pf,'ind','box',!c.pf):'')+R('Despesas',-c.desp,'ind','receipt',!c.desp)+R('Resultado do mês',c.res,'tot','chart')+'</div></section>';
+    R('Faturamento',c.fat,'sub','cart')+R('Estornos e devoluções',-c.est,'ind','repeat',!c.est)+R(c.hist?'Taxas e frete dos marketplaces':'Taxas dos marketplaces',-c.tax,'ind','tag')+(c.hist?'':R('Frete pago pela loja',-c.fr,'ind','truck'))+R('Líquido dos marketplaces',c.liq,'sub','wallet')+(c.fornOk?R('Pago a fornecedores',-c.pf,'ind','box',!c.pf):'')+R('Despesas',-c.desp,'ind','receipt',!c.desp)+R('Resultado do mês',c.res,'tot','chart')+'</div></section>';
   h+='<section class="card"><div class="ch">'+chip('receipt','sai',1)+'<h2>Extrato das despesas</h2></div><div class="ext" style="'+cols+'"><div class="eh"><span>Categoria</span><span class="r">Valor</span><span class="r">% fat.</span><span></span></div>'+
     S.cats.filter(function(k){return k.entra_resultado}).map(function(k){var v=c.porCat[k.nome]||0;return R(esc(k.nome)+(k.incluso_preco?' '+pill('neu','','incluso no preço'):'')+(k.nome==='Ads'&&c.adsLido?' '+pill('neu','','lido dos marketplaces'):''),-v,'',catI(k.nome),!v)}).join('')+R('Total de despesas',-c.desp,'tot','receipt')+'</div></section></div>';
   if(c.fornOk){h+='<section class="card"><div class="ch">'+chip('box','neu',1)+'<h2>Fornecedores em '+mesNome(S.ym).toLowerCase()+'</h2><div class="sp"></div>'+pill('neu','','só o pago entra no resultado')+'</div><div class="ext" style="--cols:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)"><div class="eh"><span>Fornecedor</span><span class="r">Comprado no mês</span><span class="r">Pago no mês</span><span class="r">Ainda a pagar</span></div>'+(c.F.length?c.F.map(function(f){return '<div class="er"><span class="l">'+ic('box',16)+'<span>'+esc(f.n)+'</span></span><span class="r">'+(f.comp?brl(f.comp):'—')+'</span><span class="r" style="font-weight:600">'+(f.pago?brl(f.pago):'—')+'</span><span class="r'+(f.saldo>0?' amb':'')+'" style="font-weight:600">'+brl(f.saldo)+'</span></div>'}).join('')+'<div class="er tot"><span class="l">'+ic('box',16)+'<span>Total</span></span><span class="r">'+brl(sum(c.F,function(f){return f.comp}))+'</span><span class="r">'+brl(c.pf)+'</span><span class="r">'+brl(c.apagar)+'</span></div>':'<div class="er z"><span class="l"><span>Nenhuma compra ou pagamento neste mês.</span></span></div>')+'</div><p class="sub">O que ainda falta pagar fica fora do resultado e aparece aqui e no Painel.</p></section>';}
+  if(c.hist)h+='<p class="sub">As vendas deste mês vêm do histórico lido dos marketplaces: taxas e frete aparecem juntos e as devoluções já estão fora do faturamento.</p>';
   if(c.fora>0)h+='<p class="sub">Fora do resultado neste mês: '+brl(c.fora)+' (mercadoria, investimento, retirada de sócio e transferências).</p>';
   return h;
 }
@@ -765,7 +768,7 @@ function telaPainel(){
   if(S.verro)return h+'<section class="card"><p class="sub">Não consegui ler as vendas agora. Use o botão de atualizar.</p></section>';
   var c=calc();
   var C=S.contas.filter(function(x){return x.ativa}),prox=C.filter(function(x){var v=vencIso(x);return !pagaDe(x)&&v>=hj&&v<=lim}).sort(function(a,b){return vencIso(a)<vencIso(b)?-1:1});
-  h+='<section class="palco"><div><div class="top">'+chip('wallet','p')+'<span class="k">Resultado de '+mesNome(S.ym).toLowerCase()+'</span>'+pill('dark','',ehAtual()?'até hoje, '+ddmm(hj):'mês fechado')+pill('dark',c.fornOk?'check':'alert',c.fornOk?'pelo que foi pago':'fornecedores indisponíveis')+'</div>'+big(c.res,c.res<0?' neg':'')+
+  h+='<section class="palco"><div><div class="top">'+chip('wallet','p')+'<span class="k">Resultado de '+mesNome(S.ym).toLowerCase()+'</span>'+pill('dark','',ehAtual()?'até hoje, '+ddmm(hj):'mês fechado')+pill('dark',c.fornOk?'check':'alert',c.fornOk?'pelo que foi pago':'fornecedores indisponíveis')+(c.hist?pill('dark','clock','vendas do histórico'):'')+'</div>'+big(c.res,c.res<0?' neg':'')+
     '<div class="trio"><div>'+chip('wallet','p',1)+'<div class="t"><span class="k">Líquido marketplaces</span><b>'+brl(c.liq)+'</b></div></div><div>'+chip('box','p',1)+'<div class="t"><span class="k">Pago a fornecedores</span><b>'+(c.fornOk?brl(c.pf):'—')+'</b></div></div><div>'+chip('receipt','p',1)+'<div class="t"><span class="k">Despesas</span><b>'+brl(c.desp)+'</b></div></div></div></div>'+
     '<div class="inset"><div class="top"><span class="k">A receber dos marketplaces</span></div><div class="big2">'+(mlOk?brl(arec):'—')+'</div>'+
     '<div class="bars" role="img" aria-label="Liberações do Mercado Livre nos próximos 14 dias">'+barras.map(function(b){return '<button type="button" class="bar'+(b.k===hj?' hj':'')+'" data-k="'+b.k+'"><i style="height:'+Math.max(4,b.v/mx*100).toFixed(0)+'%"></i><em>'+b.k.slice(8)+'</em></button>'}).join('')+'</div>'+
@@ -785,6 +788,11 @@ function telaPainel(){
 
 
 // ---------- Histórico (vendi × recebi, mês a mês) ----------
+function histMes(ym){ // totais [vendi, líquido, pedidos, recebi] do histórico para meses antes do sistema ao vivo (até outubro)
+  if(!S.hist||ym>'2026-10')return null;
+  var t=[0,0,0,0],n=0;S.hist.forEach(function(r){if(r.mes===ym){n++;t[0]+=+r.vendido;t[1]+=+r.liquido;t[2]+=+r.pedidos;t[3]+=+r.recebido}});
+  return n?t:null;
+}
 function histMeses(){
   var M={};(S.hist||[]).forEach(function(r){var m=M[r.mes]=M[r.mes]||{ml:[0,0,0,0],sp:[0,0,0,0],tt:[0,0,0,0]},a=m[r.mp];if(!a)return;a[0]+=+r.vendido;a[1]+=+r.liquido;a[2]+=+r.pedidos;a[3]+=+r.recebido});
   return Object.keys(M).sort().map(function(k){var m=M[k],t=[0,0,0,0];['ml','sp','tt'].forEach(function(x){for(var i=0;i<4;i++)t[i]+=m[x][i]});return {ym:k,m:m,t:t}});
@@ -892,7 +900,7 @@ async function carregarMes(sil){
 async function carregarHist(){
   S.hcarregando=!S.hist;S.herro=false;if(S.hcarregando&&rota()==='historico')seguro();
   try{var r=await SB.rpc('financeiro_historico');if(r.error)throw r.error;S.hist=r.data||[]}catch(e){S.herro=true;console.error(e)}
-  S.hcarregando=false;if(rota()==='historico')seguro();
+  S.hcarregando=false;if(rota()==='historico'||rota()==='resultado'||rota()==='visao')seguro();
 }
 function carregar(force){carregarML(force);carregarMes();carregarHist()}
 
