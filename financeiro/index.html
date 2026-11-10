@@ -342,17 +342,32 @@ button.kpi:hover{background:var(--hover)}
 .er.hm:hover{background:var(--hover)}
 @media(max-width:820px){.ext .er:has(.hv){grid-template-columns:1fr 1fr!important;gap:4px 12px!important}.ext .er:has(.hv) .l{grid-column:1/-1}.ext .er .hv,.ext .er .hl,.ext .er .hp{display:none}.ext .er .hr,.ext .er .hd{display:flex;flex-direction:column;align-items:flex-start;text-align:left;font-size:15px}.ext .er .hr::before{content:'Recebi';color:var(--mut);font-weight:500;font-size:12px}.ext .er .hd::before{content:'Resultado';color:var(--mut);font-weight:500;font-size:12px;margin-bottom:2px}.ext .er:has(.hv) .l span{overflow:visible}.ext .er .hd:empty,.ext .er .hp:empty{display:none!important}.ext.hq .er .hr::before{content:'Líquido'}}
 .er.sub{color:var(--ink)}
-.scr{flex:1 1 auto;min-height:0;overflow:auto}
-.ext.scr{overflow:auto}.ext.scr .eh{position:sticky;top:0;z-index:2}
-.grp{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 0 2px;font-size:13px;font-weight:600;color:var(--mut)}
-.grp:first-child{margin-top:0}.grp b{font-weight:600;color:var(--ink2)}.grp.sai,.grp.sai b{color:var(--sai)}.grp.ok,.grp.ok b{color:var(--pago)}
-.adhd{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.card>.bar1{flex:none}
-@media (min-width:1101px){.dsp{grid-template-columns:minmax(0,.85fr) minmax(0,1.35fr)}}
-.t-painel .dsp{grid-template-columns:minmax(0,1.35fr) minmax(0,.85fr)}
-@media (max-width:1100px){.t-painel .dsp,.dsp{grid-template-columns:minmax(0,1fr)}}
-.page:not(.fit) .dsp .scr{max-height:70vh}
-.page.fit .dsp>.card{min-height:0}
+.dsp{align-items:start;gap:24px}
+@media (min-width:1101px){.dsp{grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr)}.t-painel .dsp{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}}
+@media (max-width:1100px){.dsp,.t-painel .dsp{grid-template-columns:minmax(0,1fr)}}
+.t-painel,.t-despesas{--gap:24px}
+.t-painel .card,.t-despesas .card{padding:30px 32px;gap:22px}
+.t-painel .kpi,.t-despesas .kpi{padding:24px 26px;gap:14px 14px}
+.t-painel .kpi .val,.t-despesas .kpi .val{font-size:28px}
+.t-painel .ext .er,.t-despesas .ext .er{padding:15px 22px}
+.t-painel .ext .eh,.t-despesas .ext .eh{padding:12px 22px}
+.t-painel .ch h2,.t-despesas .ch h2{font-size:18px}
+.t-despesas .lst .li,.t-painel .lst .li{padding-top:14px;padding-bottom:14px}
+.grp{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:26px 0 6px;font-size:13.5px;font-weight:600;color:var(--mut)}
+.grp:first-child{margin-top:4px}.grp b{font-weight:600;color:var(--ink2)}.grp.sai,.grp.sai b{color:var(--sai)}.grp.ok,.grp.ok b{color:var(--pago)}
+.dflt{margin:18px 0 8px}
+.adsum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.adsum>div{background:var(--soft);border-radius:var(--r2);padding:18px 20px;display:flex;flex-direction:column;gap:6px}
+.adsum .k{font-size:13px;font-weight:500;color:var(--mut)}.adsum b{font-size:24px;font-weight:600;letter-spacing:-.01em}
+.adg{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.adt{border:1px solid var(--line);border-radius:var(--r2);padding:20px 22px;display:flex;flex-direction:column;gap:14px;background:#fff}
+.adt-h{display:flex;align-items:center;gap:12px;min-width:0}.adt-h b{display:block;font-weight:600;font-size:15px}.adt-h small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}
+.adt-h .mkic{width:38px;height:38px;border-radius:11px}
+.adt-v{font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1}
+.adt .bar1{height:8px}
+.adt-f{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--mut)}
+.adnote{display:flex;align-items:center;gap:8px;margin:2px 0 0}
+@media (max-width:700px){.adsum{grid-template-columns:repeat(2,minmax(0,1fr))}.t-painel .card,.t-despesas .card{padding:22px 20px}}
 </style></head><body>
 <div id="app"></div><div id="ctip" hidden></div><div id="toast" role="status" hidden></div>
 <script type="module">
@@ -567,8 +582,12 @@ function adsCorpo(a,c){
   var ads={},tot=0;(S.ads||[]).forEach(function(r){ads[r.loja_id]=(ads[r.loja_id]||0)+ +r.valor;tot+= +r.valor});
   var lj=Object.keys(ads).map(function(id){var l=(S.lojasMap||{})[id]||{nome:'Loja',mkt:'mercado_livre'},ag=a.lojas.filter(function(x){return x.id===id})[0];return {nome:l.nome,mkt:l.mkt,v:ads[id],ped:ag?ag.ped:0}}).sort(function(x,y){return y.v-x.v});
   var mx=Math.max.apply(null,lj.map(function(x){return x.v}).concat([1])),pedL=lj.reduce(function(sm,x){return sm+x.ped},0),falta=['mercado_livre','shopee','tiktok_shop'].filter(function(k){return !lj.some(function(x){return x.mkt===k})}).map(function(k){return {mercado_livre:'Mercado Livre',shopee:'Shopee',tiktok_shop:'TikTok'}[k]});
-  return (tot?'<div class="adhd">'+pill('neu','','Total '+brl0(tot))+pill('neu','','Por pedido '+brl(pedL?tot/pedL:0))+'</div>':'')+
-   (lj.length?'<div class="adl">'+lj.map(function(x){var k=mkcod(x.mkt);return '<div class="al"><div class="top2">'+mk(k).replace('class="mkic"','class="mkic sm"')+'<span>'+esc(x.nome)+'</span><b>'+brl0(x.v)+'</b><small>'+(x.ped?brl(x.v/x.ped)+'/ped.':'')+'</small></div><div class="bar1"><span style="width:'+(x.v/mx*100).toFixed(0)+'%;background:'+MKC[k]+'"></span></div></div>'}).join('')+'</div>':'<p class="sub">Ainda não li o gasto com anúncios deste mês.</p>')+(lj.length&&falta.length?'<p class="sub" style="margin-top:10px">Ainda não li os anúncios d'+(falta.length>1?'a ':'o ')+falta.join(' e ')+'.</p>':'');
+  if(!lj.length)return '<p class="sub">Ainda não li o gasto com anúncios deste mês.</p>';
+  var fat=c.fat||0;
+  var h='<div class="adsum"><div><span class="k">Gasto no mês</span><b>'+brl(tot)+'</b></div><div><span class="k">Por pedido</span><b>'+brl(pedL?tot/pedL:0)+'</b></div><div><span class="k">Do faturamento</span><b>'+(fat?pct(tot/fat):'—')+'</b></div><div><span class="k">Lojas com anúncio</span><b>'+lj.length+'</b></div></div>';
+  h+='<div class="adg">'+lj.map(function(x){var k=mkcod(x.mkt);return '<div class="adt"><div class="adt-h">'+mk(k)+'<div><b>'+esc(x.nome)+'</b><small>'+MKS[k]+'</small></div></div><div class="adt-v">'+brl0(x.v)+'</div><div class="bar1"><span style="width:'+(x.v/mx*100).toFixed(0)+'%;background:'+MKC[k]+'"></span></div><div class="adt-f"><span>'+(x.ped?brl(x.v/x.ped)+' por pedido':'sem pedidos')+'</span><span>'+pct(x.v/tot)+' do total</span></div></div>'}).join('')+'</div>';
+  if(falta.length)h+='<p class="sub adnote">'+ic('alert',16)+'Ainda não li os anúncios d'+(falta.length>1?'a ':'o ')+falta.join(' e ')+'.</p>';
+  return h;
 }
 function estornos(L){
   var out=[],T={devolvido_com_produto:'Devolução aceita',reembolsado_total:'Reembolso total',reembolsado_parcial:'Reembolso parcial'};
@@ -730,7 +749,7 @@ function telaDespesas(){
     '<section class="card dockpad"><div class="ch dch">'+chip('receipt','sai',1)+'<h2>Lançamentos de '+mesNome(S.ym).toLowerCase()+'</h2><div class="sp"></div><div class="seg" role="group" aria-label="Filtro"><button type="button" data-fd="todas" aria-pressed="'+(S.filtro==='todas')+'">Todas</button><button type="button" data-fd="res" aria-pressed="'+(S.filtro==='res')+'">'+ic('check',14)+'No resultado</button><button type="button" data-fd="fora" aria-pressed="'+(S.filtro==='fora')+'">Fora do resultado</button></div></div>'+
     '<div class="dflt"><label class="fld">Categoria<select class="selx" data-fcat aria-label="Filtrar por categoria"><option value="">Todas as categorias</option>'+S.cats.map(function(k){return '<option value="'+esc(k.nome)+'"'+(S.fcat===k.nome?' selected':'')+'>'+esc(k.nome)+'</option>'}).join('')+'</select></label>'+
     '<label class="fld grow">Buscar<input type="search" data-fq value="'+esc(S.fq||'')+'" placeholder="Nome da despesa, ex.: aluguel" autocomplete="off"></label>'+(S.fcat||S.fq?'<button type="button" class="btn sm" data-fclr>Limpar filtros</button>':'')+'</div>'+
-    '<div class="ext scr" style="--cols:52px minmax(0,1.4fr) minmax(0,.8fr) 132px 96px"><div class="eh"><span>Pago em</span><span>Descrição</span><span>Categoria</span><span>Origem</span><span class="r">Valor</span></div><div id="dlist" style="display:contents">'+corpoDesp()+'</div></div></section></div>';
+    '<div class="ext scr" style="--cols:68px minmax(0,1.5fr) minmax(0,.8fr) 140px 110px"><div class="eh"><span>Pago em</span><span>Descrição</span><span>Categoria</span><span>Origem</span><span class="r">Valor</span></div><div id="dlist" style="display:contents">'+corpoDesp()+'</div></div></section></div>';
   return h;
 }
 
@@ -753,7 +772,7 @@ function cardMes(c){
   if(tab==='ext'){
     corpo='<div class="ext scr" style="'+cols+'"><div class="eh"><span>Linha</span><span class="r">Valor</span><span class="r">'+pc+'</span><span></span></div>'+
     (c.cash?R('Recebi dos marketplaces',c.rec,'sub','wallet')+R('Mercado Livre',c.recMk.ml,'','store',!c.recMk.ml)+R('Shopee',c.recMk.sp,'','store',!c.recMk.sp)+R('TikTok Shop',c.recMk.tt,'','store',!c.recMk.tt)+(c.fornOk?R('Pago a fornecedores',-c.pf,'ind','box',!c.pf):'')+R('Despesas',-c.desp,'ind','receipt',!c.desp)+R('Resultado do mês',c.res,'tot','chart'):
-    R('Faturamento',c.fat,'sub','cart')+R('Estornos e devoluções',-c.est,'ind','repeat',!c.est)+R(c.hist?'Taxas e frete dos marketplaces':'Taxas dos marketplaces',-c.tax,'ind','tag')+(c.hist?'':R('Frete pago pela loja',-c.fr,'ind','truck'))+R('Líquido dos marketplaces',c.liq,'sub','wallet')+(c.fornOk?R('Pago a fornecedores',-c.pf,'ind','box',!c.pf):'')+R('Despesas',-c.desp,'ind','receipt',!c.desp)+R('Resultado do mês',c.res,'tot','chart'))+'</div>';
+    R('Faturamento',c.fat,'sub','cart')+R('Estornos e devoluções',-c.est,'ind','repeat',!c.est)+R(c.hist?'Taxas e frete dos marketplaces':'Taxas dos marketplaces',-c.tax,'ind','tag')+(c.hist?'':R('Frete pago pela loja',-c.fr,'ind','truck'))+R('Líquido dos marketplaces',c.liq,'sub','wallet')+(c.fornOk?R('Pago a fornecedores',-c.pf,'ind','box',!c.pf):'')+R('Despesas',-c.desp,'ind','receipt',!c.desp)+R('Resultado do mês',c.res,'tot','chart'))+'</div>'+(c.cash&&c.fat?'<p class="sub">Vendido no mês: '+brl0(c.fat)+' de faturamento e '+brl0(c.liq)+' de líquido. O que ainda não foi liberado entra nos próximos meses.</p>':'');
   }else if(tab==='desp'){
     corpo='<div class="ext scr" style="'+cols+'"><div class="eh"><span>Categoria</span><span class="r">Valor</span><span class="r">'+pc+'</span><span></span></div>'+
     S.cats.filter(function(k){return k.entra_resultado}).map(function(k){var v=c.porCat[k.nome]||0;return R(esc(k.nome)+(k.incluso_preco?' '+pill('neu','','incluso no preço'):'')+(k.nome==='Ads'&&c.adsLido?' '+pill('neu','','lido dos marketplaces'):''),-v,'',catI(k.nome),!v)}).join('')+R('Total de despesas',-c.desp,'tot','receipt')+
@@ -770,8 +789,9 @@ function cardMes(c){
 // ---------- Visão geral ----------
 function telaPainel(){
   if(S.vcarregando&&!S.v)return carregando('Financeiro');
-  var mlOk=!S.erro&&S.d,T=okT(),arec=sum(T,function(l){return l.a_receber||0});
+  var mlOk=!S.erro&&S.d,T=okT(),arec=sum(T,function(l){return l.a_receber||0}),pg7=sum(T,function(l){return l.pago_7d||0});
   var hj=hojeSP(),amanha=new Date(Date.parse(hj+'T12:00:00Z')+864e5).toISOString().slice(0,10),lim=new Date(Date.parse(hj+'T12:00:00Z')+7*864e5).toISOString().slice(0,10);
+  var barras=[],mx=1,i,dd;for(i=0;i<14;i++){dd=new Date(Date.parse(hj+'T12:00:00Z')+i*864e5).toISOString().slice(0,10);var x=mlOk?totalDia(dd).t:0;barras.push({k:dd,v:x});mx=Math.max(mx,x)}
   var h=head('Financeiro',mesSel());
   if(S.verro)return h+'<section class="card"><p class="sub">Não consegui ler as vendas agora. Use o botão de atualizar.</p></section>';
   var c=calc(),fat=(c.cash?c.rec:c.fat)||1;
@@ -779,9 +799,11 @@ function telaPainel(){
   h+='<section class="palco"><div><div class="top">'+chip('wallet','p')+'<span class="k">Resultado de '+mesNome(S.ym).toLowerCase()+'</span>'+pill('dark','',ehAtual()?'até hoje, '+ddmm(hj):'mês fechado')+palcoPills(c)+'</div>'+big(c.res,c.res<0?' neg':'')+
     '<div class="trio"><div>'+chip('wallet','p',1)+'<div class="t"><span class="k">'+(c.cash?'Recebi dos marketplaces':'Líquido marketplaces')+'</span><b>'+brl(c.cash?c.rec:c.liq)+'</b></div></div><div>'+chip('box','p',1)+'<div class="t"><span class="k">Pago a fornecedores</span><b>'+(c.fornOk?brl(c.pf):'—')+'</b></div></div><div>'+chip('receipt','p',1)+'<div class="t"><span class="k">Despesas</span><b>'+brl(c.desp)+'</b></div></div></div></div>'+
     
-    '<div class="inset"><span class="k">'+(c.cash?'De cada R$ 100 recebidos sobram':'Cada R$ 100 faturados viram')+'</span><div class="big2'+(c.res<0?' neg':'')+'">'+brl(c.res/fat*100)+'</div><div class="split" style="height:14px">'+[['Taxas',c.cash?0:c.tax,'#5E7BEF'],['Frete',c.cash?0:c.fr,'#3F9C95'],['Estornos',c.cash?0:c.est,'#E5604F'],['Fornecedores',c.pf,'#8FA3FF'],['Despesas',c.desp,'#E0B93C'],['Sobrou',Math.max(0,c.res),'#4BC47C']].filter(function(p){return p[1]>0}).map(function(p){return '<span style="flex:'+p[1].toFixed(0)+';background:'+p[2]+'" title="'+p[0]+'"></span>'}).join('')+'</div><div class="slg" style="color:var(--on-p2)">'+[['Taxas','#5E7BEF'],['Frete','#3F9C95'],['Estornos','#E5604F'],['Fornecedores','#8FA3FF'],['Despesas','#E0B93C'],['Sobrou','#4BC47C']].filter(function(p){return !c.cash||['Fornecedores','Despesas','Sobrou'].indexOf(p[0])>=0}).map(function(p){return '<span><i style="background:'+p[1]+'"></i>'+p[0]+'</span>'}).join('')+'</div>'+(c.cash&&c.fat?'<span class="k">Vendido no mês: '+brl0(c.fat)+' de faturamento e '+brl0(c.liq)+' de líquido</span>':'')+'</div></section>';
+    '<div class="inset"><div class="top"><span class="k">A receber dos marketplaces</span></div><div class="big2">'+(mlOk?brl(arec):'—')+'</div>'+
+    '<div class="bars" role="img" aria-label="Liberações do Mercado Livre nos próximos 14 dias">'+barras.map(function(b){return '<button type="button" class="bar'+(b.k===hj?' hj':'')+'" data-k="'+b.k+'"><i style="height:'+Math.max(4,b.v/mx*100).toFixed(0)+'%"></i><em>'+b.k.slice(8)+'</em></button>'}).join('')+'</div>'+
+    '<span class="k">'+(mlOk?'Mercado Livre libera por dia, pela data que ele informa':'Não consegui ler o Mercado Livre agora')+'</span></div></section>';
   h+='<section class="kpis k5">'+
-    kpi('rec','cardin','A receber',mlOk?brl0(arec):'—','Mercado Livre, Shopee e TikTok','azul','recebimentos')+
+    kpi('pago','check','Pago · 7 dias',mlOk?brl0(pg7):'—','Mercado Livre, Shopee e TikTok','pos','recebimentos')+
     kpi('rec','clock','Libera amanhã',mlOk?brl0(totalDia(amanha).t):'—','Mercado Livre','azul','recebimentos')+
     kpi('disp','box','Devendo a fornecedores',c.fornOk?brl0(c.apagar):'—',c.fornOk?(c.F.filter(function(f){return f.saldo>0.005}).length+' fornecedores com saldo'):'Fornecedores indisponíveis','','visao:forn')+
     kpi('sai','cal','Contas em 7 dias',brl0(sum(prox,function(x){return +x.valor})),prox.length+' contas a pagar','','despesas')+
@@ -879,7 +901,7 @@ function telaAtual(){
   if(r==='recebimentos')return S.carregando?carregando('Recebimentos',1):S.erro?falha('Recebimentos'):telaReceb();
   return telaPainel();
 }
-var FIT={visao:1,recebimentos:1,despesas:1};
+var FIT={};
 function render(){
   var r=rota(),fit=!!FIT[r]&&!(r==='recebimentos'?(S.carregando||S.erro):(S.vcarregando||S.verro))&&!(r==='despesas'&&(S.lancar||(S.comp||[]).length));
   document.body.classList.toggle('fit',fit);
