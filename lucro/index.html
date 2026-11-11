@@ -681,7 +681,7 @@ function animateNum(el,from,to,fmt,dur){
   requestAnimationFrame(step);
 }
 
-var REF={fat:{},mg:{}};
+var REF={fat:{},mg:{},dias:7},HORA_PREV=15;
 function cumRef(list,x){
   var s=0,fl=Math.floor(x);
   list.forEach(function(L){var v=REF.fat[L.id];if(!v)return;for(var h=0;h<fl&&h<24;h++)s+=v[h];if(fl<24)s+=(x-fl)*v[fl]});
@@ -698,9 +698,11 @@ function projecao(list){
   var tot=cumRef(list,24),at=cumRef(list,NOW),frac=tot>0?at/tot:0;
   if(tot<=0||fn<=0)return {pts:[[NOW,tn],[24,tn]],fim:tn,ok:false};
   var m7=mf>0?ml/mf:(fn>0?tn/fn:0),mg=(tn+m7*K)/(fn+K);
-  var fatFim=fn/Math.max(frac,0.05),pts=[[NOW,tn]];
-  for(var h=HN+1;h<=24;h++)pts.push([h,tn+mg*(fatFim*cumRef(list,h)/tot-fn)]);
-  return {pts:pts,fim:pts[pts.length-1][1],ok:frac>=0.15};
+  var dia=tot/Math.max(1,REF.dias),atip=fn>dia;
+  /* dia fora do padrão (já vendeu mais que um dia inteiro normal): só soma o que um dia normal ainda vende */
+  var fatFim=atip?fn+dia*(1-frac):fn/Math.max(frac,0.05),pts=[[NOW,tn]];
+  for(var h=HN+1;h<=24;h++)pts.push([h,tn+mg*((atip?fn+dia*(cumRef(list,h)/tot-frac):fatFim*cumRef(list,h)/tot)-fn)]);
+  return {pts:pts,fim:pts[pts.length-1][1],ok:frac>=0.15,atip:atip};
 }
 function etaMeta(pts,M){
   if(pts[0][1]>=M)return 0;
@@ -1057,12 +1059,15 @@ function render(){
   for(var h=0;h<=HN;h++){act.forEach(function(L){a+=lucH(L,L.hoje[h])});pt.push([h===HN?NOW:h+1,a])}
   for(var h2=0;h2<24;h2++){act.forEach(function(L){b+=lucH(L,L.ontem[h2])});po.push([h2+1,b])}
   var P=projecao(act),PA=projecao(lojasOk()),eta=etaMeta(PA.pts,meta);
+  var cedo=NOW<HORA_PREV;
+  document.querySelector('.proj').style.display=cedo?'none':'';
+  if(cedo){P=PA={pts:[[NOW,0]],fim:0,ok:false};eta=null}
   $('#projVal').textContent=brl0(P.fim);
-  var A=totAll(),cap;
-  if(filtro!=='all')cap=P.ok?'Pelo ritmo dos últimos 7 dias, só nesta plataforma.':'Ainda cedo para prever com confiança.';
+  var A=totAll(),cap,base=P.atip?'Dia fora do padrão (promoção?), previsão conservadora. ':'Pelo ritmo dos últimos 7 dias, ';
+  if(filtro!=='all')cap=P.atip?base.trim():(P.ok?'Pelo ritmo dos últimos 7 dias, só nesta plataforma.':'Ainda cedo para prever com confiança.');
   else if(A.luc>=meta)cap='A meta do dia já foi batida.';
   else if(!PA.ok)cap='Ainda cedo para prever a meta.';
-  else cap=eta===null?'Pelo ritmo dos últimos 7 dias, a meta não é batida hoje.':'Pelo ritmo dos últimos 7 dias, bate a meta '+horaTxt(eta)+'.';
+  else cap=eta===null?(PA.atip?base+'a meta não é batida hoje.':base+'a meta não é batida hoje.'):(PA.atip?base+'Bate a meta ':base+'bate a meta ')+horaTxt(eta)+'.';
   $('#projTxt').textContent=cap;
   chartData={pt:pt,po:po,pr:P.pts,meta:filtro==='all'?meta:null,eta:filtro==='all'&&PA.ok?eta:null};drawChart();drawTvChart();
   $('#chart').setAttribute('aria-label','Lucro acumulado hoje: '+brl0(T.luc)+'. Ontem, no mesmo horário: '+brl0(ontemAgora)+'. Projeção do dia: '+brl0(P.fim)+'.');
@@ -1130,13 +1135,13 @@ function drawChart(){
   var hit=$('#hit'),tip=$('#tip');
   function show(ev){
     var r=hit.getBoundingClientRect(),x=(ev.clientX-r.left)/iw*24,k=Math.max(0,Math.min(24,Math.round(x)));
-    var fut=k>HN,tv=k<=HN?pt[k][1]:null,pv=fut?pr[k-HN]:null,ov=po[k][1],px=X(k);
+    var fut=k>HN,tv=k<=HN?pt[k][1]:null,pv=fut?(pr[k-HN]||null):null,ov=po[k][1],px=X(k);
     $('#hov').style.display='';$('#hl').setAttribute('x1',px);$('#hl').setAttribute('x2',px);
     $('#hd2').setAttribute('cx',px);$('#hd2').setAttribute('cy',Y(ov));
     if(tv===null){$('#hd1').style.display='none'}else{$('#hd1').style.display='';$('#hd1').setAttribute('cx',px);$('#hd1').setAttribute('cy',Y(tv))}
     if(pv===null){$('#hd3').style.display='none'}else{$('#hd3').style.display='';$('#hd3').setAttribute('cx',px);$('#hd3').setAttribute('cy',Y(pv[1]))}
     tip.hidden=false;
-    tip.innerHTML='<b>Até '+(k<10?'0':'')+k+'h</b><br>'+(fut?'Projeção '+brl0(pv[1]):'Hoje '+brl0(tv))+' · Ontem '+brl0(ov);
+    tip.innerHTML='<b>Até '+(k<10?'0':'')+k+'h</b><br>'+(pv?'Projeção '+brl0(pv[1])+' · ':(fut?'':'Hoje '+brl0(tv)+' · '))+'Ontem '+brl0(ov);
     var tw=tip.offsetWidth,left=px-14+12;if(left+tw>W-4)left=px-14-tw-12;tip.style.left=Math.max(4,left)+'px';
   }
   function hide(){$('#hov').style.display='none';tip.hidden=true}
@@ -1365,7 +1370,7 @@ async function carregar(){
   try{
     var q=await SB.rpc('lucro_referencia');
     if(q.data){
-      REF={fat:{},mg:{}};
+      REF={fat:{},mg:{},dias:+q.data.dias||7};
       q.data.horas.forEach(function(x){var v=REF.fat[x.loja_id]||(REF.fat[x.loja_id]=new Array(24).fill(0));v[+x.h]+=+x.fat});
       q.data.margem.forEach(function(x){REF.mg[x.loja_id]={fat:+x.fat,luc:+x.luc}});
     }
