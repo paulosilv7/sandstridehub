@@ -681,14 +681,26 @@ function animateNum(el,from,to,fmt,dur){
   requestAnimationFrame(step);
 }
 
+var REF={fat:{},mg:{}};
+function cumRef(list,x){
+  var s=0,fl=Math.floor(x);
+  list.forEach(function(L){var v=REF.fat[L.id];if(!v)return;for(var h=0;h<fl&&h<24;h++)s+=v[h];if(fl<24)s+=(x-fl)*v[fl]});
+  return s;
+}
+/* Projeção: faturamento de hoje dividido pela fração do dia que costuma estar vendida a esta hora
+   (média dos 7 dias anteriores); o lucro usa a margem de hoje, ancorada na margem dos 7 dias. */
 function projecao(list){
-  var tn=0,yAt=0;
-  list.forEach(function(L){L.hoje.forEach(function(o){tn+=lucH(L,o)});yAt+=cumOntem(L,NOW)});
-  var r=yAt>0?tn/yAt:1,rest=[];
-  for(var h=HN;h<24;h++){var s=0;list.forEach(function(L){s+=lucH(L,L.ontem[h])});rest.push(s)}
-  var cur=tn+r*rest[0]*(1-FR),pts=[[NOW,tn],[HN+1,cur]];
-  for(var i=1;i<rest.length;i++){cur+=r*rest[i];pts.push([HN+1+i,cur])}
-  return {pts:pts,fim:cur};
+  var tn=0,fn=0,mf=0,ml=0,K=2000;
+  list.forEach(function(L){
+    L.hoje.forEach(function(o){tn+=lucH(L,o);fn+=o.fat});
+    var m=REF.mg[L.id];if(m){mf+=m.fat;ml+=m.luc}
+  });
+  var tot=cumRef(list,24),at=cumRef(list,NOW),frac=tot>0?at/tot:0;
+  if(tot<=0||fn<=0)return {pts:[[NOW,tn],[24,tn]],fim:tn,ok:false};
+  var m7=mf>0?ml/mf:(fn>0?tn/fn:0),mg=(tn+m7*K)/(fn+K);
+  var fatFim=fn/Math.max(frac,0.05),pts=[[NOW,tn]];
+  for(var h=HN+1;h<=24;h++)pts.push([h,tn+mg*(fatFim*cumRef(list,h)/tot-fn)]);
+  return {pts:pts,fim:pts[pts.length-1][1],ok:frac>=0.15};
 }
 function etaMeta(pts,M){
   if(pts[0][1]>=M)return 0;
@@ -1047,11 +1059,12 @@ function render(){
   var P=projecao(act),PA=projecao(lojasOk()),eta=etaMeta(PA.pts,meta);
   $('#projVal').textContent=brl0(P.fim);
   var A=totAll(),cap;
-  if(filtro!=='all')cap='No ritmo de ontem, só nesta plataforma.';
+  if(filtro!=='all')cap=P.ok?'Pelo ritmo dos últimos 7 dias, só nesta plataforma.':'Ainda cedo para prever com confiança.';
   else if(A.luc>=meta)cap='A meta do dia já foi batida.';
-  else cap=eta===null?'No ritmo de ontem, a meta não é batida hoje.':'No ritmo de ontem, bate a meta '+horaTxt(eta)+'.';
+  else if(!PA.ok)cap='Ainda cedo para prever a meta.';
+  else cap=eta===null?'Pelo ritmo dos últimos 7 dias, a meta não é batida hoje.':'Pelo ritmo dos últimos 7 dias, bate a meta '+horaTxt(eta)+'.';
   $('#projTxt').textContent=cap;
-  chartData={pt:pt,po:po,pr:P.pts,meta:filtro==='all'?meta:null,eta:filtro==='all'?eta:null};drawChart();drawTvChart();
+  chartData={pt:pt,po:po,pr:P.pts,meta:filtro==='all'?meta:null,eta:filtro==='all'&&PA.ok?eta:null};drawChart();drawTvChart();
   $('#chart').setAttribute('aria-label','Lucro acumulado hoje: '+brl0(T.luc)+'. Ontem, no mesmo horário: '+brl0(ontemAgora)+'. Projeção do dia: '+brl0(P.fim)+'.');
   renderMeta();
 }
@@ -1349,6 +1362,14 @@ async function carregar(){
   ULT_CARGA=Date.now();
   var r=await SB.rpc('lucro_painel');
   if(r.error||!r.data){var pill=$('#sincPill');if(pill){pill.textContent='Sem conexão com o banco';pill.className='pill bad'}return}
+  try{
+    var q=await SB.rpc('lucro_referencia');
+    if(q.data){
+      REF={fat:{},mg:{}};
+      q.data.horas.forEach(function(x){var v=REF.fat[x.loja_id]||(REF.fat[x.loja_id]=new Array(24).fill(0));v[+x.h]+=+x.fat});
+      q.data.margem.forEach(function(x){REF.mg[x.loja_id]={fat:+x.fat,luc:+x.luc}});
+    }
+  }catch(e){}
   aplicarDados(r.data);render();
 }
 var FECH={},FECH_OK=false;
