@@ -1,7 +1,12 @@
 // Lucro Ao Vivo: traz os pedidos pagos do Mercado Livre para o banco e recalcula os dias afetados.
 // Cupom do vendedor: sempre lido de /orders/{id}/discounts (o campo coupon_amount do pagamento nem sempre traz o cupom).
 // 404 discount_not_found = pedido sem desconto (cupom 0, marcado como conferido).
-// Pedidos já gravados com a mesma situação, taxa e cupom conferido são pulados (rodada rápida e vínculos de SKU preservados).
+// Pedido novo entra com taxa 0 até a próxima rodada: fica FORA dos totais (aguardando_dados = true) até ter taxa real e cupom conferido
+// (no máximo 60 min; depois disso entra com o que tiver, para não sumir do total).
+// Frete: lido de /shipments/{id}/costs. Enquanto o envio precisa de correção (pending/ready_to_fix) ou não tem status,
+// o ML devolve valor provisório (ex.: R$ 135): o pedido fica com frete_pendente = true, o cálculo usa o frete de reserva da Precificação
+// (lucro_frete_ref) e o pedido é relido a cada rodada até o frete ficar confirmado.
+// Envios pending/buffered e pending/creating_route (aguardando liberação) têm valor normal: entram nos totais, mas continuam sendo relidos até o envio avançar.
 // Quem pode chamar: admin ou pessoa com acesso ao app 'lucro' (login), ou o agendador do banco (chave interna).
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -11,6 +16,7 @@ const CLIENT_SECRET = Deno.env.get("ML_CLIENT_SECRET") ?? "";
 const API = "https://api.mercadolibre.com";
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const INICIO_MS = Date.parse("2026-10-25T03:00:00Z");
+const ESPERA_MAX_MS = 60 * 60 * 1000;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -55,6 +61,22 @@ async function ml(caminho: string, token: string, headers: Record<string, string
 
 async function pausa(ms: number) { await new Promise((r) => setTimeout(r, ms)); }
 
+// Frete confirmado: o envio já está pronto para despacho ou além (ready_to_ship, shipped...).
+function freteConfirmado(status: string | null, sub: string | null): boolean {
+  if (!status) return false;
+  if (["shipped", "delivered", "not_delivered", "returned"].includes(status)) return true;
+  if (status === "ready_to_ship") return sub !== "ready_to_fix";
+  return false;
+}
+// Frete provisório (usa a reserva da Precificação): sem status, ou envio travado (pending/ready_to_fix etc.).
+// Esperando liberação normal (pending/buffered, creating_route) não é provisório.
+function freteProvisorio(status: string | null, sub: string | null): boolean {
+  if (freteConfirmado(status, sub)) return false;
+  if (!status) return true;
+  if (status === "pending" && ["buffered", "creating_route"].includes(String(sub))) return false;
+  return true;
+}
+
 // Parte do CUPOM que saiu do bolso do vendedor (o resto a plataforma paga).
 // Só conta os descontos do tipo "coupon"; ofertas ("discount") já estão no preço ou no estorno da tarifa.
 // null = não deu para saber.
@@ -77,7 +99,7 @@ async function sincronizarLoja(loja: any, dias: number, limite: number) {
   if (!token) return { loja: loja.apelido, erro: "conexão precisa ser refeita" };
   const desde = new Date(Math.max(Date.now() - dias * 86400_000, INICIO_MS)).toISOString();
   const diasAfetados = new Set<string>();
-  let lidos = 0, gravados = 0, itensGravados = 0, ignorados = 0, jaProntos = 0;
+  let lidos = 0, gravados = 0, itensGravados = 0, ignorados = 0, jaProntos = 0, pendentes = 0, aguardando = 0;
   let ultimoPago: string | null = null;
   const erros: string[] = [];
 
@@ -91,7 +113,7 @@ async function sincronizarLoja(loja: any, dias: number, limite: number) {
 
     // pedidos já gravados nesta página
     const existentes = new Map<string, any>();
-    const { data: ex } = await supabase.from("lucro_pedidos").select("pedido_externo, status, cancelado_em, taxa_marketplace, dados")
+    const { data: ex } = await supabase.from("lucro_pedidos").select("pedido_externo, status, cancelado_em, taxa_marketplace, frete_pendente, aguardando_dados, dia, dados")
       .eq("loja_id", loja.id).in("pedido_externo", lista.map((o) => String(o.id)));
     (ex ?? []).forEach((r: any) => existentes.set(String(r.pedido_externo), r));
 
@@ -108,7 +130,10 @@ async function sincronizarLoja(loja: any, dias: number, limite: number) {
       const ja = existentes.get(String(o.id));
       if (ja && String(ja.status) === String(o.status)) {
         if (cancelado && ja.cancelado_em) { jaProntos++; continue; }
-        if (!cancelado && ja.dados?.cupom_checado === true && Number(ja.taxa_marketplace) > 0) { jaProntos++; continue; }
+        // frete confirmado, ou pedido antigo (lido antes desta regra): não precisa reler
+        const recente = Date.now() - new Date(pagoEm).getTime() < 4 * 86400_000;
+        const freteLido = ja.dados?.frete_ok === true || (ja.dados?.frete_ok === undefined && !recente);
+        if (!cancelado && ja.dados?.cupom_checado === true && Number(ja.taxa_marketplace) > 0 && freteLido && !ja.frete_pendente && !ja.aguardando_dados) { jaProntos++; continue; }
       }
 
       const itens: any[] = o.order_items ?? [];
@@ -130,15 +155,31 @@ async function sincronizarLoja(loja: any, dias: number, limite: number) {
       // Sem detalhe da API, assume o cupom do pagamento inteiro como do vendedor (jeito conservador).
       const descontoVendedor = cupomVendedor !== null ? cupomVendedor : cupom;
 
-      let frete = 0, envio: any = null;
+      let frete = 0, envio: any = null, envioStatus: string | null = null, envioSub: string | null = null, freteOk = false, provisorio = false;
       const shipId = o.shipping?.id;
       if (shipId && !cancelado) {
+        let custoLido = false;
         try {
           envio = await ml(`/shipments/${shipId}/costs`, token, { "x-format-new": "true" });
           const s = (envio?.senders ?? [])[0];
           frete = Number(s?.cost ?? 0);
+          custoLido = true;
         } catch (e) { erros.push(`frete ${o.id}: ${(e as Error).message.slice(0, 120)}`); }
+        try {
+          const sh = await ml(`/shipments/${shipId}`, token);
+          envioStatus = sh?.status ?? null; envioSub = sh?.substatus ?? null;
+        } catch (e) { erros.push(`envio ${o.id}: ${(e as Error).message.slice(0, 120)}`); }
+        freteOk = custoLido && freteConfirmado(envioStatus, envioSub);
+        provisorio = !custoLido || freteProvisorio(envioStatus, envioSub);
+      } else if (!cancelado) {
+        freteOk = true; // sem envio do vendedor (retirada etc.): nada a confirmar
       }
+      const pendente = !cancelado && provisorio;
+      if (pendente) pendentes++;
+      // fora dos totais até ter taxa real e cupom conferido (máx. 60 min)
+      const aguarda = !cancelado && (taxa <= 0 || cupomVendedor === null) && (Date.now() - new Date(pagoEm).getTime() < ESPERA_MAX_MS);
+      if (aguarda) aguardando++;
+      if (ja && (ja.frete_pendente !== pendente || ja.aguardando_dados !== aguarda)) diasAfetados.add(ja.dia);
 
       const linha: any = {
         loja_id: loja.id,
@@ -149,8 +190,11 @@ async function sincronizarLoja(loja: any, dias: number, limite: number) {
         taxa_marketplace: Math.round(taxa * 100) / 100,
         frete_vendedor: Math.round(frete * 100) / 100,
         desconto_vendedor: Math.round(descontoVendedor * 100) / 100,
+        frete_pendente: pendente,
+        aguardando_dados: aguarda,
         dados: {
           total: o.total_amount, pago: o.paid_amount, envio_id: shipId ?? null,
+          envio_status: envioStatus, envio_substatus: envioSub, frete_ok: freteOk || cancelado,
           pack_id: o.pack_id ?? null,
           logistica: o.shipping?.logistic_type ?? null,
           cupom_total: cupom,
@@ -193,7 +237,7 @@ async function sincronizarLoja(loja: any, dias: number, limite: number) {
     loja_id: loja.id, ultimo_pago_em: ultimoPago, ultima_execucao: new Date().toISOString(),
     erro: erros.length ? erros[0].slice(0, 300) : null,
   } as any, { onConflict: "loja_id" });
-  return { loja: loja.apelido, lidos, gravados, ja_prontos: jaProntos, itens: itensGravados, ignorados, dias: [...diasAfetados], erros: erros.slice(0, 10) };
+  return { loja: loja.apelido, lidos, gravados, ja_prontos: jaProntos, itens: itensGravados, ignorados, frete_pendentes: pendentes, aguardando_dados: aguardando, dias: [...diasAfetados], erros: erros.slice(0, 10) };
 }
 
 async function autorizado(req: Request): Promise<boolean> {
@@ -215,7 +259,8 @@ async function autorizado(req: Request): Promise<boolean> {
 async function tratar(req: Request): Promise<Response> {
   if (!(await autorizado(req))) return resp({ ok: false, erro: "Sem acesso ao Lucro Ao Vivo." }, 403);
   const corpo: any = await req.json().catch(() => ({}));
-  const dias = Math.min(Math.max(Number(corpo.dias ?? 2), 1), 60);
+  // pelo menos 3 dias, para reler os pedidos que ainda esperam o frete ser confirmado
+  const dias = Math.min(Math.max(Number(corpo.dias ?? 2), 3), 60);
   const limite = Math.min(Math.max(Number(corpo.limite ?? 500), 50), 2000);
   let q = supabase.from("lojas").select("id, apelido, nome, id_externo").eq("marketplace", "mercado_livre").eq("ativa", true);
   if (corpo.loja_id) q = q.eq("id", String(corpo.loja_id));

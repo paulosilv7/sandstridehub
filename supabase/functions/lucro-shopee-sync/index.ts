@@ -1,5 +1,6 @@
 // Lucro Ao Vivo: traz os pedidos pagos da Shopee para o banco e recalcula os dias afetados.
 // Tarifas reais pelo extrato de repasse de cada pedido (get_escrow_detail); se faltar, estima pela tabela da planilha.
+// Pedido sem taxa real fica FORA dos totais (aguardando_dados = true) até o extrato chegar (no máximo 60 min; depois entra com a estimativa).
 // Itens que a Shopee manda com preço 0 (combos e promoções) recebem o valor do extrato (receita) dividido entre eles.
 // Pedidos que já têm taxa real e a mesma situação são pulados (a rodada fica rápida); há limite de tempo por chamada.
 // Pedidos pagos antes de 25/10/2026 (00h de São Paulo) são ignorados de propósito (corte pedido pelo Paulo).
@@ -17,6 +18,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 const num = (v: any) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const ORCAMENTO_MS = 95_000;
 const INICIO_MS = Date.parse("2026-10-25T03:00:00Z");
+const ESPERA_MAX_MS = 60 * 60 * 1000;
 
 // Reserva: tabela de taxas da Shopee (aba TAXAS, variante CNPJ), por unidade
 const FAIXA = (p: number) => p < 80 ? { pct: 0.20, fixo: 4.5 } : p < 100 ? { pct: 0.14, fixo: 16 } : p < 200 ? { pct: 0.14, fixo: 20 } : { pct: 0.14, fixo: 26 };
@@ -68,7 +70,7 @@ async function sincronizarLoja(loja: any, dias: number, fimMs: number) {
   const desde = Math.max(agora - Math.min(dias, 14) * 86400, Math.floor(INICIO_MS / 1000));
   const erros: string[] = [];
   const diasAfetados = new Set<string>();
-  let lidos = 0, gravados = 0, ignorados = 0, jaProntos = 0, itensGravados = 0, reais = 0, estimados = 0, ultimoPago: string | null = null, cortou = false;
+  let lidos = 0, gravados = 0, ignorados = 0, jaProntos = 0, itensGravados = 0, reais = 0, estimados = 0, aguardando = 0, ultimoPago: string | null = null, cortou = false;
 
   const sns: string[] = [];
   let cursor = "";
@@ -145,10 +147,15 @@ async function sincronizarLoja(loja: any, dias: number, fimMs: number) {
         else erros.push(`preço zerado sem valor para ratear: ${o.order_sn}`);
       }
 
+      // fora dos totais até o extrato (taxa real) chegar, no máximo 60 min
+      const aguarda = !cancelado && fonte !== "real" && (Date.now() - new Date(pagoEm).getTime() < ESPERA_MAX_MS);
+      if (aguarda) aguardando++;
+
       const linha: any = {
         loja_id: loja.id, pedido_externo: String(o.order_sn), status: String(o.order_status), pago_em: pagoEm,
         cancelado_em: cancelado ? new Date(Number(o.update_time ?? agora) * 1000).toISOString() : null,
         taxa_marketplace: r2(taxa), frete_vendedor: r2(frete), desconto_vendedor: r2(descVend),
+        aguardando_dados: aguarda,
         dados: { fonte_taxas: fonte, financeiro: fin, total: o.total_amount, metodo: o.payment_method, itens: [...grupos.values()].map((g) => ({ sku: g.sku, qtd: g.qtd, preco: g.preco })) },
       };
       const { data: ped, error: ep } = await supabase.from("lucro_pedidos").upsert(linha, { onConflict: "loja_id,pedido_externo" }).select("id, dia").single();
@@ -167,7 +174,7 @@ async function sincronizarLoja(loja: any, dias: number, fimMs: number) {
   }
   if (cortou) erros.push("limite de tempo da rodada: o restante entra na próxima");
   await supabase.from("lucro_sync").upsert({ loja_id: loja.id, ultimo_pago_em: ultimoPago, ultima_execucao: new Date().toISOString(), erro: erros.length && !cortou ? erros[0].slice(0, 300) : null } as any, { onConflict: "loja_id" });
-  return { loja: loja.apelido, lidos, gravados, ja_prontos: jaProntos, itens: itensGravados, ignorados, taxas_reais: reais, taxas_estimadas: estimados, cortou, dias: [...diasAfetados], erros: erros.slice(0, 10) };
+  return { loja: loja.apelido, lidos, gravados, ja_prontos: jaProntos, itens: itensGravados, ignorados, taxas_reais: reais, taxas_estimadas: estimados, aguardando_dados: aguardando, cortou, dias: [...diasAfetados], erros: erros.slice(0, 10) };
 }
 
 async function autorizado(req: Request): Promise<boolean> {
