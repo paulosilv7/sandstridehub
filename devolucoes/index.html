@@ -433,7 +433,9 @@ var MOTIVOS_TT={"buyer_return_and_refund_item_doesn't_fit":'Não serviu',buyer_r
 var EV_TX={sandy_preparou:'Sandy preparou o relato',decisao_usuario:'Decisão sua registrada',lote_ligado:'Fotos ligadas ao caso',lote_recebido:'Lote de fotos recebido',fotos_excluidas:'Fotos excluídas'};
 var ST_MKT={opened:'aberta',closed:'encerrada',pending:'pendente',processing:'em andamento'};
 var ETAPA_MKT={claim:'reclamação',dispute:'mediação do ML',recontact:'recontato'};
-function motivoPt(c){c=String(c||'');if(/^PDD/.test(c))return 'Produto diferente ou com defeito';if(/^PNR/.test(c))return 'Produto não recebido';return MOTIVOS_TT[c]||MOTIVOS_SP[c]||'';}
+var MOTML={};
+async function carregarMotivos(){if(carregarMotivos.ok)return;try{var r=await SB.from('devol_motivos_ml').select('codigo,rotulo,cliente_arrependido');if(r.error||!(r.data||[]).length)return;carregarMotivos.ok=true;(r.data||[]).forEach(function(m){MOTML[m.codigo]=m;});render(true,false);}catch(e){}}
+function motivoPt(c){c=String(c||'');if(MOTML[c]&&MOTML[c].rotulo)return MOTML[c].rotulo;if(/^PDD/.test(c))return 'Motivo do comprador (veja no Mercado Livre)';if(/^PNR/.test(c))return 'Produto não recebido';return MOTIVOS_TT[c]||MOTIVOS_SP[c]||'';}
 var TIPOS_ML={mediations:'Reclamação',returns:'Devolução',change:'Troca',cancel_purchase:'Cancelamento',cancel_sale:'Cancelamento'};
 var MOTIVOS_SP={ITEM_NOT_FIT:'Não serviu',ITEM_MISSING:'Item faltando',CHANGE_MIND:'Mudou de ideia',DAMAGED_OTHERS:'Produto danificado',NOT_RECEIPT:'Não recebeu o pedido',WRONG_ITEM:'Item errado',DIFFERENT_DESCRIPTION:'Diferente do anunciado',DAMAGED_ITEM:'Produto danificado',NONFUNCTIONAL:'Não funciona',MISSING_ITEM:'Item faltando',PHYSICAL_DMG:'Produto danificado'};
 var LOJAID={},ANEXOS={},REC={},MSG={},SUG={},THR={},ENV={};
@@ -506,7 +508,7 @@ function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMont
 /* Casos: a primeira carga traz todos; as seguintes trazem só os abertos e os arquivados que mudaram desde a última carga
    (o banco atualiza atualizado_em a cada alteração). Os arquivados que não mudaram ficam guardados na memória. */
 var RAWCASOS={},WM_CASOS=null;
-async function carregar(){S.supCarregado=false;
+async function carregar(){S.supCarregado=false;carregarMotivos();
   var qCasos=SB.from('devol_casos').select('id,loja_id,solicitacao_id,pedido,produto,motivo_original,status,prazo_em,valor_em_risco,valor_revertido,valor_conciliado,protocolo,atualizado_em,tipo_origem,etapa_origem,situacao_mkt,acoes_loja,desfecho,valor_reembolsado,valor_pedido,cobertura_ml,custo_frete,frete_lido,arquivado_em,decidido_em,etapa_fisica,etapa_fisica_em,enviado_mkt_em').order('atualizado_em',{ascending:false}).limit(1000);
   if(WM_CASOS)qCasos=qCasos.or('arquivado_em.is.null,atualizado_em.gt.'+WM_CASOS);
   var q=await Promise.all([
@@ -1016,7 +1018,7 @@ function detalhe(){
     '<section class="card" style="gap:10px"><h2 class="sech">Situação no marketplace</h2>'+
       (c.mkt?kv('Resposta do marketplace','<b>'+esc(c.mkt)+'</b>'):'')+
       kv('Situação','<span class="tag '+stCls(c.st)+'">'+esc(c.rot)+'</span>'+(c.st<6?' <span class="tag '+p.cls+'">'+p.t+'</span>':''))+
-      kv('Tipo',esc(c.problema))+kv('Motivo informado',esc(MOTIVOS_SP[r.motivo_original]||r.motivo_original||'—'))+kv('Protocolo',esc(r.protocolo||'—'))+
+      kv('Tipo',esc(c.problema))+kv('Motivo informado',esc(motivoPt(r.motivo_original)||MOTIVOS_SP[r.motivo_original]||r.motivo_original||'—')+((MOTML[r.motivo_original]||{}).cliente_arrependido?' <span class="tag good">Erro ou arrependimento do cliente: sem penalidade</span>':''))+kv('Protocolo',esc(r.protocolo||'—'))+
       kv('Em risco',r.valor_em_risco>0?brl(+r.valor_em_risco):'Não informado')+kv('Revertido / conciliado',brl(+r.valor_revertido||0)+' / '+brl(+r.valor_conciliado||0))+
       kv('Atualizado',dt(r.atualizado_em))+
     '</section>'+
