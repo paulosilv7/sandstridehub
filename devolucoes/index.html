@@ -1358,9 +1358,11 @@ async function aprovar(id){
   S.contestando=true;var d=await consultarMk(id);S.contestando=false;if(!d)return;
   var lista=Array.isArray(d.motivos)?d.motivos:[];
   if(!d.aberto||!lista.length){toast(nome+' não aceita mais contestação neste caso: o prazo da loja terminou ou o caso já mudou de fase.');return;}
-  var texto='';try{var rr=await SB.from('devol_relatos').select('relato').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1);texto=(rr.data&&rr.data[0]&&rr.data[0].relato)||'';}catch(e){}
+  var texto='',catSandy='';try{var rr=await SB.from('devol_relatos').select('relato,categoria').eq('caso_id',id).order('criado_em',{ascending:false}).limit(1);texto=(rr.data&&rr.data[0]&&rr.data[0].relato)||'';catSandy=(rr.data&&rr.data[0]&&rr.data[0].categoria)||'';}catch(e){}
   var nf=ANEXOS[id]||0;
-  var opts=lista.map(function(m){return '<option value="'+esc(m.id)+'">'+esc(m.rotulo)+'</option>';}).join('');
+  var PRE={'produto-diferente':['49','SRF4'],'acessorio-faltante':['48','SRF3'],'dano-fisico':['47','SRF2'],'sujeira-manchas':['56','SRF2'],'embalagem-isolada':['48','SRF5']};
+  var preIds=PRE[catSandy]||[];var preId=(lista.filter(function(m){return preIds.indexOf(String(m.id))>-1;})[0]||{}).id;
+  var opts=(preId?'':'<option value="">Escolha o motivo certo…</option>')+lista.map(function(m){return '<option value="'+esc(m.id)+'"'+(String(m.id)===String(preId)?' selected':'')+'>'+esc(m.rotulo)+'</option>';}).join('');
   var pede={};lista.forEach(function(m){pede[m.id]=m.pede||'';});
   var est='border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;background:#fff';
   var emailLoja=String(S.cfg['email_loja:'+String(c.loja||'').toLowerCase()]||'').trim();
@@ -1372,6 +1374,7 @@ async function aprovar(id){
   var m=modalMk(html,async function(b,m,fim){
     var t=String(m.querySelector('.ct-t').value||'').trim();
     if(t.length<20){toast('Escreva o texto da contestação.');return;}
+    if(!m.querySelector('.ct-m').value){toast('Escolha o motivo antes de enviar.');return;}
     var corpo={modo:'contestar',caso_id:id,confirmado:true,motivo_id:m.querySelector('.ct-m').value,texto:t};
     if(emailLoja)corpo.email=emailLoja;
     var em=m.querySelector('.ct-e');if(em){corpo.email=String(em.value||'').trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(corpo.email)){toast('Digite um e-mail válido da loja.');return;}}
