@@ -1169,8 +1169,17 @@ function modalConta(id){
   }else{corpo+='<p>Paga em '+ddmm(p.pago_em)+': <b>'+brl(+p.valor_pago)+'</b></p>';
     bt.push({t:'Desfazer pagamento',fn:async function(){var r1=await SB.from('financeiro_despesas').delete().eq('conta_fixa_id',c.id).eq('mes_conta',S.ym+'-01');if(r1.error)throw r1.error;
       var r2=await SB.from('financeiro_contas_pagas').delete().eq('conta_id',c.id).eq('mes',S.ym+'-01');if(r2.error)throw r2.error;toast('Pagamento desfeito.');carregarMes(1)}});}
+  bt.push({t:'Editar conta',fn:async function(){setTimeout(function(){modalEditarConta(c.id)},0)}});
   bt.push({t:'Desativar conta',fn:async function(){var r=await SB.from('financeiro_contas_fixas').update({ativa:false}).eq('id',c.id);if(r.error)throw r.error;toast('Conta desativada.');await carregarBase();carregarMes(1)}});
   modal(c.nome,corpo,bt);
+}
+function modalEditarConta(id){
+  var c=S.contas.filter(function(x){return x.id===id})[0];if(!c)return;
+  modal('Editar conta fixa','<label class="fld">Nome<input name="n" value="'+esc(c.nome)+'" maxlength="80"></label><div class="fg"><label class="fld">Dia do vencimento<input name="d" inputmode="numeric" value="'+c.dia+'"></label><label class="fld">Valor<input name="v" inputmode="decimal" value="'+NF.format(+c.valor)+'"></label></div><label class="fld">Categoria'+selCat(c.categoria,'c')+'</label><label class="fld">Tipo de valor<select class="selx" name="t"><option value="f"'+(c.variavel?'':' selected')+'>Fixo</option><option value="v"'+(c.variavel?' selected':'')+'>Varia todo mês</option></select></label><p class="sub">Vale para os próximos meses. O que já foi pago continua como está.</p>',
+  [{t:'Salvar alterações',fn:async function(m){var n=mv(m,'n').trim(),d=parseInt(mv(m,'d'),10),v=parseBR(mv(m,'v')),k=mv(m,'c');
+    if(!n||!(d>=1&&d<=31)||!k){toast('Preencha nome, dia (1 a 31) e categoria.');return false}
+    var r=await SB.from('financeiro_contas_fixas').update({nome:n,dia:d,valor:v,categoria:k,variavel:mv(m,'t')==='v'}).eq('id',c.id);if(r.error)throw r.error;
+    toast('Conta fixa atualizada.');await carregarBase();carregarMes(1)}}]);
 }
 function modalNovaCat(){
   modal('Nova categoria','<label class="fld">Nome<input name="n" placeholder="Ex.: Fotografia" maxlength="60"></label><label class="fld">Entra no resultado<select class="selx" name="r"><option value="1">Sim, é despesa do negócio</option><option value="0">Não (mercadoria, retirada, transferência)</option></select></label><label class="fld">Incluso no preço<select class="selx" name="i"><option value="0">Não</option><option value="1">Sim, já está no preço dos produtos</option></select></label>',[{t:'Salvar',fn:async function(m){var n=mv(m,'n').trim();if(!n){toast('Digite o nome.');return false}
