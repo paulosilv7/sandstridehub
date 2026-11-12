@@ -261,6 +261,13 @@ button.kpi:hover{background:var(--hover)}
 .nv .lab{font-size:14px;color:var(--mut)}
 .nv .dk .lab{color:#a9afbd}
 .nv .val{font-size:clamp(44px,5vw,64px);font-weight:500;letter-spacing:-.045em;line-height:1}
+.nv .rc{display:grid;grid-template-rows:44px auto 54px;gap:18px;align-content:start}
+.nv .rc .ch{min-width:0;align-items:center}
+.nv .rc .ch h2{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.nv .rc .val{white-space:nowrap}
+.nv .rc .ch{gap:10px}
+@media (min-width:641px) and (max-width:1320px){.nv .rc .ch h2{font-size:15px}}
+@media (max-width:640px){.nv .rc{grid-template-rows:auto auto 54px;gap:12px}.nv .rc .ch{flex-direction:column;align-items:flex-start;gap:8px}.nv .rc .ch h2{font-size:14px;white-space:normal;overflow:visible;line-height:18px;height:36px;margin:0;flex:none}}
 .nv .kpi .val{font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1.1}
 @media (max-width:640px){.nv .kpi .val{font-size:24px!important}}
 .nv .val .un{font-size:.3em;font-weight:400;color:var(--mut);letter-spacing:0;margin-left:8px}
@@ -851,7 +858,7 @@ function periodoRes(per){
 }
 function rcard(ic,t,v,cap,rel,color){
   var none=v==null;
-  return '<section class="card s3x" style="grid-column:span 3"><div class="ch"><span class="ico">'+nic(ic,22)+'</span><h2>'+t+'</h2></div><div><div class="val" style="font-size:40px">'+(none?'—':UNR+bg2(v))+'</div><div class="lab" style="margin-top:8px">'+cap+'</div></div>'+(rel&&!none?'<div><div class="trk" style="height:12px"><b style="width:'+Math.min(100,rel[0]).toFixed(1)+'%;background:'+color+'"></b></div><div class="lab" style="margin-top:8px">'+rel[1]+'</div></div>':'<div style="min-height:32px"></div>')+'</section>';
+  return '<section class="card s3x rc" style="grid-column:span 3"><div class="ch"><span class="ico">'+nic(ic,22)+'</span><h2>'+t+'</h2></div><div><div class="val" style="font-size:36px">'+(none?'—':UNR+bg2(v))+'</div><div class="lab" style="margin-top:8px">'+cap+'</div></div>'+(rel&&!none?'<div><div class="trk" style="height:12px"><b style="width:'+Math.min(100,rel[0]).toFixed(1)+'%;background:'+color+'"></b></div><div class="lab" style="margin-top:8px">'+rel[1]+'</div></div>':'<div></div>')+'</section>';
 }
 function telaHistorico(){
   if(S.hcarregando&&!S.hist)return carregando('Resultados');
