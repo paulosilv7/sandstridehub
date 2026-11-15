@@ -2,6 +2,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { montarShell } from './shell.js';
+import { montarMeuDia } from './meudia.js';
 
 const sb = window.SB = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 const $ = (id) => document.getElementById(id);
@@ -91,22 +92,13 @@ const visiveis = () => APPS.filter((a) => a.breve || podeAbrir(a.id));
 const porId = (id) => APPS.find((a) => a.id === id);
 
 async function tela() {
-  const itens = new Map(visiveis().map((a) => [a.id, a]));
-  let n = 1;
-  const grupos = GRUPOS.map(([nome, ids]) => {
-    const lista = ids.map((id) => itens.get(id)).filter(Boolean);
-    if (!lista.length) return '';
-    const tiles = lista.map((a) => {
-      const ic = `<span class="ico">${svg(a.icone, 20)}</span>`, o = `style="--o:${n++}"`;
-      if (a.breve) return `<div class="tile off entra" ${o}><div class="topo">${ic}</div><h3>${esc(a.nome)}</h3><p>${esc(a.desc)}</p><span class="tag ex">${svg(IC.relogio)}Em breve</span></div>`;
-      return `<a class="tile entra" ${o} href="${a.href}"${a.externo ? ' rel="noopener"' : ''}><div class="topo">${ic}<span class="ir">${svg(IC.seta)}</span></div><h3>${esc(a.nome)}</h3><p>${esc(a.desc)}</p></a>`;
-    }).join('');
-    return `<section class="grupo" aria-label="${nome}"><h2 class="gt">${nome}</h2><div class="tiles">${tiles}</div></section>`;
-  }).join('');
-  let h = `<div class="pg-cab entra" style="--o:0"><h1>Olá, ${esc(eu.nome.split(' ')[0])}.</h1><p class="sub">Escolha uma ferramenta.</p></div>` +
-    (grupos || '<div class="card"><p class="sub">Você ainda não tem acesso a nenhuma ferramenta. Peça a um administrador para liberar.</p></div>');
-  $('raiz').innerHTML = `<main class="wrap">${h}</main>`;
-  await montarShell({ ativo: 'central', raiz: './' });
+  // ferramentas em fileira compacta (o menu lateral já leva a tudo)
+  const atalhos = GRUPOS.flatMap(([, ids]) => ids).map(porId).filter((a) => a && (a.breve || podeAbrir(a.id))).map((a) => (a.breve
+    ? `<span class="atalho off" title="${esc(a.nome)}: em breve">${svg(a.icone)}<span>${esc(a.nome)}</span><span class="tag ex">Em breve</span></span>`
+    : `<a class="atalho" href="${a.href}">${svg(a.icone)}<span>${esc(a.nome)}</span></a>`)).join('');
+  $('raiz').innerHTML = `<main class="wrap"><div id="meudia" class="md"></div><section class="grupo entra" style="--o:5" aria-label="Ferramentas"><h2 class="gt">Ferramentas</h2>` +
+    (atalhos ? `<div class="atalhos">${atalhos}</div>` : '<div class="card"><p class="sub">Você ainda não tem acesso a nenhuma ferramenta. Peça a um administrador para liberar.</p></div>') + '</section></main>';
+  await Promise.all([montarMeuDia({ sb, user, eu, el: $('meudia') }), montarShell({ ativo: 'central', raiz: './' })]);
 }
 let iniciando = false;
 async function iniciar() {
