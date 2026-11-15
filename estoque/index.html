@@ -1,6 +1,8 @@
 <!doctype html><html><head><meta charset=utf8><title>Estoque Galpão · Sandstride</title><link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png"><link rel="apple-touch-icon" href="/favicon-192.png"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="../css/dock.css">
 <style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <meta name="claude:viewport-fit-sides" content="cover">
+<script>try{var t=localStorage.getItem("sandstride-tema");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<meta name="theme-color" content="#EDEDEC">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -479,7 +481,8 @@
   @media (prefers-reduced-motion: reduce) {
     .desliza-esq, .desliza-dir, #telaSucesso.ativa .selo, #telaSucesso.ativa .selo path, #telaCadastrado.ativa .selo, #telaCadastrado.ativa .selo path { animation: none; stroke-dashoffset: 0; } .veu, .folha, .tela.ativa { animation: none; } }
 </style>
-<div id="avisoTeste" hidden style="max-width:460px;margin:0 auto;padding:10px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));font:600 12px 'Plus Jakarta Sans',Arial,sans-serif;color:#a35d0c;text-align:center">Modo teste · usando uma cópia da planilha, a oficial não é alterada</div>
+<link rel="stylesheet" href="es.css">
+<div id="avisoTeste" hidden style="max-width:460px;margin:0 auto;padding:10px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));font:600 12px 'Plus Jakarta Sans',Arial,sans-serif;color:#a35d0c;text-align:center">Modo teste · usando uma cópia do estoque, a oficial não é alterada</div>
 
 <div id="codigoInicial" data-c="" hidden></div>
 
@@ -769,7 +772,7 @@
   <div id="telaEstoque" class="tela">
     <div class="cartao">
       <div class="est-topo">
-        <div><div class="rotulo-lista" id="estAtualizado">Quantidades da planilha</div><div class="titulo-lista" id="estTitulo">Estoque</div></div>
+        <div><div class="rotulo-lista" id="estAtualizado">Quantidades do estoque</div><div class="titulo-lista" id="estTitulo">Estoque</div></div>
         <div class="est-botoes">
           <button class="est-atualizar" id="btnAtualizarEst" type="button" onclick="atualizarEstoque()" aria-label="Atualizar quantidades">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>
@@ -779,7 +782,7 @@
           </button>
         </div>
       </div>
-      <div class="est-dica" id="estDica" hidden>Em azul fica o <b>tamanho</b>, ao lado a <b>quantidade</b>. Toque no número para digitar ou use <b>−</b> e <b>+</b>. Nada vai para a planilha até você tocar em <b>Salvar</b>. Para baixar etiquetas, marque as cores no círculo e toque no botão de QR Code.</div>
+      <div class="est-dica" id="estDica" hidden>Em azul fica o <b>tamanho</b>, ao lado a <b>quantidade</b>. Toque no número para digitar ou use <b>−</b> e <b>+</b>. Nada vai para o estoque até você tocar em <b>Salvar</b>. Para baixar etiquetas, marque as cores no círculo e toque no botão de QR Code.</div>
       <div class="est-sel-barra" id="estSelBarra" hidden>
         <button type="button" onclick="marcarVisiveisEst(true)">Marcar todos</button>
         <button type="button" onclick="marcarVisiveisEst(false)">Limpar</button>
@@ -821,7 +824,7 @@
     </button>
     <div class="acoes"><button class="principal" onclick="irParaInicio()">Escolher na lista</button></div>
   </div>
-  <!-- Confere número muito diferente do que estava na planilha -->
+  <!-- Confere número muito diferente do que estava no estoque -->
   <div class="veu" id="avisoNumero" hidden onclick="if (event.target === this) corrigirNumero()">
     <div class="folha" role="dialog" aria-modal="true" aria-labelledby="numTitulo">
       <div class="selo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg></div>
@@ -838,11 +841,11 @@
     <div class="folha" role="dialog" aria-modal="true" aria-labelledby="confEstTitulo">
       <div class="selo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></div>
       <div class="grande" id="confEstTitulo">Salvar alterações?</div>
-      <p class="sub">Confira antes de gravar na planilha:</p>
+      <p class="sub">Confira antes de salvar:</p>
       <ul class="lista-mud" id="confEstLista"></ul>
       <div class="erro" id="confEstErro" style="margin:-6px 0 12px"></div>
       <div class="folha-botoes">
-        <button class="btn-ficar" id="btnConfirmarEst" onclick="salvarEdicaoEstoque()">Salvar na planilha</button>
+        <button class="btn-ficar" id="btnConfirmarEst" onclick="salvarEdicaoEstoque()">Salvar</button>
         <button class="btn-sair btn-neutro" onclick="fecharConfirmaEstoque()">Voltar e revisar</button>
       </div>
     </div>
@@ -855,7 +858,7 @@
       <p class="sub" id="confProduto"></p>
       <ul class="lista-mud" id="confLista"></ul>
       <div class="folha-botoes">
-        <button class="btn-ficar" id="btnConfirmarEd" onclick="enviarEdicao()">Salvar na planilha</button>
+        <button class="btn-ficar" id="btnConfirmarEd" onclick="enviarEdicao()">Salvar</button>
         <button class="btn-sair btn-neutro" onclick="fecharConfirmaEdicao()">Voltar e revisar</button>
       </div>
     </div>
@@ -897,29 +900,77 @@
 </main>
 
 <script>
-/* Ponte com a planilha: no lugar do script do Google, chama a função "estoque" do Supabase. */
+/* Ponte com o banco: mantém a interface antiga (google.script.run.nome(...)) mas chama as funções est_* do Supabase. */
 window.FOTO_PREVIA = null;
 (function () {
-  var FUNCOES = ['iniciar', 'buscarProduto', 'cadastrarProdutos', 'editarProduto', 'lancarVarios', 'lancarEstoque', 'listarHistorico'];
-  function chamar(nome, args, ok, falha) {
-    window.SB.auth.getSession().then(function (s) {
-      var tk = s && s.data && s.data.session && s.data.session.access_token;
-      if (!tk) throw new Error('Sua sessão expirou. Entre de novo.');
-      return fetch(window.FN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tk, 'apikey': window.SB_KEY }, body: JSON.stringify({ fn: nome, args: args, base: window.BASE_ESTOQUE }) });
-    }).then(function (r) {
-      return r.json().catch(function () { return { ok: false, erro: 'Resposta inválida do servidor.' }; });
-    }).then(function (j) {
-      if (!j.ok) throw new Error(j.erro || 'Erro no servidor.');
-      var r = j.r;
-      if (nome === 'buscarProduto' && r) r.foto = window.urlDaFoto(r.foto, 600);
-      ok(r);
-    }).catch(function (e) { falha(e); });
+  function rpc(nome, args) {
+    return window.SB.rpc(nome, args || {}).then(function (r) {
+      if (r.error) throw new Error(r.error.message || 'Erro no servidor.');
+      return r.data;
+    });
   }
+  function guardarFoto(foto, prefixo) {
+    if (!foto || !foto.base64) return Promise.resolve(null);
+    var bytes = Uint8Array.from(atob(foto.base64), function (c) { return c.charCodeAt(0); });
+    var caminho = String(prefixo).replace(/[^A-Za-z0-9_-]/g, '_') + '-' + Date.now() + '.jpg';
+    return window.SB.storage.from('fotos-estoque').upload(caminho, bytes, { contentType: 'image/jpeg', upsert: false }).then(function (r) {
+      if (r.error) throw new Error('Não consegui guardar a foto: ' + r.error.message);
+      return 'sb:' + caminho;
+    });
+  }
+  var OPS = {
+    iniciar: function () {
+      return Promise.all([rpc('est_iniciar'), window.SB.auth.getSession()]).then(function (x) {
+        var r = x[0], s = x[1] && x[1].data && x[1].data.session;
+        r.email = (s && s.user && s.user.email) || '';
+        return r;
+      });
+    },
+    buscarProduto: function (codigo) {
+      return rpc('est_buscar_produto', { p_codigo: codigo }).then(function (r) {
+        if (!r) throw new Error('Produto não encontrado.');
+        r.foto = window.urlDaFoto(r.foto, 600);
+        return r;
+      });
+    },
+    lancarVarios: function (lista) { return rpc('est_lancar', { p_lista: lista }); },
+    lancarEstoque: function (codigo, itens) { return rpc('est_lancar', { p_lista: [{ codigo: codigo, itens: itens }] }); },
+    listarHistorico: function (n) { return rpc('est_historico', { p_n: n }); },
+    cadastrarProdutos: function (d) {
+      var cores = (d.cores || []).slice();
+      var seq = Promise.resolve(), novas = [];
+      cores.forEach(function (c, i) {
+        seq = seq.then(function () { return guardarFoto(c.foto, (d.produto || 'produto') + '-' + (c.cor || i)); }).then(function (f) {
+          novas.push({ cor: c.cor, tamanhos: c.tamanhos, foto: f || '' });
+        });
+      });
+      return seq.then(function () {
+        return rpc('est_cadastrar', { p_dados: { marca: d.marca, produto: d.produto, custo: d.custo, cores: novas } });
+      }).then(function (r) {
+        return rpc('est_iniciar').then(function (e) {
+          return (e.produtos || []).filter(function (p) { return (r.codigos || []).indexOf(p.codigo) >= 0; });
+        });
+      });
+    },
+    editarProduto: function (d) {
+      var dados = {};
+      Object.keys(d).forEach(function (k) { if (k !== 'foto') dados[k] = d[k]; });
+      return guardarFoto(d.foto, d.codigo).then(function (f) {
+        if (f) dados.foto = f;
+        return rpc('est_editar', { p_dados: dados });
+      });
+    }
+  };
   function Construtor() {
     var ok = function () {}, falha = function () {}, self = this;
     this.withSuccessHandler = function (f) { ok = f; return self; };
     this.withFailureHandler = function (f) { falha = f; return self; };
-    FUNCOES.forEach(function (nome) { self[nome] = function () { chamar(nome, Array.prototype.slice.call(arguments), ok, falha); }; });
+    Object.keys(OPS).forEach(function (nome) {
+      self[nome] = function () {
+        var args = Array.prototype.slice.call(arguments);
+        Promise.resolve().then(function () { return OPS[nome].apply(null, args); }).then(ok).catch(falha);
+      };
+    });
   }
   window.google = { script: { run: new Proxy({}, { get: function (alvo, nome) { return new Construtor()[nome]; } }) } };
 })();
@@ -954,6 +1005,7 @@ window.FOTO_PREVIA = null;
     ['abaLancar', 'abaEstoque', 'abaHistorico'].forEach(function (b) { el(b).classList.toggle('ativo', abas[id] === b); });
     if (seta) seta.style.visibility = (naAba || id === 'telaCarregando' || id === 'telaErro') ? 'hidden' : 'visible';
     window.scrollTo(0, 0);
+    window.dispatchEvent(new Event('hashchange'));
   }
 
   function carregando(msg) { el('msgCarregando').textContent = msg; mostrar('telaCarregando'); }
@@ -1206,7 +1258,7 @@ window.FOTO_PREVIA = null;
       .listarHistorico(200);
   }
 
-  var historico = [];      // lançamentos vindos da planilha
+  var historico = [];      // lançamentos vindos do banco
   var diaAberto = null;     // chave do dia aberto no relatório
 
   function chaveDia(ms) { var d = new Date(ms); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
@@ -1649,9 +1701,9 @@ window.FOTO_PREVIA = null;
         criados.forEach(function (p) { if (fotosLocais[p.cor]) p.fotoLocal = fotosLocais[p.cor]; produtos.push(p); });
         var n = criados.length;
         el('msgCadastrado').textContent = n === 1
-          ? criados[0].produto + ' ' + criados[0].cor + ' entrou na lista com os tamanhos zerados. A etiqueta já está na aba ETIQUETAS.'
+          ? criados[0].produto + ' ' + criados[0].cor + ' entrou na lista com os tamanhos zerados. Já dá para imprimir a etiqueta.'
           : criados[0].produto + ' entrou na lista com ' + n + ' cores (' + criados.map(function (p) { return p.cor; }).join(', ') +
-            '), todas com os tamanhos zerados. As etiquetas já estão na aba ETIQUETAS.';
+            '), todas com os tamanhos zerados. Já dá para imprimir as etiquetas.';
         el('btnLancarNovo').textContent = n === 1 ? 'Lançar estoque agora' : 'Lançar estoque de ' + criados[0].produto;
         el('btnLancarNovo').onclick = n === 1
           ? function () { abrirProduto(criados[0].codigo); }
@@ -1713,7 +1765,7 @@ window.FOTO_PREVIA = null;
     mostrarToast.tempo = setTimeout(function () { t.classList.remove('ver'); }, 1800);
   }
 
-  /* Busca de novo produtos, quantidades e totais na planilha e redesenha a aba aberta. */
+  /* Busca de novo produtos, quantidades e totais no estoque e redesenha a aba aberta. */
   function atualizarTudo() {
     if (puxar.atualizando) return;
     puxar.atualizando = true;
@@ -1777,7 +1829,7 @@ window.FOTO_PREVIA = null;
     if (!el('telaEstoque').classList.contains('ativa')) { el('estBusca').value = ''; }
     montarEstoque();
     mostrar('telaEstoque');
-    // busca as quantidades mais recentes da planilha (outra pessoa pode ter lançado)
+    // busca as quantidades mais recentes do estoque (outra pessoa pode ter lançado)
     if (Date.now() - estoqueAtualizadoEm > 60000) atualizarEstoque();
   }
 
@@ -1919,7 +1971,7 @@ window.FOTO_PREVIA = null;
   }
 
   /* ---------- Modo de edição da aba Estoque ---------- */
-  /* editEst.mudancas[codigo][tamanho] = nova quantidade (só o que for diferente da planilha) */
+  /* editEst.mudancas[codigo][tamanho] = nova quantidade (só o que for diferente do estoque) */
   var editEst = null;
   var salvandoEst = false;
   var visiveisEst = [];
@@ -2113,7 +2165,7 @@ window.FOTO_PREVIA = null;
     }).join('');
     el('confEstErro').textContent = estranhos ? (estranhos === 1 ? 'Tem 1 número bem diferente do que estava. Confira antes de salvar.' : 'Tem ' + estranhos + ' números bem diferentes do que estava. Confira antes de salvar.') : '';
     el('btnConfirmarEst').disabled = false;
-    el('btnConfirmarEst').textContent = 'Salvar na planilha';
+    el('btnConfirmarEst').textContent = 'Salvar';
     el('confirmaEstoque').hidden = false;
   }
 
@@ -2316,7 +2368,7 @@ window.FOTO_PREVIA = null;
   function modeloDigitado() { return el('edModelo').value.trim().toUpperCase(); }
   function corDigitada() { return el('edCor').value.trim().toUpperCase(); }
 
-  /* Lista, em texto, de tudo o que mudou em relação ao que está na planilha. */
+  /* Lista, em texto, de tudo o que mudou em relação ao que está no estoque. */
   function mudancasEdicao() {
     var m = [];
     if (!ed) return m;
@@ -2369,9 +2421,9 @@ window.FOTO_PREVIA = null;
 
   function salvarEdicao() {
     if (el('btnSalvarEd').disabled) return;
-    el('confProduto').innerHTML = '<b>' + ed.produto0 + ' ' + ed.cor0 + '</b>. Confira antes de gravar na planilha:';
+    el('confProduto').innerHTML = '<b>' + ed.produto0 + ' ' + ed.cor0 + '</b>. Confira antes de salvar:';
     el('confLista').innerHTML = mudancasEdicao().map(function (t) { return '<li>' + t + '</li>'; }).join('');
-    el('btnConfirmarEd').textContent = ed.arquivar ? 'Salvar e arquivar' : 'Salvar na planilha';
+    el('btnConfirmarEd').textContent = ed.arquivar ? 'Salvar e arquivar' : 'Salvar';
     el('confirmaEdicao').hidden = false;
   }
 
@@ -2406,7 +2458,7 @@ window.FOTO_PREVIA = null;
         el('tituloCadastrado').textContent = arquivou ? 'Produto arquivado' : 'Produto atualizado';
         el('msgCadastrado').textContent = arquivou
           ? nome + ' saiu das listas. O histórico dos lançamentos continua guardado.'
-          : nome + ' foi atualizado na planilha.';
+          : nome + ' foi atualizado no estoque.';
         el('btnLancarNovo').textContent = arquivou ? 'Voltar ao início' : 'Lançar estoque agora';
         el('btnLancarNovo').onclick = arquivou ? function () { irParaInicio(); } : function () { abrirProduto(codigo); };
         mostrar('telaCadastrado');
@@ -2414,7 +2466,7 @@ window.FOTO_PREVIA = null;
       })
       .withFailureHandler(function (e) {
         edTrabalhando = false;
-        botao.disabled = false; botao.textContent = ed && ed.arquivar ? 'Salvar e arquivar' : 'Salvar na planilha';
+        botao.disabled = false; botao.textContent = ed && ed.arquivar ? 'Salvar e arquivar' : 'Salvar';
         fecharConfirmaEdicao();
         avisoEd((e && e.message) ? e.message : String(e));
       })
@@ -2741,7 +2793,7 @@ window.FOTO_PREVIA = null;
     var total = atual.tamanhos.length;
     var pct = total > 1 ? (indice / (total - 1) * 100) : 100;
     el('tamanho').textContent = t.tamanho;
-    el('atual').innerHTML = 'Na planilha hoje: <b>' + t.quantidade + '</b>';
+    el('atual').innerHTML = 'No estoque hoje: <b>' + t.quantidade + '</b>';
     el('etapa').textContent = 'Tamanho ' + (indice + 1) + ' de ' + total;
     el('barra').style.width = pct + '%';
     el('ponto').style.left = pct + '%';
@@ -2805,7 +2857,7 @@ window.FOTO_PREVIA = null;
     var t = atual.tamanhos[indice].tamanho;
     var par = function (n) { return n + (n === 1 ? ' par' : ' pares'); };
     el('numTitulo').textContent = 'São ' + par(nova) + ' mesmo?';
-    el('numTexto').innerHTML = 'No tamanho <b>' + t + '</b> de ' + atual.produto + ' ' + atual.cor + ', a planilha tem <b>' + par(antes) +
+    el('numTexto').innerHTML = 'No tamanho <b>' + t + '</b> de ' + atual.produto + ' ' + atual.cor + ', o estoque tem <b>' + par(antes) +
       '</b>. ' + (nova > antes ? 'Você digitou bem mais que isso.' : 'Você digitou bem menos que isso.') + ' Confira antes de seguir.';
     el('btnNumeroOk').textContent = 'Sim, são ' + nova;
     el('qtd').blur();
@@ -2868,14 +2920,14 @@ window.FOTO_PREVIA = null;
     if (tipo === 'estoque') {
       var n = contarMudancasEst();
       el('avisoTitulo').textContent = 'Descartar alterações?';
-      el('avisoTexto').innerHTML = 'Você mudou <b>' + n + (n === 1 ? ' quantidade' : ' quantidades') + '</b> e ainda não salvou. Se sair agora, a planilha continua como estava.';
+      el('avisoTexto').innerHTML = 'Você mudou <b>' + n + (n === 1 ? ' quantidade' : ' quantidades') + '</b> e ainda não salvou. Se sair agora, o estoque continua como estava.';
       el('avisoSair').hidden = false;
       return;
     }
     if (tipo === 'edicao') {
       el('avisoTitulo').textContent = 'Sair sem salvar?';
       var n = mudancasEdicao().length;
-      el('avisoTexto').innerHTML = 'As alterações em <b>' + ed.produto0 + ' ' + ed.cor0 + '</b> (' + n + (n === 1 ? ' mudança' : ' mudanças') + ') ainda não foram salvas. Se sair agora, a planilha continua como estava.';
+      el('avisoTexto').innerHTML = 'As alterações em <b>' + ed.produto0 + ' ' + ed.cor0 + '</b> (' + n + (n === 1 ? ' mudança' : ' mudanças') + ') ainda não foram salvas. Se sair agora, o estoque continua como estava.';
       el('avisoSair').hidden = false;
       return;
     }
@@ -2884,15 +2936,15 @@ window.FOTO_PREVIA = null;
       var n = cad.cores.length;
       el('avisoTitulo').textContent = 'Sair sem cadastrar?';
       el('avisoTexto').innerHTML = 'O cadastro de <b>' + modelo + '</b>' + (n ? ' (' + n + (n === 1 ? ' cor' : ' cores') + ')' : '') +
-        ' ainda não foi salvo. Se sair agora, ele não vai para a planilha.';
+        ' ainda não foi salvo. Se sair agora, ele não vai para o estoque.';
       el('avisoSair').hidden = false;
       return;
     }
     el('avisoTitulo').textContent = 'Sair sem lançar?';
     var feitos = atual.tamanhos.filter(function (t) { return t.nova !== null; }).length;
     var txt = feitos
-      ? 'Você já preencheu <b>' + feitos + (feitos === 1 ? ' tamanho' : ' tamanhos') + '</b> de ' + atual.produto + ' ' + atual.cor + '. Se sair agora, nada disso vai para a planilha.'
-      : 'O que você digitou em ' + atual.produto + ' ' + atual.cor + ' não vai para a planilha.';
+      ? 'Você já preencheu <b>' + feitos + (feitos === 1 ? ' tamanho' : ' tamanhos') + '</b> de ' + atual.produto + ' ' + atual.cor + '. Se sair agora, nada disso vai para o estoque.'
+      : 'O que você digitou em ' + atual.produto + ' ' + atual.cor + ' não vai para o estoque.';
     el('avisoTexto').innerHTML = txt;
     el('avisoSair').hidden = false;
   }
@@ -3001,10 +3053,10 @@ window.FOTO_PREVIA = null;
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
+import { montarShell } from '../js/shell.js';
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 window.SB = sb; window.SB_KEY = SUPABASE_KEY;
-window.FN_URL = SUPABASE_URL + '/functions/v1/estoque';
-window.BASE_ESTOQUE = /[?&]base=teste\b/.test(location.search) ? 'teste' : 'oficial';
+window.BASE_ESTOQUE = 'oficial';
 window.urlDaFoto = function (f, tam) {
   if (!f) return '';
   if (/^https?:|^data:/.test(f)) return f;
@@ -3030,30 +3082,21 @@ function aviso(titulo, texto) {
   if (!ok) { aviso('Sem acesso', 'Você ainda não tem acesso ao estoque. Peça a um administrador para liberar.'); return; }
   const cod = new URLSearchParams(location.search).get('codigo');
   if (cod) document.getElementById('codigoInicial').setAttribute('data-c', cod);
+  const ic = {
+    lancar: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 12h8"/>',
+    estoque: '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
+    historico: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+    novo: '<path d="M12 5v14M5 12h14"/>',
+  };
+  const sub = (id, rotulo, d) => ({ rotulo, d, ao: () => document.getElementById(id).click(), ativo: () => document.getElementById(id).classList.contains('ativo') });
+  const subs = [sub('abaLancar', 'Lançar contagem', ic.lancar), sub('abaEstoque', 'Estoque', ic.estoque), sub('abaHistorico', 'Histórico', ic.historico)];
+  if (eq?.papel === 'admin') subs.push(sub('btnNovo', 'Cadastrar produto', ic.novo));
+  montarShell({ ativo: 'estoque', raiz: '../', subs }).catch((e) => console.error('menu lateral', e));
   window.__iniciarEstoque();
 })();
 
-(function () {
-  var lat = document.getElementById('lateral'); if (!lat) return;
-  var ids = ['abaLancar', 'abaEstoque', 'abaHistorico', 'btnNovo'];
-  lat.querySelectorAll('button[data-p]').forEach(function (b) {
-    b.addEventListener('click', function () { var o = document.getElementById(b.getAttribute('data-p')); if (o) o.click(); });
-  });
-  function sincroniza() {
-    var barra = document.getElementById('menuAbas'), novo = document.getElementById('btnNovo');
-    lat.querySelectorAll('button[data-p]').forEach(function (b) {
-      var o = document.getElementById(b.getAttribute('data-p'));
-      var p = b.getAttribute('data-p');
-      if (p === 'btnNovo') { b.hidden = !novo || novo.style.visibility === 'hidden'; b.classList.toggle('ativo', !!novo && novo.classList.contains('ativo')); }
-      else { b.hidden = !!(document.getElementById('telaCarregando').classList.contains('ativa') || document.getElementById('telaErro').classList.contains('ativa')); b.classList.toggle('ativo', !!o && o.classList.contains('ativo')); }
-    });
-    var t = document.getElementById('avisoTeste'); document.getElementById('lateralTeste').hidden = !t || t.hidden;
-  }
-  var mo = new MutationObserver(sincroniza);
-  ids.concat(['menuAbas', 'avisoTeste', 'telaCarregando', 'telaErro']).forEach(function (i) { var e = document.getElementById(i); if (e) mo.observe(e, { attributes: true, attributeFilter: ['class', 'hidden', 'style'] }); });
-  sincroniza();
-})();
+
 </script>
 
-<link rel="stylesheet" href="../css/design.css">
+<link rel="stylesheet" href="../css/shell.css">
 </body></html>
