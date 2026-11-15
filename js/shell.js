@@ -3,6 +3,7 @@
 // Ele envolve o conteúdo que já está no <body> (não recria a tela) e desenha o menu lateral (celular: topo + pílula).
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+import { S, ajustar, passo, limitar, depois, parada, registrar, acordar, pilula } from './molas.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ic = (d) => `<svg class="sh-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -102,8 +103,9 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
 
   // tema e menu recolhido
   const seg = document.getElementById('shTema'), polegar = seg.querySelector('.sh-polegar'), bs = [...seg.querySelectorAll('button')];
+  const tp = pilula(polegar); // a pílula estica até o botão novo (mola)
   const pinta = (t) => {
-    bs.forEach((b) => { const on = b.dataset.v === t; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); if (on && b.offsetWidth) { polegar.style.width = b.offsetWidth + 'px'; polegar.style.transform = `translateX(${b.offsetLeft - 4}px)`; } });
+    bs.forEach((b) => { const on = b.dataset.v === t; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); if (on && b.offsetWidth) tp.ir(b.offsetLeft - 4, b.offsetWidth); });
     document.querySelectorAll('#shTemaIc,#shTemaM').forEach((b) => { b.innerHTML = ic(t === 'dark' ? IC.sol : IC.lua); });
     const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'dark' ? '#0A0A0A' : '#EDEDEC';
   };
@@ -114,10 +116,41 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   pinta(temaAtual());
   if (document.fonts?.ready) document.fonts.ready.then(() => pinta(temaAtual()));
   window.addEventListener('resize', () => pinta(temaAtual()));
-  document.getElementById('shRecolhe').onclick = () => {
-    const r = !app.classList.contains('sh-rec'); app.classList.toggle('sh-rec', r);
+  // menu que recolhe por mola: largura 260/24, rótulos em cascata (60 ms + 35 ms por item), seta que vira
+  const latEl = app.querySelector('.sh-lat'), btnRec = document.getElementById('shRecolhe');
+  const rotulos = [...latEl.querySelectorAll('.sh-nv > span:not(.sh-em-breve)')].map((el) => ({ el, s: S(1, 300, 26) }));
+  const W = S(app.classList.contains('sh-rec') ? 64 : 232, 260, 24), R = S(app.classList.contains('sh-rec') ? 1 : 0, 300, 22);
+  let anim = false, abrindo = false;
+  const larg = () => matchMedia('(min-width:1000px)').matches;
+  const limpa = () => { anim = false; latEl.style.width = ''; btnRec.firstElementChild.style.transform = ''; rotulos.forEach((l) => { l.el.style.opacity = ''; l.el.style.transform = ''; }); };
+  registrar({
+    quadro(dt) { if (!anim) return; passo(W, dt); passo(R, dt); rotulos.forEach((l) => passo(l.s, dt)); },
+    desenhar() {
+      if (!anim) return;
+      latEl.style.width = W.x.toFixed(2) + 'px';
+      btnRec.firstElementChild.style.transform = `scaleX(${(1 - 2 * limitar(R.x, 0, 1)).toFixed(3)})`;
+      rotulos.forEach((l) => { const o = limitar(l.s.x, 0, 1); l.el.style.opacity = o.toFixed(3); l.el.style.transform = `translateX(${((1 - o) * -10).toFixed(2)}px)`; });
+      // recolhendo: quando já fechou, assume o estado final do CSS
+      if (!abrindo && W.x < 68 && rotulos.every((l) => l.s.x < 0.03)) { app.classList.add('sh-rec'); limpa(); }
+      else if (abrindo && parada(W, 0.3) && rotulos.every((l) => parada(l.s, 0.01))) limpa();
+    },
+    ativo() { return anim; },
+  });
+  btnRec.onclick = () => {
+    const r = !app.classList.contains('sh-rec') && !(anim && !abrindo); // true = vai recolher
     try { localStorage.setItem(MENU_CH, r ? '1' : '0'); } catch (e) { /* idem */ }
-    document.getElementById('shRecolhe').setAttribute('aria-label', r ? 'Expandir menu' : 'Recolher menu');
+    btnRec.setAttribute('aria-label', r ? 'Expandir menu' : 'Recolher menu');
+    if (!larg()) { app.classList.toggle('sh-rec', r); return; }
+    anim = true; abrindo = !r;
+    if (r) { // recolher: rótulos somem juntos, largura fecha
+      W.t = 64; R.t = 1; rotulos.forEach((l) => { l.s.t = 0; });
+    } else { // abrir: sai do estado recolhido, largura abre e os rótulos entram em cascata
+      if (app.classList.contains('sh-rec')) { app.classList.remove('sh-rec'); W.x = 64; R.x = 1; rotulos.forEach((l) => { l.s.x = 0; l.s.v = 0; }); }
+      W.t = 232; R.t = 0;
+      ajustar(W, 260, 24);
+      rotulos.forEach((l, i) => { l.s.t = 0; depois(0.06 + Math.min(i, 10) * 0.035, () => { if (abrindo) l.s.t = 1; }); });
+    }
+    acordar();
   };
   const sair = async () => { await sb.auth.signOut(); location.href = url(''); };
   document.getElementById('shSair').onclick = sair; document.getElementById('shSairM').onclick = sair;

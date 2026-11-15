@@ -517,6 +517,10 @@ button.kpi:hover{background:var(--hover)}
 .sti{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;flex:none;background:var(--soft);color:var(--ink2)}
 .sti.rec{background:var(--rec-bg);color:var(--rec)}.sti.att{background:var(--disp-bg);color:var(--disp)}
 .sti.neu{background:var(--soft);color:var(--mut)}
+/* texto de espera: onda de opacidade nas letras (briefing: motions por mola) */
+.onda span{display:inline-block;animation:onda 1.6s ease-in-out infinite both}
+@keyframes onda{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.onda span{animation:none}}
 /* celular */
 @media (max-width:640px){
   .page{padding:16px 16px 96px;gap:16px}
@@ -696,6 +700,7 @@ function pc1(x){return x.toFixed(1).replace('.',',')+'%'}
 function bg2(v){var s=d2(v),p=s.lastIndexOf(',');return s.slice(0,p)+'<span class="cc">'+s.slice(p)+'</span>'}
 var UNR='<span class="cc">R$ </span>';
 function mes3(ym){return MESES[+ym.slice(5,7)-1].slice(0,3)}
+function ESPERA(t){return window.Molas?window.Molas.onda(t):esc(t)} // texto de espera com onda nas letras
 function chead(icon,t,right,go){return '<div class="ch"><span class="ico">'+nic(icon,22)+'</span><h2>'+t+'</h2>'+(right||'')+(go?'<button type="button" class="go" data-go="'+go+'" aria-label="Abrir '+esc(t)+'">'+nic('arrow',18)+'</button>':'')+'</div>'}
 function tagpill(t){return '<span class="mpill s">'+t+'</span>'}
 function sub(t){return ''}
@@ -931,7 +936,7 @@ function telaPainel(){
   var atras=C.filter(function(x){return !pagaDe(x)&&vencIso(x)<hj}),venceHoje=C.filter(function(x){return !pagaDe(x)&&vencIso(x)===hj}),lim=addDias(hj,7);
   var prox=C.filter(function(x){var v=vencIso(x);return !pagaDe(x)&&v>=hj&&v<=lim}).sort(function(a,b){return vencIso(a)<vencIso(b)?-1:1});
   var sumAt=sum(atras,function(x){return +x.valor});
-  var carr=S.carregando?'Lendo os valores no Mercado Livre…':'Não consegui ler o Mercado Livre agora.';
+  var carr=S.carregando?ESPERA('Lendo os valores no Mercado Livre…'):'Não consegui ler o Mercado Livre agora.';
   h+='<div class="grid">';
   // Linha 1: palco (resultado do mês) e gráfico por mês
   var base=(c.cash?c.rec:c.fat)||1,fpv=c.fornOk?c.pf:0,fp,dp,gp;
@@ -944,7 +949,7 @@ function telaPainel(){
   if(L.length){
     var sel=mselYm(L),x=L.filter(function(q){return q.ym===sel})[0];
     h+='<section class="card s6">'+chead('chart','Resultado por mês','','historico')+'<div class="hd"><div class="val">R$ '+mil(x.res)+'<span class="un">em '+MESES[+sel.slice(5,7)-1].toLowerCase()+'</span></div><div class="leg"><span><i style="background:var(--destaque)"></i>Mês em foco</span><span><i style="background:var(--f-neg)"></i>Saiu mais que entrou</span></div></div>'+mchart(L,120,sel)+'</section>';
-  }else h+='<section class="card s6">'+chead('chart','Resultado por mês','','historico')+'<p class="sub">'+(S.herro?'Não consegui ler o histórico agora.':'Carregando o histórico…')+'</p></section>';
+  }else h+='<section class="card s6">'+chead('chart','Resultado por mês','','historico')+'<p class="sub">'+(S.herro?'Não consegui ler o histórico agora.':ESPERA('Carregando o histórico…'))+'</p></section>';
   // Linha 2: a receber, entra em 7 dias e atenção
   var B=byMk(function(l){return l.a_receber}),arec=sum(T,function(l){return l.a_receber||0}),d14=[],i;for(i=7;i<21;i++)d14.push(addDias(hj,i));
   var d7=[];for(i=0;i<7;i++)d7.push(addDias(hj,i));
@@ -1252,6 +1257,9 @@ function deslizar(){
     var th=document.createElement('span');th.className='thumb';t.insertBefore(th,t.firstChild);
     var id=t.id||('s'+ix),novo={x:on.offsetLeft,w:on.offsetWidth},ant=mapa[id]||novo;
     if(!novo.w){t.classList.add('sem-thumb');th.remove();return}
+    if(window.Molas){ // mola que estica: a borda da frente corre, a de trás segue
+      th.style.transition='none';var pl=window.Molas.pilula(th);pl.de(ant.x,ant.w);pl.ir(novo.x,novo.w);mapa[id]=novo;return;
+    }
     th.style.transition='none';th.style.width=ant.w+'px';th.style.transform='translateX('+ant.x+'px)';
     void th.offsetWidth;th.style.transition='';th.style.width=novo.w+'px';th.style.transform='translateX('+novo.x+'px)';
     mapa[id]=novo;
@@ -1359,7 +1367,7 @@ function modalLucroPar(){
 }
 function cardEstoque(){
   var h='<section class="card s12">'+chead('galpao','Estoque no galpão','<button type="button" class="go" data-lpar aria-label="Ajustar o lucro por par" title="Ajustar o lucro por par">'+nic('sliders',18)+'</button>','');
-  if(!S.gal)return h+'<p class="sub">'+(S.galErro?'Não consegui ler o estoque agora.':'Lendo o estoque…')+'</p></section>';
+  if(!S.gal)return h+'<p class="sub">'+(S.galErro?'Não consegui ler o estoque agora.':ESPERA('Lendo o estoque…'))+'</p></section>';
   var lucro=S.gal.pares*S.lpar,tot=S.gal.valor+lucro,ep=tot>0?S.gal.valor/tot*100:100;
   return h+'<div><div class="val">'+UNR+bg2(tot)+'</div><div class="lab" style="margin-top:8px">valor do estoque + lucro previsto</div></div>'+
     '<div class="bar sem" style="margin-top:auto"><div class="trk"><b class="ci" style="width:'+ep.toFixed(1)+'%"></b><b class="pe" style="flex:1"></b></div></div>'+

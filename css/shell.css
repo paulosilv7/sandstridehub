@@ -27,7 +27,7 @@
 .sh-av{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--sh-destaque);color:var(--sh-no-destaque);display:inline-flex;align-items:center;justify-content:center;font:600 15px/1 'Plus Jakarta Sans',system-ui,sans-serif;flex:none}
 
 @media (min-width:1000px){
-  .sh-lat{display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100dvh;width:232px;flex:none;padding:20px 12px;background:var(--sh-lateral);color:#fff;overflow:hidden;transition:width 280ms var(--sh-ease);z-index:30}
+  .sh-lat{display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100dvh;width:232px;flex:none;padding:20px 12px;background:var(--sh-lateral);color:#fff;overflow:hidden;z-index:30}
   .sh-app.sh-rec .sh-lat{width:64px}
   .sh-marca{display:flex;align-items:center;height:40px;padding:0 8px;flex:none}
   .sh-marca img{height:22px;width:auto}
@@ -43,7 +43,7 @@
   .sh-seg{position:relative;display:flex;background:#232323;border-radius:99px;padding:4px;align-self:stretch}
   .sh-seg button{position:relative;z-index:1;flex:1;height:32px;padding:0;text-align:center;border:0;border-radius:99px;background:none;color:var(--sh-suave);font:500 13px/1 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer;transition:color 200ms}
   .sh-seg button.on{color:#fff}
-  .sh-seg .sh-polegar{position:absolute;z-index:0;top:4px;left:0;height:32px;width:0;border-radius:99px;background:var(--sh-ativo);transition:transform 200ms var(--sh-ease),width 200ms var(--sh-ease)}
+  .sh-seg .sh-polegar{position:absolute;z-index:0;top:4px;left:0;height:32px;width:0;border-radius:99px;background:var(--sh-ativo)}
   .sh-tema-ic{display:none;width:40px;height:40px;border:1px solid var(--sh-borda);border-radius:50%;background:none;color:#fff;cursor:pointer;place-items:center}
   .sh-tema-ic:hover{background:#232323}
   .sh-app.sh-rec .sh-gl{font-size:0;height:1px;margin:10px 8px;padding:0;background:var(--sh-borda)}
