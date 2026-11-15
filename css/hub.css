@@ -436,3 +436,51 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 @media (prefers-reduced-motion:reduce){.id-orbe::before,.id-orbe::after{animation:none}.id-mi .tr::after{transition:none}}
 .id-chip{white-space:nowrap}
 @media (max-width:420px){.id-envia .id-et{display:none}.id-envia{width:36px;padding:0;justify-content:center}}
+
+/* Rotina da semana (só consulta) */
+.rs-faixa{font-size:13px;color:var(--suave);white-space:nowrap}
+.md-rsem .qcab .rs-faixa{margin-left:auto}
+.rs-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.rs-dia{display:flex;gap:var(--e4);align-items:flex-start;padding:var(--e3) var(--e3);border-radius:14px}
+.rs-dia.hoje{background:var(--elevado);box-shadow:inset 3px 0 0 var(--destaque)}
+.rs-d{flex:none;width:40px;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1}
+.rs-d b{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--suave)}
+.rs-d span{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.rs-dia.hoje .rs-d b{color:var(--destaque-claro)}
+.rs-dia.passou .rs-d span{color:var(--suave)}
+.rs-itens{list-style:none;margin:0;padding:0;flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding-top:2px}
+.rs-itens li{display:flex;align-items:center;gap:8px;font-size:14px;line-height:20px;min-width:0}
+.rs-itens .tx{min-width:0;overflow-wrap:anywhere}
+.rs-ic{width:18px;height:18px;border-radius:50%;flex:none;display:grid;place-items:center;border:1.5px solid var(--borda-forte,var(--borda))}
+.rs-ic.feito{background:var(--texto);border-color:var(--texto);color:var(--cartao)}
+.rs-ic.falhou{border-color:var(--atencao);color:var(--atencao)}
+.rs-itens li.feita .tx{color:var(--suave)}
+.rs-itens li.falta .tx{color:var(--suave)}
+.rs-nada{margin:0;padding-top:3px;font-size:13px;color:var(--suave)}
+.rs-dica{margin:var(--e3) var(--e3) 0;font-size:12.5px;color:var(--suave)}
+.md-rotli{display:flex;align-items:center;gap:var(--e3)}
+.tag.rot{background:var(--elevado);color:var(--suave)}
+/* Equipe hoje recolhido */
+.md-eqbt{display:flex;align-items:center;gap:var(--e3);width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:14px}
+.md-eqbt h2{margin:0;flex:1;min-width:0}
+.md-eqbt:focus-visible{outline:2px solid var(--foco);outline-offset:4px}
+.md-chev{display:grid;place-items:center;width:32px;height:32px;color:var(--suave);transition:transform 220ms var(--ease)}
+.md-eq.on .md-chev{transform:rotate(180deg)}
+.md-eq.on .md-eqbt{margin-bottom:var(--e4)}
+@media (prefers-reduced-motion:reduce){.md-chev{transition:none}}
+
+/* semana em 7 colunas (computador); no celular volta a ser lista */
+@media (min-width:900px){
+  .rs-lista{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--e2)}
+  .rs-dia{flex-direction:column;gap:var(--e3);padding:var(--e3);align-items:stretch}
+  .rs-dia.hoje{box-shadow:inset 0 3px 0 var(--destaque)}
+  .rs-d{width:auto;flex-direction:row;align-items:baseline;gap:6px}
+  .rs-itens li{font-size:13px;line-height:17px;align-items:flex-start}
+  .rs-ic{width:15px;height:15px;margin-top:1px}
+  .rs-ic svg{width:11px;height:11px}
+}
+.rs-ic svg{display:block}
+.md-esq .md-metas{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:900px){.md-cols{align-items:stretch}}
+@media (max-width:899px){.md-esq .md-metas{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:520px){.md-rsem .rs-faixa{display:none}.md-rsem .qcab h2{white-space:nowrap}.md-eqbt .tag{display:none}.md-eq.on .md-eqbt .tag{display:none}}
