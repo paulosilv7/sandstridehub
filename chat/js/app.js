@@ -2,7 +2,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { montarShell } from '../../js/shell.js';
-import { S as MolaS, passo as molaPasso, registrar as molaReg, acordar as molaAcordar, pilula as molaPilula, parada as molaParada } from '../../js/molas.js';
+import { S as MolaS, passo as molaPasso, registrar as molaReg, acordar as molaAcordar, pilula as molaPilula, parada as molaParada, onda as molaOnda } from '../../js/molas.js';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -484,7 +484,7 @@ function renderThread() {
       (S.anexos.length ? `<div class="prevs">${S.anexos.map((a, i) => `<div class="pv">${a.tipo === 'img' ? `<img src="${esc(a.prev)}" alt="${esc(a.nome)}">` : `<span class="arq">${esc(a.nome)}</span>`}<button type="button" data-act="rm-anexo" data-i="${i}" aria-label="Remover ${esc(a.nome)}">×</button></div>`).join('')}</div>` : '') +
       '<div class="envio">' +
       (pode ? '<label class="bt2 anex" for="arq" title="Anexar fotos ou arquivos"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L14.5 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr">Anexar</span></label><input id="arq" class="sr" type="file" accept="image/*,.pdf" multiple>' : '') +
-      `<textarea id="draft" rows="1" placeholder="Escreva a resposta" aria-label="Escreva a resposta" autocomplete="off"></textarea><button type="button" class="btn" data-act="enviar"${S.enviando ? ' disabled' : ''}>${S.enviando ? 'Enviando…' : 'Enviar'}</button></div></div>`;
+      `<textarea id="draft" rows="1" placeholder="Escreva a resposta" aria-label="Escreva a resposta" autocomplete="off"></textarea><button type="button" class="btn" data-act="enviar"${S.enviando ? ' disabled' : ''}>${S.enviando ? '<i class="sp-ind" aria-hidden="true"></i>Enviando…' : 'Enviar'}</button></div></div>`;
   }
   const livres = S.etiquetas.filter((x) => !c.tags.includes(x.nome));
   const etqs = '<div class="etqs">' + c.tags.map((n) => `<span class="etq ${etqCls(n)}">${esc(n)}<button type="button" data-act="rm-etq" data-n="${esc(n)}" aria-label="Remover etiqueta ${esc(n)}">×</button></span>`).join('') +
@@ -571,7 +571,7 @@ function formBase(b) {
 const DECISAO = { respondeu: ['Respondeu', 'info'], escalou: ['Passou para a equipe', 'warn'], ignorou: ['Não atuou', 'info'], erro: ['Erro', 'warn'] };
 function vistaSandy() {
   const y = S.sandy, ad = souAdmin(), dis = ad ? '' : ' disabled';
-  if (!y) return '<p class="mut">Carregando…</p>';
+  if (!y) return `<p class="mut">${molaOnda('Carregando…')}</p>`;
   let h = `<p class="sub">A Sandy responde sozinha as perguntas simples dos clientes e passa para a equipe tudo o que for delicado. ${ad ? '' : 'Só administradores alteram esta tela.'}</p>${notaHtml()}`;
   h += `<div class="box"><h2>Atendimento automático</h2><div class="txt">Enquanto estiver desligado, a Sandy não envia nada. Ligue por loja, começando por uma só, e acompanhe o que ela fez no registro abaixo. Se você ou alguém da equipe assumir uma conversa, ela para de responder ali.</div>` +
     `<label class="chk"><input id="sy-ativa" type="checkbox"${y.ativa ? ' checked' : ''}${dis}>Sandy ligada</label>` +
@@ -747,7 +747,7 @@ async function carregarCustos() {
 }
 function vistaCustos() {
   const k = S.custos;
-  if (!k) return '<p class="mut">Carregando…</p>';
+  if (!k) return `<p class="mut">${molaOnda('Carregando…')}</p>`;
   if (k.semAcesso) return `<p class="sub">Só administradores veem os custos.</p>`;
   const brl = (u) => (u * k.cambio).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const brl4 = (u) => (u * k.cambio).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 3, maximumFractionDigits: 3 });
@@ -963,6 +963,8 @@ async function enviar() {
     S.draft = ''; limparAnexos();
     await carregarMensagens(c.id); await carregarConversas(); await carregarHoje();
     S.enviando = false; renderInbox();
+    const bt = document.querySelector('[data-act="enviar"]');
+    if (bt) { bt.classList.add('ok'); bt.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Enviado'; setTimeout(() => { if (bt.isConnected) { bt.classList.remove('ok'); bt.textContent = 'Enviar'; } }, 1400); }
     $('draft')?.focus();
   } catch (e) {
     S.enviando = false; S.aviso = e.message || 'Não consegui enviar. Tente de novo.'; renderThread();
