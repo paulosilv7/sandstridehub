@@ -144,9 +144,11 @@ function alvoRange(range){
 }
 function erroBanco(e){var x=new Error((e&&e.message)||'Não consegui falar com o banco de dados.');x.code='servidor';return x;}
 function ler(range,tentou,sid){
-  if(sid){ // planilha do estoque (somente leitura)
-    return api({op:'get',spreadsheetId:sid,range:range}).then(function(r){return r.values||[];})
-    .catch(function(e){if(!tentou&&e&&e.code==='servidor'){return new Promise(function(ok){setTimeout(ok,1200+Math.random()*600);}).then(function(){return ler(range,true,sid);});}throw e;});
+  if(sid){ // estoque: agora vem do banco (tabelas est_*), no mesmo formato da antiga aba PRODUTOS
+    return window.SB.rpc('est_planilha_produtos').then(function(r){
+      if(r.error) throw erroBanco(r.error);
+      return r.data||[];
+    }).catch(function(e){if(!tentou){return new Promise(function(ok){setTimeout(ok,1200+Math.random()*600);}).then(function(){return ler(range,true,sid);});}throw e;});
   }
   var a=alvoRange(range), cfg=a.cfg;
   return window.SB.from(cfg.t).select('*').order('linha').range(0,9999).then(function(r){

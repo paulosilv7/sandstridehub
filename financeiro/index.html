@@ -1351,8 +1351,8 @@ async function carregarEstoque(){
   try{var c=JSON.parse(sessionStorage.getItem('sandstride-fin-est')||'null');if(c&&Date.now()-c.t<600000){S.gal={pares:c.pares,valor:c.valor};seguro()}}catch(e){}
   try{var cf=await SB.from('configuracoes').select('valor').eq('chave','estoque_lucro_par').maybeSingle();var lv=cf.data?parseFloat(String(cf.data.valor).replace(',','.')):NaN;if(isFinite(lv)&&lv>=0)S.lpar=lv}catch(e){}
   try{
-    var r=await SB.functions.invoke('estoque',{method:'POST',body:{fn:'iniciar',args:[],base:'oficial'}});
-    var t=r.data&&r.data.ok&&r.data.r&&r.data.r.totais;
+    var r=await SB.rpc('est_resumo');
+    var t=!r.error&&r.data&&r.data.pares!==undefined?r.data:null;
     if(!t)throw new Error('estoque');
     S.gal={pares:+t.pares,valor:+t.valor};S.galErro=false;
     try{sessionStorage.setItem('sandstride-fin-est',JSON.stringify({t:Date.now(),pares:S.gal.pares,valor:S.gal.valor}))}catch(e){}
