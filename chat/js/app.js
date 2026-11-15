@@ -378,7 +378,7 @@ function renderFilters() {
   const st = [['todas', 'Todas', total], ['aguardando', 'Não respondidas', aguard], ['marketplace', 'Com o marketplace', fora], ['respondidas', 'Respondidas', total - aguard - fora]];
   $('seg').innerHTML = st.map((x) => `<button type="button" class="seg-b" data-act="status" data-v="${x[0]}" data-n="${x[2]}" aria-pressed="${S.status === x[0]}"${tip[x[0]] ? ` title="${tip[x[0]]}"` : ''}><span class="seg-n">${x[2]}</span><span class="seg-l">${x[1]}</span></button>`).join('');
   const sg = $('seg'), btn = sg.querySelector('[aria-pressed="true"]');
-  if (btn && btn.offsetWidth && innerWidth > 700) {
+  if (false && btn && btn.offsetWidth) {
     const th = document.createElement('span'); th.className = 'thumb'; sg.prepend(th); sg.classList.add('com-thumb');
     const p = molaPilula(th); if (S.pilX != null) p.de(S.pilX, S.pilW); p.ir(btn.offsetLeft, btn.offsetWidth); S.pilX = btn.offsetLeft; S.pilW = btn.offsetWidth;
   } else sg.classList.remove('com-thumb');
