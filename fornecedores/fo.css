@@ -257,3 +257,20 @@ main tbody tr{transition:background 120ms}
   :root:root main td .pill,:root:root main td .badge,:root:root main td .status,:root:root main td [class*="status"],:root:root main td [class*="type"]{white-space:nowrap}
   :root:root main td:nth-child(2),:root:root main td:nth-child(5){white-space:nowrap!important}
 }
+
+/* hierarquia: mês (nível 1) × compra individual (nível 2) */
+:root:root .purchase-month,:root:root .payment-month{background:var(--card)!important}
+:root:root .purchase-month>summary strong,:root:root .payment-month>summary strong{font-size:20px!important;font-weight:600!important;color:var(--ink)!important}
+:root:root .purchase-orders{padding:0 16px 16px 28px!important;position:relative;gap:10px!important}
+:root:root .purchase-orders:before{content:"";position:absolute;left:14px;top:2px;bottom:26px;width:2px;border-radius:2px;background:var(--line)}
+:root:root .purchase-order{background:var(--soft)!important;border:1px solid var(--line)!important;border-radius:16px!important}
+:root:root .purchase-order[open]{background:var(--soft)!important;border-color:rgba(127,127,127,.28)!important}
+:root:root .purchase-order>summary{padding:14px 18px!important}
+:root:root .purchase-order>summary strong{font-size:14px!important;font-weight:500!important;color:var(--ink)!important}
+:root:root .purchase-order>summary small{color:var(--mut)!important;font-size:11px!important}
+:root:root .purchase-order>summary>div:first-child small:first-child{letter-spacing:.14em;font-size:9px!important;opacity:.85}
+:root:root .purchase-order-totals span{color:var(--mut)!important;font-size:9px!important}
+:root:root .purchase-order-totals b{color:var(--ink)!important;-webkit-text-fill-color:var(--ink)!important;font-size:13px!important;font-weight:500!important}
+:root:root .purchase-order-totals i,:root:root .purchase-month-totals i{border-color:var(--mut)!important}
+:root:root .purchase-order .table{background:transparent!important;border-top:1px solid var(--line)!important}
+:root:root[data-theme="light"] .purchase-order{background:#F3F4F0!important}
