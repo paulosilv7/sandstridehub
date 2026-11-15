@@ -124,3 +124,90 @@ main .hero button.operation-buy{background:var(--palco-bar)!important;color:var(
 :root:root .settled-suppliers .supplier-card{background:var(--soft)!important}
 :root:root .supplier-card{background:var(--card)!important;color:var(--ink)!important}
 :root:root .supplier-card-inactive{opacity:.75}
+
+/* ================= Painel: quadros e movimento (briefing v2) ================= */
+@keyframes sobe{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes abre{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes some-entra{from{opacity:0}to{opacity:1}}
+.entra{animation:sobe 400ms var(--ease) both;animation-delay:calc(var(--o,0)*60ms)}
+.pn{margin:24px 0 8px;display:flex;flex-direction:column;gap:16px}
+.pn-cab{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.pn-cab .rotulo{font-size:13px;color:var(--mut);display:block}
+.pn-cab h2{margin:2px 0 0;font-size:20px;font-weight:600;letter-spacing:-.2px;color:var(--ink)}
+.pn-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.pn-g21{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px}
+.pn .card{margin:0!important;display:flex;flex-direction:column;gap:16px;min-width:0}
+.qcab{display:flex;align-items:center;gap:12px}
+.qcab h3{flex:1;margin:0;font-size:16px;font-weight:600;color:var(--ink);min-width:0}
+.ico{width:32px;height:32px;border-radius:50%;background:var(--soft);color:var(--ink);display:grid;place-items:center;flex:none}
+.ico svg{width:16px;height:16px}
+.ibtn{width:36px;height:36px;border-radius:50%!important;display:grid!important;place-items:center;padding:0!important;background:transparent!important;box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)!important}
+.ibtn svg{width:16px;height:16px}
+.ibtn:hover{background:var(--soft)!important}
+.pn .valor{font-size:34px;line-height:40px;font-weight:600;letter-spacing:-.8px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.pn .valor .c{color:var(--mut);font-weight:500}
+.fila{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.suave,.sub{color:var(--mut);font-size:13px;margin:0}
+.var{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 10px;border-radius:99px;background:var(--rec-bg);color:var(--rec);font-size:12px;font-weight:500;font-variant-numeric:tabular-nums}
+.var.baixa{background:var(--disp-bg);color:var(--disp)}
+.var[hidden]{display:none}
+.var i{display:grid;transition:none}.var svg{width:12px;height:12px}
+.lw{position:relative;height:64px}
+.linha{width:100%;height:100%;display:block;overflow:visible}
+.pn-ponto{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;box-shadow:0 0 0 3px var(--card)}
+.med{position:relative;width:200px;max-width:100%;margin:8px auto 0}
+.med svg{width:100%;display:block}
+.med .num{position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:28px;line-height:32px;font-weight:600;letter-spacing:-.5px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.pn .sub{text-align:center}
+/* seletor em pílula que desliza */
+.seg{position:relative;display:inline-flex;padding:3px;border-radius:99px;background:var(--card)}
+.seg .polegar{position:absolute;left:0;top:3px;bottom:3px;width:0;border-radius:99px;background:var(--ativo);pointer-events:none}
+:root:root main .seg button{position:relative;z-index:1;height:32px;padding:0 14px;background:transparent!important;color:var(--mut)!important;font-size:13px;font-weight:500;border-radius:99px!important}
+:root:root main .seg button.on{color:var(--ink)!important}
+/* gráfico de barras com dica */
+.graf{position:relative;display:flex;align-items:flex-end;gap:6px;height:170px;padding-top:36px}
+:root:root main .graf button{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;padding:0;background:transparent!important;border-radius:8px!important;font-size:11px;color:var(--mut)!important}
+.graf .par{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px}
+.graf .par b{display:block;flex:1;max-width:14px;border-radius:7px 7px 3px 3px;transform-origin:bottom;transform:scaleY(0)}
+.graf .c1{height:var(--h1,0%);background:var(--ativo)}
+.graf .c2{height:var(--h2,0%);background:color-mix(in srgb,var(--ink) 30%,transparent)}
+.graf button.on .c1{background:var(--destaque)}
+.graf button.on .c2{background:color-mix(in srgb,var(--destaque) 45%,transparent)}
+.graf button.on{color:var(--ink)!important;font-weight:500}
+.graf em{font-style:normal;font-variant-numeric:tabular-nums}
+.graf .dica{position:absolute;top:0;transform:translateX(-50%);background:var(--ink);color:var(--card);font-size:12px;font-weight:500;padding:5px 10px;border-radius:99px;white-space:nowrap;pointer-events:none;opacity:0;transition:left 200ms var(--ease),opacity 120ms}
+.graf .dica.on{opacity:1}
+.leg-g{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--mut)}
+.leg-g span{display:inline-flex;align-items:center;gap:6px}.leg-g i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.leg-g .k1{background:var(--ativo)}.leg-g .k2{background:color-mix(in srgb,var(--ink) 30%,transparent)}.leg-g .k3{background:var(--destaque)}
+/* extrato e ranking */
+.ext,.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.ext li{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 8px;margin:0 -8px;border-radius:16px;transition:background 120ms;animation:sobe 400ms var(--ease) both;animation-delay:calc(var(--o,0)*45ms)}
+.ext li:hover{background:var(--hover)}
+.ext .logo{width:36px;height:36px;border-radius:12px;background:var(--ativo);color:var(--ink);display:grid;place-items:center;font-size:12px;font-weight:600;flex:none}
+.ext li div{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3;font-size:14px;color:var(--ink);font-weight:500}
+.ext li div span{font-size:12px;color:var(--mut);font-weight:400}
+.ext li b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:14px}
+.ext li b.e{color:var(--pago)}
+.rank li{display:flex;align-items:center;gap:12px;height:48px;padding:0 16px;border-radius:16px;font-size:14px;transition:background 120ms;animation:sobe 400ms var(--ease) both;animation-delay:calc(var(--o,0)*45ms)}
+.rank li:hover{background:var(--hover)}
+.rank li.um,.rank li.um:hover{background:var(--destaque);color:var(--no-destaque);height:56px;border-radius:20px}
+.rank li i{font-style:normal;width:18px;color:var(--mut);font-variant-numeric:tabular-nums}.rank li.um i{color:inherit}
+.rank li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.rank li b{font-weight:600;font-variant-numeric:tabular-nums}
+.ext .vazio,.rank .vazio{color:var(--mut);padding:16px 0;font-size:14px}
+@media (max-width:999px){.pn-g3,.pn-g21{grid-template-columns:minmax(0,1fr)}.pn .valor{font-size:30px}}
+
+/* ================= movimento nas outras telas ================= */
+.select-menu{animation:abre 180ms var(--ease);transform-origin:top}
+dialog[open]{animation:some-entra 160ms var(--ease)}
+dialog[open]::backdrop{animation:some-entra 160ms var(--ease)}
+:root:root main .supplier-card{transition:transform 220ms var(--ease),background 120ms}
+:root:root main .supplier-card:hover{transform:translateY(-2px)}
+:root:root main button:active,:root:root dialog button:active{transform:scale(.97)}
+:root:root main button,:root:root dialog button{transition:transform 140ms var(--ease),background 120ms,color 120ms}
+main tbody tr{transition:background 120ms}
+@media (prefers-reduced-motion:reduce){.entra,.ext li,.rank li,.select-menu,dialog[open],dialog[open]::backdrop{animation:none!important}:root:root main .supplier-card:hover{transform:none}}
+.pn-g .graf{flex:1;min-height:200px}
+:root:root main button,:root:root main button *{-webkit-text-fill-color:currentColor!important}
+@media (max-width:999px){:root:root .portfolio-totals{grid-template-columns:minmax(0,1fr)!important}:root:root .portfolio-totals strong{white-space:nowrap}}

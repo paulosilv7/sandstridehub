@@ -1,4 +1,5 @@
 (async()=>{
+ await import('./painel-ui.js').catch(e=>console.error('painel-ui',e));
  {const l=document.createElement('link');l.rel='stylesheet';l.href='fo.css';const sh=document.createElement('link');sh.rel='stylesheet';sh.href='../css/shell.css';document.head.append(sh);document.head.append(l);}
  const empty=()=>({suppliers:[],inactiveSuppliers:[],products:[],entries:[],audit:[]});
  let client,store,backupStatus,ready=false,generation=0,savedControls=[];
@@ -13,7 +14,7 @@
  function setBusy(value){document.body.classList.toggle('finance-busy',value);if(value){savedControls=[...document.querySelectorAll('#form input,#form select,#form button')].map(control=>[control,control.disabled]);savedControls.forEach(([control])=>control.disabled=true)}else{savedControls.forEach(([control,disabled])=>{if(control.isConnected)control.disabled=disabled});savedControls=[]}const saveButton=document.querySelector('#form footer .primary');if(saveButton)saveButton.setAttribute('aria-busy',String(value));updateButton.disabled=value;logout.disabled=value;}
  function showState(){db=structuredClone(store.state);ready=true;document.body.classList.add('finance-ready');authPanel.hidden=true;app.hidden=false;document.getElementById('nav').hidden=false;render();backupStatus?.refresh();}
  function failure(error){let message=error?.code==='40001'?'Outra pessoa atualizou os dados. A lista foi atualizada; confira os campos e salve novamente.':error?.code==='42501'?'Seu usuário não tem acesso ao financeiro.':error?.message&&/vigência|histórico|cancelado|total|quantidade|duplicado|limite|precisão/i.test(error.message)?error.message:'Não foi possível confirmar a gravação. Os campos foram mantidos; confira os dados antes de tentar novamente.';status(message,'error');return message;}
- render=function(){if(ready)originalRender()};
+ render=function(){if(!ready)return;originalRender();try{window.PainelUI?.depois({db,page,app,fornecedor:window.currentWorkspaceSupplier?.()})}catch(e){console.error('painel',e)}};
  openForm=function(type,id){if(ready&&!store.busy&&!window.FinanceAttachments?.busy)originalOpen(type,id)};
  const user=document.querySelector('.user'),name=document.createElement('span'),updateButton=document.createElement('button'),logout=document.createElement('button'),home=document.createElement('a');
  const icon=path=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+path+'</svg>';
