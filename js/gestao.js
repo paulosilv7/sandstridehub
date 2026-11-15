@@ -9,7 +9,7 @@ const IG = {
   revisao: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5"/>',
   auto: '<path d="M13 3 5 13h6l-1 8 8-10h-6z"/>',
 };
-export const ICONES_CENTRAL = { dia: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>', placar: IG.placar, prioridades: IG.bandeira, revisao: IG.revisao };
+export const ICONES_CENTRAL = { dia: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>', placar: IG.placar, prioridades: IG.bandeira, revisao: IG.revisao, ideias: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>' };
 const FONTES = { lucro: 'Lucro (Lucro ao vivo)', faturamento: 'Faturamento (Lucro ao vivo)', pedidos: 'Pedidos (Lucro ao vivo)', pares: 'Pares vendidos (Lucro ao vivo)', devolucoes: 'Devoluções novas' };
 const segunda = (iso) => soma(iso, -((dataDe(iso).getUTCDay() + 6) % 7));
 const triDe = (iso) => { const m = +iso.slice(5, 7); return `${iso.slice(0, 4)}-${String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0')}-01`; };
@@ -19,7 +19,7 @@ const semanaTxt = (s) => `${fCurto.format(dataDe(s))} a ${fCurto.format(dataDe(s
 const num = (s) => { const v = String(s).trim().replace(/\./g, '').replace(',', '.'); return v === '' ? NaN : Number(v); };
 const prim = (n) => String(n || '').split(' ')[0];
 
-function base({ sb, user, eu }) {
+export function base({ sb, user, eu }) {
   const admin = eu.papel === 'admin';
   const fotoUrl = (p) => (p ? `${SUPABASE_URL}/storage/v1/object/public/avatares/${p}` : '');
   const av = (p, cls = '') => { const u = fotoUrl(p?.foto_path); return u ? `<img class="av ${cls}" src="${esc(u)}" alt="">` : `<span class="av ${cls}" aria-hidden="true">${esc(String(p?.nome || '?').charAt(0).toUpperCase())}</span>`; };
