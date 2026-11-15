@@ -95,9 +95,9 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   };
   document.querySelectorAll('[data-sub]').forEach((b) => b.addEventListener('click', () => { const x = subs[+b.dataset.sub]; x.ao(); setTimeout(marca, 0); }));
   new MutationObserver(marca).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['aria-expanded', 'hidden'] });
-  const pai = document.querySelector('.sh-lat nav [data-pai]'), navEl = document.querySelector('.sh-lat nav');
-  if (pai && navEl) navEl.scrollTop = Math.max(0, pai.offsetTop - 90);
   marca();
+  const subAt = document.querySelector('.sh-lat .sh-sub[aria-current]'), navEl = document.querySelector('.sh-lat nav');
+  if (subAt && navEl) { const r = subAt.getBoundingClientRect(), n = navEl.getBoundingClientRect(); if (r.bottom > n.bottom || r.top < n.top) navEl.scrollTop += (r.bottom > n.bottom ? r.bottom - n.bottom + 8 : r.top - n.top - 8); }
   window.addEventListener('hashchange', () => setTimeout(marca, 0));
 
   // tema e menu recolhido
