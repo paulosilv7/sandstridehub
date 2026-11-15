@@ -19,6 +19,9 @@
 .sh-nv[aria-current="page"]{background:var(--sh-ativo);color:#fff}
 .sh-nv[aria-current="page"]::after{content:"";margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--sh-ponto);flex:none}
 .sh-sub{padding-left:30px;height:32px;font-size:13px}
+.sh-nv{position:relative}
+.sh-selo{margin-left:auto;min-width:20px;height:20px;border-radius:10px;padding:0 6px;background:#D8433D;color:#fff;font:600 11px/20px 'Plus Jakarta Sans',system-ui,sans-serif;text-align:center;flex:none}
+.sh-nv[aria-current="page"]:has(.sh-selo:not([hidden]))::after{margin-left:8px}
 .sh-sub .sh-i{width:16px;height:16px}
 .sh-gl{flex:none;padding:12px 11px 4px;font:500 12px/1.4 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--sh-suave);white-space:nowrap;overflow:hidden}
 .sh-off{cursor:default;opacity:.7}
@@ -47,6 +50,7 @@
   .sh-tema-ic{display:none;width:40px;height:40px;border:1px solid var(--sh-borda);border-radius:50%;background:none;color:#fff;cursor:pointer;place-items:center}
   .sh-tema-ic:hover{background:#232323}
   .sh-app.sh-rec .sh-gl{font-size:0;height:1px;margin:10px 8px;padding:0;background:var(--sh-borda)}
+  .sh-app.sh-rec .sh-selo{position:absolute;top:4px;right:6px;min-width:10px;height:10px;padding:0;font-size:0;line-height:0}
   .sh-app.sh-rec .sh-nv span,.sh-app.sh-rec .sh-em-breve,.sh-app.sh-rec .sh-eu-txt,.sh-app.sh-rec .sh-seg{display:none}
   .sh-app.sh-rec .sh-nv[aria-current="page"]::after{display:none}
   .sh-app.sh-rec .sh-sub{padding-left:11px}
@@ -66,6 +70,8 @@
   .sh-barra{display:flex;gap:6px;padding:6px;border-radius:99px;max-width:calc(100vw - 24px);overflow-x:auto;scrollbar-width:none;background:var(--sh-lateral);box-shadow:0 8px 24px rgba(0,0,0,.28)}
   .sh-barra::-webkit-scrollbar{display:none}
   .sh-barra a,.sh-barra button{flex:none;height:40px;min-width:40px;border:0;border-radius:20px;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--sh-suave);background:var(--sh-ativo);font:500 13px/1 'Plus Jakarta Sans',system-ui,sans-serif;padding:0 11px;text-decoration:none;cursor:pointer;transition:background 250ms var(--sh-ease),color 250ms}
+  .sh-barra a,.sh-barra button{position:relative}
+  .sh-barra .sh-selo{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;font-size:10px;line-height:18px;padding:0 4px;border-radius:9px}
   .sh-barra span{max-width:0;overflow:hidden;white-space:nowrap;transition:max-width 250ms var(--sh-ease)}
   .sh-barra [aria-current="page"]{background:var(--sh-destaque);color:var(--sh-no-destaque);padding:0 14px}
   .sh-barra [aria-current="page"] span{max-width:110px}

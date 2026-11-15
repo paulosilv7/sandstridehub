@@ -51,7 +51,7 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   const foto = eu.foto_path ? `${SUPABASE_URL}/storage/v1/object/public/avatares/${eu.foto_path}` : '';
   const av = foto ? `<img class="sh-av" src="${esc(foto)}" alt="">` : `<span class="sh-av" aria-hidden="true">${esc(String(eu.nome || '?').charAt(0).toUpperCase())}</span>`;
 
-  const subHtml = subs.map((x, i) => `<button type="button" class="sh-nv sh-sub" data-sub="${i}" title="${esc(x.rotulo)}">${ic(x.d)}<span>${esc(x.rotulo)}</span></button>`).join('');
+  const subHtml = subs.map((x, i) => `<button type="button" class="sh-nv sh-sub" data-sub="${i}" title="${esc(x.rotulo)}">${ic(x.d)}<span>${esc(x.rotulo)}</span><b class="sh-selo" hidden></b></button>`).join('');
   const itens = (ids) => ids.map((id) => APPS.find((a) => a.id === id)).filter((a) => a && (a.breve || pode(a))).map((a) => {
     if (a.breve) return `<span class="sh-nv sh-off" title="${esc(a.nome)}: em breve">${ic(a.d)}<span>${esc(a.nome)}</span><span class="sh-em-breve">Em breve</span></span>`;
     const cur = a.id === ativo;
@@ -70,7 +70,7 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   const topo = `<header class="sh-topo"><img class="sh-logo-a" src="${url('img/sandstride-escuro.png')}" alt="Sandstride"><img class="sh-logo-b" src="${url('img/sandstride.png')}" alt=""><span class="sh-sp"></span>` +
     `<button class="sh-ib" id="shTemaM" type="button" aria-label="Trocar tema claro ou escuro">${ic(IC.lua)}</button><button class="sh-ib" id="shSairM" type="button" aria-label="Sair">${ic(IC.sair)}</button></header>`;
   const barra = `<nav class="sh-barra-m" aria-label="Atalhos"><div class="sh-barra"><a href="${url('')}" aria-label="Central">${ic(IC.casa)}<span>Central</span></a>` +
-    subs.map((x, i) => `<button type="button" data-sub="${i}" aria-label="${esc(x.rotulo)}">${ic(x.d)}<span>${esc(x.rotulo)}</span></button>`).join('') + '</div></nav>';
+    subs.map((x, i) => `<button type="button" data-sub="${i}" aria-label="${esc(x.rotulo)}">${ic(x.d)}<span>${esc(x.rotulo)}</span><b class="sh-selo" hidden></b></button>`).join('') + '</div></nav>';
 
   // envolve o conteúdo existente sem recriá-lo (os ouvintes e ids da ferramenta continuam valendo)
   const app = document.createElement('div'); app.className = 'sh-app';
@@ -152,6 +152,17 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
     }
     acordar();
   };
+  // selo de contador (bolinha vermelha com número) em um subitem: window.shellSelo(rotuloOuIndice, n); n=0 esconde
+  window.shellSelo = (qual, n) => {
+    const i = typeof qual === 'number' ? qual : subs.findIndex((x) => x.rotulo === qual); if (i < 0) return;
+    n = Math.max(0, Math.floor(+n || 0));
+    document.querySelectorAll(`[data-sub="${i}"] .sh-selo`).forEach((el) => {
+      const antes = +el.dataset.n || 0; el.dataset.n = String(n);
+      el.hidden = n === 0; el.textContent = n > 99 ? '99+' : String(n);
+      if (n > antes && antes >= 0 && !matchMedia('(prefers-reduced-motion:reduce)').matches && el.animate) el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.35)', offset: .4 }, { transform: 'scale(1)' }], { duration: 420, easing: 'cubic-bezier(.2,.7,.2,1)' });
+    });
+  };
+  if (window.__selos) Object.entries(window.__selos).forEach(([k, v]) => window.shellSelo(k, v));
   const sair = async () => { await sb.auth.signOut(); location.href = url(''); };
   document.getElementById('shSair').onclick = sair; document.getElementById('shSairM').onclick = sair;
 }

@@ -1,10 +1,13 @@
 // Chats Sandstride: site que junta as conversas das lojas e deixa a equipe responder.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+import { montarShell } from '../../js/shell.js';
+import { S as MolaS, passo as molaPasso, registrar as molaReg, acordar as molaAcordar, pilula as molaPilula, parada as molaParada } from '../../js/molas.js';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
+window.SB = sb;
 
 /* ------------------------------------------------------------------ */
 /* Constantes e utilitários                                            */
@@ -316,6 +319,16 @@ function humorAtual(m) {
   if (m.pend === 0 || m.total >= 10) return 'feliz';
   return 'tranquila';
 }
+let cntMola = null;
+function contar(el, alvo) {
+  if (!el) return;
+  if (S.cntPend == null || matchMedia('(prefers-reduced-motion:reduce)').matches) { S.cntPend = alvo; el.textContent = alvo; return; }
+  if (!cntMola) {
+    cntMola = MolaS(S.cntPend, 170, 20);
+    molaReg({ quadro(dt) { if (cntMola.on) molaPasso(cntMola, dt); }, desenhar() { if (!cntMola.on) return; const e = $('cntPend'); const v = Math.round(cntMola.x); S.cntPend = v; if (e) e.textContent = v; if (molaParada(cntMola, 0.05)) { cntMola.on = false; S.cntPend = cntMola.t; if (e) e.textContent = cntMola.t; } }, ativo() { return !!cntMola.on; } });
+  }
+  cntMola.t = alvo; cntMola.on = true; el.textContent = Math.round(cntMola.x); molaAcordar();
+}
 function renderSandy() {
   const el = $('sandy'); if (!el) return;
   const m = metricas(), hu = humorAtual(m);
@@ -336,11 +349,16 @@ function renderSandy() {
   const score = m.pend + m.paradas + m.rec;
   const nivel = ['Tranquilo', 'Movimentado', 'Corrido', 'Sobrecarregado'][score <= 2 ? 0 : score <= 5 ? 1 : score <= 9 ? 2 : 3];
   const nc = { Tranquilo: 'ok', Movimentado: 'at', Corrido: 'at', Sobrecarregado: 'ru' }[nivel];
+  const resp = S.convs.filter((c) => !c.aguardando).length;
   el.innerHTML =
-    `<button type="button" class="sandy-fig${S.pula ? ' pula' : ''}" data-act="sandy-clica" aria-label="Conversar com a Sandy">${sandySvg(hu, 'a')}</button>` +
-    `<div class="sandy-txt"><h2>${cumprimento()}, ${esc(eu())}.</h2><p>${esc(txt)}</p>` +
-    (S.fala ? `<span class="fala" role="status">${esc(S.fala)}</span>` : '') + '</div>' +
-    `<div class="sandy-nums" aria-label="Resumo do dia"><div class="sn ${m.pend ? 'pend' : 'pend0'}"><b>${m.pend}</b><span>${ico('inbox')}Aguardando</span></div><div class="sn ok"><b>${m.total}</b><span>${ico('check')}Clientes respondidos</span></div><div class="sn ${nc}"><b>${nivel}</b><span>${ico('trend')}Ritmo do dia</span></div></div>`;
+    `<div class="pal"><span class="k">Aguardando resposta</span><b class="pn" id="cntPend" data-n="${m.pend}">${S.cntPend ?? m.pend}</b>` +
+    `<span class="pt">${m.pend === 0 ? 'Ninguém esperando agora' : m.pend === 1 ? '1 cliente esperando' : `${m.pend} clientes esperando`}</span>` +
+    `<div class="pr">${m.paradas ? `<span class="tg bad">${ico('clock')}${pl(m.paradas, 'parada', 'paradas')}</span>` : ''}${m.rec ? `<span class="tg bad">${ico('alert')}${pl(m.rec, 'reclamação', 'reclamações')}</span>` : ''}</div></div>` +
+    `<div class="met"><div class="mh"><span class="ci pos">${ico('check')}</span><span class="eyebrow">Respondidos hoje</span></div><b class="mv">${m.total}</b><span class="ms">Ritmo do dia: ${nivel}</span></div>` +
+    `<div class="sandyq"><button type="button" class="sandy-fig${S.pula ? ' pula' : ''}" data-act="sandy-clica" aria-label="Conversar com a Sandy">${sandySvg(hu, 'a')}</button>` +
+    `<div class="sandy-txt"><span class="eyebrow">Sandy</span><h2>${cumprimento()}, ${esc(eu())}.</h2><p>${esc(txt)}</p>` +
+    (S.fala ? `<span class="fala" role="status">${esc(S.fala)}</span>` : '') + '</div></div>';
+  contar($('cntPend'), m.pend);
   S.pula = false;
 }
 
@@ -349,12 +367,9 @@ function renderSandy() {
 /* ------------------------------------------------------------------ */
 function renderChrome() {
   const aguard = S.convs.filter((c) => c.aguardando).length;
-  $('navCount').textContent = aguard; $('navCount').dataset.n = String(aguard);
+  window.__selos = { 'Caixa de entrada': aguard };
+  if (window.shellSelo) window.shellSelo('Caixa de entrada', aguard);
   document.title = `${aguard ? `(${aguard}) ` : ''}Chats Sandstride`;
-  const fp = S.eu?.foto_path;
-  const nomeEu = eu();
-  $('eu').title = `${nomeEu} · ${souAdmin() ? 'Administrador' : 'Atendente'}`;
-  $('eu').innerHTML = fp ? `<img src="${esc(`${SUPABASE_URL}/storage/v1/object/public/avatares/${fp}`)}" alt="${esc(nomeEu)}">` : esc(String(nomeEu || '?').trim().charAt(0).toUpperCase());
 }
 function renderFilters() {
   const total = S.convs.length, aguard = S.convs.filter((c) => c.aguardando).length;
@@ -362,6 +377,11 @@ function renderFilters() {
   const tip = { marketplace: 'Casos em análise pelo marketplace. Quando a análise termina, vão para Respondidas. Não entram nas métricas de não respondidas.' };
   const st = [['todas', 'Todas', total], ['aguardando', 'Não respondidas', aguard], ['marketplace', 'Com o marketplace', fora], ['respondidas', 'Respondidas', total - aguard - fora]];
   $('seg').innerHTML = st.map((x) => `<button type="button" class="seg-b" data-act="status" data-v="${x[0]}" data-n="${x[2]}" aria-pressed="${S.status === x[0]}"${tip[x[0]] ? ` title="${tip[x[0]]}"` : ''}><span class="seg-n">${x[2]}</span><span class="seg-l">${x[1]}</span></button>`).join('');
+  const sg = $('seg'), btn = sg.querySelector('[aria-pressed="true"]');
+  if (btn && btn.offsetWidth && innerWidth > 700) {
+    const th = document.createElement('span'); th.className = 'thumb'; sg.prepend(th); sg.classList.add('com-thumb');
+    const p = molaPilula(th); if (S.pilX != null) p.de(S.pilX, S.pilW); p.ir(btn.offsetLeft, btn.offsetWidth); S.pilX = btn.offsetLeft; S.pilW = btn.offsetWidth;
+  } else sg.classList.remove('com-thumb');
   const mk = [['todos', 'Todos', null], ['mercado_livre', 'Mercado Livre', 'ml'], ['shopee', 'Shopee', 'sp'], ['tiktok_shop', 'TikTok Shop', 'tt']];
   $('mks').innerHTML = mk.map((x) => `<button type="button" class="pill${x[2] ? ` logo pk-${x[2]}` : ''}" data-act="mk" data-v="${x[0]}" aria-pressed="${S.mk === x[0]}" aria-label="${x[1]}" title="${x[1]}">${x[2] ? logo(x[2], x[1]) : x[1]}</button>`).join('');
   const at = [['todos', 'Todos'], ['minhas', 'Minhas'], ['livres', 'Sem responsável']];
@@ -498,6 +518,7 @@ function resolverImagens() {
 function renderInbox() {
   renderChrome(); renderSandy(); renderFilters(); renderList(); renderThread();
   const cols = $('cols'); if (cols) cols.setAttribute('data-tela', S.tela);
+  const vi = $('v-inbox'); if (vi) vi.dataset.tela = S.tela;
 }
 function renderLeve() { renderChrome(); renderSandy(); renderFilters(); renderList(); }
 
@@ -777,9 +798,7 @@ function renderView() {
   $('v-inbox').hidden = !inbox; $('vista').hidden = inbox;
   $('vista').dataset.v = S.view;
   $('titulo').textContent = TITULOS[S.view];
-  document.querySelectorAll('.dock [data-act="view"]').forEach((b) => {
-    if (b.getAttribute('data-v') === S.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
-  });
+  const bq = document.querySelector('.busca-top'); if (bq) bq.hidden = !inbox;
   if (!inbox) $('vista').innerHTML = S.view === 'rapidas' ? vistaRapidas() : S.view === 'sandy' ? vistaSandy() : S.view === 'custos' ? vistaCustos() : vistaConfig();
 }
 
@@ -832,6 +851,13 @@ function telaSemAcesso() {
 /* ------------------------------------------------------------------ */
 /* Casca do aplicativo                                                 */
 /* ------------------------------------------------------------------ */
+const ICONES_SHELL = {
+  inbox: '<path d="M5.5 5h13L21 13v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5l2.5-8Z"/><path d="M3 13h5.5l1 2.5h5l1-2.5H21"/>',
+  rapidas: '<path d="M13 3 5 13h6l-1 8 8-10h-6l1-8Z"/>',
+  sandy: '<path d="M12 3l1.8 4.7L18.5 9.5 13.8 11.3 12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3Zm6.5 11 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"/>',
+  custos: '<path d="M12 3v18M16 7.5C16 6 14.5 5 12 5S7.5 6.2 7.5 8s2 2.5 4.5 3 4.5 1.2 4.5 3.500S14.500 18 12 18s-4.500-1-4.500-2.500"/>',
+  config: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+};
 const ICONES = {
   inbox: '<path d="M5.5 5h13L21 13v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5l2.5-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 13h5.5l1 2.5h5l1-2.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   sandy: '<path d="M12 3l1.8 4.7L18.5 9.500 13.800 11.300 12 16l-1.800-4.700L5.500 9.500l4.700-1.800L12 3Zm6.500 11 .8 2.200 2.200.8-2.200.8-.8 2.200-.8-2.200-2.200-.8 2.200-.8.8-2.200Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
@@ -840,12 +866,11 @@ const ICONES = {
   config: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="16" cy="6" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="10" cy="12" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="18" r="2" stroke="currentColor" stroke-width="1.8"/>',
 };
 function montarCasca() {
-  $('raiz').innerHTML = `<div class="shell">
-  <main class="main">
-    <div class="topo-pg"><img class="hlogo" src="../img/sandstride-escuro.png" alt="Sandstride"><span class="hsep" aria-hidden="true"></span><h1 id="titulo">Chats</h1><span class="sp"></span>
+  $('raiz').innerHTML = `<main class="main">
+    <div class="ph"><h1 id="titulo">Chats</h1><span class="sp"></span>
       <label class="busca-top"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.8"/><path d="m14 14 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="busca" type="search" placeholder="Cliente ou pedido" aria-label="Buscar cliente, pedido ou mensagem" autocomplete="off"></label>
       <span class="live"><i id="liveDot"></i><span id="liveTxt">Conectando…</span></span></div>
-    <div class="inbox" id="v-inbox">
+    <div class="inbox entra" id="v-inbox">
       <section class="sandy" id="sandy" aria-label="Sandy, atendente virtual"></section>
       <div class="cols" id="cols" data-tela="lista">
         <section class="card lista" aria-label="Lista de conversas">
@@ -860,17 +885,7 @@ function montarCasca() {
       </div>
     </div>
     <div class="vista" id="vista" hidden></div>
-  </main></div>
-  <nav class="dock" aria-label="Menu rápido">
-    <a class="bk" href="../" aria-label="Voltar para a central" title="Central Sandstride"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.2 12 4l8.5 7.2"/><path d="M5.5 9.8V19a1 1 0 0 0 1 1H9.5v-5.2h5V20h3a1 1 0 0 0 1-1V9.8"/></svg></a>
-    <div class="av" id="eu" title="Quem está acessando">·</div>
-    <div class="sp1"></div>
-    <button type="button" class="bk" data-act="view" data-v="inbox" aria-label="Chats" title="Caixa de entrada"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.inbox}</svg><span class="bdg" id="navCount">0</span></button>
-    <button type="button" class="bk" data-act="view" data-v="rapidas" aria-label="Respostas rápidas" title="Respostas rápidas"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.rapidas}</svg></button>
-    <button type="button" class="bk" data-act="view" data-v="sandy" aria-label="Sandy" title="Sandy"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.sandy}</svg></button>
-    ${souAdmin() ? `<button type="button" class="bk" data-act="view" data-v="custos" aria-label="Custos de API" title="Custos de API"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.custos}</svg></button>` : ''}
-    <button type="button" class="bk" data-act="view" data-v="config" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONES.config}</svg></button>
-  </nav>`;
+  </main>`;
 }
 function marcarConexao(ok) {
   const d = $('liveDot'), t = $('liveTxt'); if (!d || !t) return;
@@ -1159,6 +1174,14 @@ async function iniciar() {
       if (!ac) { iniciando = false; return telaSemAcesso(); }
     }
     montarCasca();
+    if (!window.__shellOk) {
+      window.__shellOk = true;
+      const sub = (v, rotulo, d) => ({ rotulo, d, ao: () => ir(v), ativo: () => S.view === v });
+      const subs = [sub('inbox', 'Caixa de entrada', ICONES_SHELL.inbox), sub('rapidas', 'Respostas rápidas', ICONES_SHELL.rapidas), sub('sandy', 'Sandy', ICONES_SHELL.sandy)];
+      if (souAdmin()) subs.push(sub('custos', 'Custos de API', ICONES_SHELL.custos));
+      subs.push(sub('config', 'Configurações', ICONES_SHELL.config));
+      montarShell({ ativo: 'chat', raiz: '/', subs }).catch((e) => console.error('menu lateral', e));
+    }
     await carregarBase(); await carregarConversas(); await carregarHoje();
     S.sel = null;
     renderView(); renderInbox();
