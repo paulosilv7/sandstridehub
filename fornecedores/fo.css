@@ -110,3 +110,17 @@ main .hero button.operation-buy{background:var(--palco-bar)!important;color:var(
 :root:root dialog,:root:root dialog *{-webkit-text-fill-color:currentColor!important}
 :root:root dialog button.purchase-add-item,:root:root dialog .purchase-add-item{background:var(--soft)!important;color:var(--ink)!important}
 :root:root dialog .registered-price span,:root:root dialog .registered-price strong{color:var(--ink)!important}
+/* menus de seleção, hover e seção de fornecedores sem saldo */
+:root:root main button:hover,:root:root dialog button:hover{background:var(--ativo)}
+:root:root main button.primary:hover,:root:root dialog button.primary:hover{background:var(--destaque)!important;filter:brightness(1.1)}
+:root:root .select-menu{background:var(--card)!important;border:1px solid var(--line)!important;border-radius:16px!important;padding:6px!important}
+:root:root .select-option,:root:root .select-menu button{background:transparent!important;color:var(--ink)!important;-webkit-text-fill-color:var(--ink)!important;border-radius:12px!important}
+:root:root .select-option:hover,:root:root .select-menu button:focus-visible,:root:root .select-option[aria-selected="true"]{background:var(--ativo)!important;color:var(--ink)!important}
+:root:root .select-option:disabled{color:var(--mut)!important;-webkit-text-fill-color:var(--mut)!important}
+:root:root .select-search{background:var(--soft)!important}
+:root:root .settled-suppliers{background:var(--card)!important;border:0!important;border-radius:24px!important}
+:root:root .settled-suppliers>summary,:root:root .settled-suppliers>summary strong{color:var(--ink)!important}
+:root:root .settled-suppliers>summary small,:root:root .settled-suppliers>summary .tiny,:root:root .settled-toggle{color:var(--mut)!important}
+:root:root .settled-suppliers .supplier-card{background:var(--soft)!important}
+:root:root .supplier-card{background:var(--card)!important;color:var(--ink)!important}
+:root:root .supplier-card-inactive{opacity:.75}
