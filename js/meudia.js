@@ -75,15 +75,36 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   });
 
   // ---- quadros
-  function palco() {
+  function resumo() {
     const r = rotinaDe(user.id), f = r.filter((x) => E.feitos.has(x.id)).length, ab = abertas(user.id);
     const hj = ab.filter((t) => !t.prazo || t.prazo === hoje).length, at = ab.filter(atrasada).length;
-    anel.t = r.length ? f / r.length : 0;
-    const frase = !r.length && !ab.length ? 'Nada marcado para hoje.' : r.length && f === r.length && !hj && !at ? 'Tudo em dia.' : '';
-    return `<section class="card md-palco" aria-label="Seu dia"><div class="md-palco-txt"><span class="md-rot">Rotina de hoje</span>` +
-      `<div class="md-grande"><b id="md-feitas">${f}</b><span>de ${r.length}</span></div>` +
-      `<div class="md-tags">${hj ? `<span class="tag">${svg(IC.tarefa)}${hj} ${hj === 1 ? 'tarefa' : 'tarefas'} para hoje</span>` : ''}${at ? `<span class="tag ate">${svg(IC.alerta)}${at} ${at === 1 ? 'atrasada' : 'atrasadas'}</span>` : ''}${frase ? `<span class="tag rec">${svg(IC.check)}${frase}</span>` : ''}</div></div>` +
-      `<svg class="md-anel" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="12"/><circle id="md-anel" cx="60" cy="60" r="50" pathLength="1" fill="none" stroke="var(--destaque-claro)" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 1" transform="rotate(-90 60 60)"/></svg></section>`;
+    const total = r.length, falta = total - f, pct = total ? Math.round((f / total) * 100) : 0;
+    const titulo = !total && !ab.length ? 'Nada marcado para hoje'
+      : total && !falta && !hj && !at ? 'Tudo em dia'
+      : total && !falta ? 'Rotina concluída'
+      : falta === 1 ? 'Falta 1 item da rotina' : `Faltam ${falta} itens da rotina`;
+    const sub = at ? `Você tem ${at} ${at === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'} para resolver.`
+      : hj ? `${hj} ${hj === 1 ? 'tarefa' : 'tarefas'} com prazo para hoje.`
+      : total ? 'Nenhuma tarefa pendente para hoje.' : 'Monte sua rotina para acompanhar o dia aqui.';
+    return { f, total, hj, at, pct, titulo, sub };
+  }
+  const rotH = (n) => (n === 1 ? 'tarefa<br>para hoje' : 'tarefas<br>para hoje'), rotA = (n) => (n === 1 ? 'atrasada' : 'atrasadas');
+  function palco() {
+    const R = resumo(); anel.t = R.total ? R.f / R.total : 0;
+    return `<section class="card md-palco" aria-label="Seu dia">` +
+      `<div class="md-anelbox"><svg class="md-anel" viewBox="0 0 120 120" role="img" aria-label="${R.f} de ${R.total} itens da rotina feitos"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/><circle id="md-anel" cx="60" cy="60" r="52" pathLength="1" fill="none" stroke="var(--destaque-claro)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 1" transform="rotate(-90 60 60)"/></svg>` +
+      `<div class="md-anelnum"><b id="md-feitas">${R.f}</b><span>de ${R.total}</span></div></div>` +
+      `<div class="md-palco-txt"><span class="md-rot">Rotina de hoje</span><h2 class="md-tit" id="md-tit">${R.titulo}</h2><p class="md-sub" id="md-sub">${R.sub}</p></div>` +
+      `<div class="md-stats"><div class="md-st"><b id="md-s-hj">${R.hj}</b><span id="md-s-hjt">${rotH(R.hj)}</span></div>` +
+      `<div class="md-st${R.at ? ' ate' : ''}" id="md-s-atc"><b id="md-s-at">${R.at}</b><span id="md-s-att">${rotA(R.at)}</span></div>` +
+      `<div class="md-st"><b id="md-s-pct">${R.pct}%</b><span>da rotina<br>feita</span></div></div></section>`;
+  }
+  function atualizaPalco() {
+    const R = resumo(), q = (i) => el.querySelector('#' + i); if (!q('md-feitas')) return;
+    q('md-feitas').textContent = R.f; q('md-tit').textContent = R.titulo; q('md-sub').textContent = R.sub;
+    q('md-s-hj').textContent = R.hj; q('md-s-hjt').innerHTML = rotH(R.hj); q('md-s-at').textContent = R.at; q('md-s-att').textContent = rotA(R.at);
+    q('md-s-atc').classList.toggle('ate', !!R.at); q('md-s-pct').textContent = R.pct + '%';
+    anel.t = R.total ? R.f / R.total : 0; acordar();
   }
   function qRotina() {
     const r = rotinaDe(user.id);
@@ -174,7 +195,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       const id = b.dataset.rot, on = !E.feitos.has(id);
       if (on) E.feitos.add(id); else E.feitos.delete(id);
       marcar(b, on); const r = rotinaDe(user.id), f = r.filter((x) => E.feitos.has(x.id)).length;
-      el.querySelector('#md-feitas').textContent = f; anel.t = r.length ? f / r.length : 0; acordar();
+      atualizaPalco();
       const { error } = on ? await sb.from('central_rotina_feitos').insert({ rotina_id: id, dia: hoje, usuario_id: user.id }) : await sb.from('central_rotina_feitos').delete().eq('rotina_id', id).eq('dia', hoje);
       if (error) { if (on) E.feitos.delete(id); else E.feitos.add(id); falhou('Não consegui salvar a marcação. Tente de novo.'); } else setTimeout(desenhar, 700);
     } else if (b.dataset.tar) {
