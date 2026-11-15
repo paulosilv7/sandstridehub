@@ -92,12 +92,7 @@ const visiveis = () => APPS.filter((a) => a.breve || podeAbrir(a.id));
 const porId = (id) => APPS.find((a) => a.id === id);
 
 async function tela() {
-  // ferramentas em fileira compacta (o menu lateral já leva a tudo)
-  const atalhos = GRUPOS.flatMap(([, ids]) => ids).map(porId).filter((a) => a && (a.breve || podeAbrir(a.id))).map((a) => (a.breve
-    ? `<span class="atalho off" title="${esc(a.nome)}: em breve">${svg(a.icone)}<span>${esc(a.nome)}</span><span class="tag ex">Em breve</span></span>`
-    : `<a class="atalho" href="${a.href}">${svg(a.icone)}<span>${esc(a.nome)}</span></a>`)).join('');
-  $('raiz').innerHTML = `<main class="wrap"><div id="meudia" class="md"></div><section class="grupo entra" style="--o:5" aria-label="Ferramentas"><h2 class="gt">Ferramentas</h2>` +
-    (atalhos ? `<div class="atalhos">${atalhos}</div>` : '<div class="card"><p class="sub">Você ainda não tem acesso a nenhuma ferramenta. Peça a um administrador para liberar.</p></div>') + '</section></main>';
+  $('raiz').innerHTML = '<main class="wrap"><div id="meudia" class="md"></div></main>';
   await Promise.all([montarMeuDia({ sb, user, eu, el: $('meudia') }), montarShell({ ativo: 'central', raiz: './' })]);
 }
 let iniciando = false;

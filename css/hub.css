@@ -173,8 +173,3 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .md-acoes{display:flex;gap:var(--e2);align-items:center;flex-wrap:wrap}
 .md-dlg .campo select{height:44px}
 
-.atalhos{display:flex;flex-wrap:wrap;gap:var(--e2)}
-.atalho{display:inline-flex;align-items:center;gap:var(--e2);height:44px;padding:0 var(--e4);border-radius:var(--r-pilula);background:var(--cartao);color:var(--texto);font-size:13.5px;font-weight:500;text-decoration:none;transition:transform var(--t-medio) var(--ease),background var(--t-medio)}
-a.atalho:hover{transform:translateY(-2px)}
-.atalho.off{color:var(--suave)}
-.atalho .tag{height:22px;font-size:11px}
