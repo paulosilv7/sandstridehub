@@ -1308,7 +1308,7 @@ function setNav(){
 }
 function render(){
   var app=document.getElementById('app'),h;
-  if(S.erro) h='<div class="head"><h1>Sem conexão com a planilha</h1></div><div class="card"><p class="note err">'+esc(S.erro)+'</p><div class="btns" style="margin-top:14px"><button type="button" class="btn dark" data-a="recarregar">Tentar de novo</button></div></div>';
+  if(S.erro) h='<div class="head"><h1>Sem conexão com o banco de dados</h1></div><div class="card"><p class="note err">'+esc(S.erro)+'</p><div class="btns" style="margin-top:14px"><button type="button" class="btn dark" data-a="recarregar">Tentar de novo</button></div></div>';
   else if(S.view==='produto') h=telaProduto();
   else if(S.view==='comparar') h=telaComparar();
   else if(S.view==='mkt') h=telaMkt();
