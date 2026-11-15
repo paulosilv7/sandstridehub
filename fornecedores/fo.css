@@ -1,0 +1,112 @@
+/* Fornecedores — briefing de design v2 (15/11/2026), por cima da estrutura existente.
+   Tokens iguais aos da Precificação; tema em html[data-theme="light"|"dark"]. */
+:root{
+  --bg:#EDEDEC;--card:#FFFFFF;--soft:#F4F4F2;--ativo:#E4E4E1;--hover:#F4F4F2;
+  --ink:#1A1A1A;--mut:#63635F;--line:rgba(26,26,26,.09);
+  --palco:#121212;--on-p:#FFFFFF;--on-p2:#9A9A9A;--palco-bar:#2A2A2A;
+  --destaque:#2A4FB3;--no-destaque:#FFFFFF;
+  --pago:#157A42;--rec:#2557CC;--disp:#8A5A00;--sai:#C2332E;
+  --pago-bg:rgba(31,157,87,.13);--rec-bg:rgba(47,107,234,.13);--disp-bg:rgba(176,115,10,.13);--sai-bg:rgba(216,67,61,.13);
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --f:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0A0A0A;--card:#161616;--soft:#1F1F1F;--ativo:#2F2F2F;--hover:#242424;
+  --ink:#FFFFFF;--mut:#9A9A9A;--line:rgba(255,255,255,.09);--palco:#000000;
+  --pago:#5CD08A;--rec:#6E9BFF;--disp:#F2B544;--sai:#F0605A;
+  --pago-bg:rgba(92,208,138,.13);--rec-bg:rgba(110,155,255,.13);--disp-bg:rgba(242,181,68,.13);--sai-bg:rgba(240,96,90,.13);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#0A0A0A;--card:#161616;--soft:#1F1F1F;--ativo:#2F2F2F;--hover:#242424;
+  --ink:#FFFFFF;--mut:#9A9A9A;--line:rgba(255,255,255,.09);--palco:#000000;
+  --pago:#5CD08A;--rec:#6E9BFF;--disp:#F2B544;--sai:#F0605A;
+  --pago-bg:rgba(92,208,138,.13);--rec-bg:rgba(110,155,255,.13);--disp-bg:rgba(242,181,68,.13);--sai-bg:rgba(240,96,90,.13);
+}}
+
+html,body{background:var(--bg)!important;color:var(--ink)!important;font-family:var(--f)!important}
+body{font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--destaque)!important;outline-offset:2px}
+/* a navegação agora é o menu lateral compartilhado */
+#nav,main header,.mobile-more,.notice{display:none!important}
+.notice[data-kind="error"]{display:block!important}
+main{max-width:1180px!important;margin:0 auto!important;padding:32px 32px 64px!important}
+@media (max-width:999px){main{padding:16px 16px 112px!important}}
+main h1{font-size:28px!important;font-weight:600!important;letter-spacing:-.4px;margin:0 0 4px!important;color:var(--ink)!important}
+.tiny,.muted,small{color:var(--mut)!important}
+/* quadros */
+.card,.table,.supplier-card,.allocation-card,.supplier-statement{background:var(--card)!important;border:0!important;border-radius:24px!important;box-shadow:none!important;color:var(--ink)!important}
+.card{padding:24px!important}
+.table{overflow:auto;padding:8px 8px 4px}
+.table table{background:transparent!important}
+main th{color:var(--mut)!important;font-weight:500!important;text-transform:none!important;letter-spacing:0!important;font-size:13px!important;background:transparent!important}
+main td,main th{border-color:var(--line)!important;color:var(--ink)}
+main tr:hover td{background:var(--hover)}
+/* palco escuro único */
+.hero{background:var(--palco)!important;color:var(--on-p)!important;border-radius:24px!important;box-shadow:none!important}
+.hero small{color:var(--on-p2)!important;text-transform:none!important;letter-spacing:0!important;font-size:14px!important;font-weight:500!important}
+.hero strong{color:var(--on-p)!important;font-weight:600!important;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.hero .pill{background:rgba(255,255,255,.1)!important;color:var(--on-p)!important}
+/* botões */
+main button,dialog button{font-family:inherit!important}
+main button.primary,dialog button.primary,main .primary{background:var(--destaque)!important;color:var(--no-destaque)!important;border:0!important;border-radius:99px!important;font-weight:600!important}
+.hero button{background:var(--palco-bar)!important;color:var(--on-p)!important}
+.hero button.primary,.hero .primary{background:var(--destaque)!important;color:var(--no-destaque)!important}
+main button:not(.primary):not(.select-trigger):not(.select-option):not(.header-action),dialog button:not(.primary):not(.select-trigger):not(.select-option){background:var(--soft);color:var(--ink);border:0;border-radius:99px}
+.hero button:not(.primary){background:var(--palco-bar)!important;color:var(--on-p)!important}
+/* campos */
+main input,main select,main textarea,dialog input,dialog select,dialog textarea,main option,.select-trigger,.select-menu{background:var(--soft)!important;color:var(--ink)!important;-webkit-text-fill-color:var(--ink)!important;border:0!important;border-radius:16px!important;font-family:inherit!important}
+main input::placeholder,dialog input::placeholder{color:var(--mut)!important;-webkit-text-fill-color:var(--mut)!important}
+main input:focus,main select:focus,dialog input:focus,dialog select:focus{background:var(--card)!important;box-shadow:0 0 0 2px var(--destaque)!important;outline:0!important}
+dialog{background:var(--card)!important;border-radius:24px!important;box-shadow:0 20px 60px rgba(0,0,0,.35)!important}
+dialog::backdrop{background:rgba(0,0,0,.5)!important}
+main label,dialog label{color:var(--mut)!important;font-weight:500!important;font-size:13px!important}
+.select-menu{box-shadow:0 12px 40px rgba(0,0,0,.25)!important}
+.select-option:hover,.select-option[aria-selected="true"]{background:var(--ativo)!important}
+.pill,.badge,.supplier-status,.product-status,.purchase-status,.movement-tag{background:var(--soft)!important;color:var(--mut)!important;border-radius:99px!important}
+.empty,.empty-guide,.payable-empty,.workspace-empty{background:var(--soft)!important;color:var(--mut)!important;border-radius:24px!important;border:0!important}
+.form-error{color:var(--sai)!important}
+/* o dock antigo (Central/avatar/atualizar/sair) foi substituído pelo menu compartilhado */
+.user.header-tools,main .user{display:none!important}
+main .hero button.primary,main .hero .primary{background:var(--destaque)!important;color:var(--no-destaque)!important}
+main .hero button:not(.primary){background:var(--palco-bar)!important;color:var(--on-p)!important}
+main div,main section,main article,main span,main td,main th,main tr,main p,main h2,main h3,main hr,main table,main ul,main li,main input,main select,main button,main summary,main details{border-color:var(--line)!important}
+.portfolio-period,.backup-status,.supplier-card-balance,.report-controls,.payable-filters,.supplier-context,.supplier-switch,.statement-summary,.allocation-card,.purchase-order,.purchase-item,.receipt-picker,.supplier-directory-filters,.supplier-context-metrics{background:var(--card)!important;color:var(--ink)!important}
+.backup-status[data-state="ok"]{box-shadow:inset 3px 0 0 var(--pago)!important}
+.backup-status[data-state="warning"]{box-shadow:inset 3px 0 0 var(--disp)!important}
+.backup-status strong,.backup-status b{color:var(--ink)!important}
+.supplier-card-balance{background:transparent!important}
+main .hero button.operation-pay{background:var(--destaque)!important;color:var(--no-destaque)!important}
+main .hero button.operation-buy{background:var(--palco-bar)!important;color:var(--on-p)!important}
+:root:root main *{border-color:var(--line)!important}
+:root:root .select-trigger,:root:root .select-menu,:root:root .select-search,:root:root .listsearch,:root:root .operation-buy{background:var(--soft)!important;color:var(--ink)!important;-webkit-text-fill-color:var(--ink)!important}
+:root:root .select-value,:root:root .select-option{color:var(--ink)!important}
+:root:root .supplier-choice-icon{background:var(--rec-bg)!important;color:var(--rec)!important}
+:root:root .supplier-context,:root:root .supplier-context-empty{background:var(--card)!important}
+:root:root main .hero button.operation-buy{background:var(--palco-bar)!important;color:var(--on-p)!important}
+:root:root .portfolio-period,:root:root .backup-status{background:var(--card)!important;color:var(--ink)!important}
+:root:root .supplier-directory-filters{background:transparent!important}
+:root:root .supplier-directory-filters button{background:var(--card)!important;color:var(--mut)!important}
+:root:root .supplier-directory-filters button span{background:var(--soft)!important;color:var(--mut)!important}
+:root:root .supplier-directory-filters button.active{background:var(--ink)!important;color:var(--bg)!important}
+:root:root .supplier-directory-filters button.active span{background:var(--bg)!important;color:var(--ink)!important}
+:root:root .portfolio-period-status,:root:root .portfolio-period *{color:inherit}
+:root:root .payable-context>div{background:var(--card)!important;color:var(--ink)!important}
+:root:root .payable-context>div strong{color:var(--ink)!important}
+:root:root .payable-context>div *{color:inherit}
+/* janelas de cadastro (compra, pagamento, produto…) */
+:root:root dialog,:root:root dialog form{background:var(--card)!important;color:var(--ink)!important}
+:root:root dialog h2,:root:root dialog h3,:root:root dialog strong,:root:root dialog b,:root:root dialog legend{color:var(--ink)!important}
+:root:root dialog p,:root:root dialog small,:root:root dialog .formhint,:root:root dialog .tiny{color:var(--mut)!important}
+:root:root dialog footer,:root:root dialog .actions{background:transparent!important;border-color:var(--line)!important}
+:root:root dialog .registered-price,:root:root dialog .purchase-item,:root:root dialog .allocation-card,:root:root dialog .form-total,:root:root dialog .purchase-order-totals,:root:root dialog .purchase-batch-total,:root:root dialog .operation-note,:root:root dialog [class*="hint"],:root:root dialog [class*="note"]{background:var(--soft)!important;color:var(--ink)!important;border:0!important;border-radius:16px!important}
+:root:root dialog .purchase-item{border:1px solid var(--line)!important;background:transparent!important}
+:root:root dialog button.purchase-add-item,:root:root dialog button:not(.primary):not(.select-trigger):not(.select-option){background:var(--soft)!important;color:var(--ink)!important}
+:root:root dialog button.primary{background:var(--destaque)!important;color:var(--no-destaque)!important}
+:root:root dialog button.primary:disabled{opacity:.5}
+:root:root dialog option{background:var(--card)!important;color:var(--ink)!important}
+:root:root dialog,:root:root dialog *{-webkit-text-fill-color:currentColor!important}
+:root:root dialog button.purchase-add-item,:root:root dialog .purchase-add-item{background:var(--soft)!important;color:var(--ink)!important}
+:root:root dialog .registered-price span,:root:root dialog .registered-price strong{color:var(--ink)!important}

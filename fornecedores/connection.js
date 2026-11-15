@@ -1,4 +1,5 @@
 (async()=>{
+ {const l=document.createElement('link');l.rel='stylesheet';l.href='fo.css';const sh=document.createElement('link');sh.rel='stylesheet';sh.href='../css/shell.css';document.head.append(sh);document.head.append(l);}
  const empty=()=>({suppliers:[],inactiveSuppliers:[],products:[],entries:[],audit:[]});
  let client,store,backupStatus,ready=false,generation=0,savedControls=[];
  db=empty();const main=document.querySelector('main'),notice=document.querySelector('.notice');
@@ -38,6 +39,17 @@
   const{data:{session},error}=await client.auth.getSession();if(error)throw error;if(!session){loginView();return}
   window.FinanceReceipts=new ReceiptStore(client);window.FinanceReceipts.validate=validateReceipt;
   try{const{createBackupStatus}=await import('./backup-ui.mjs');const backupCss=document.createElement('link');backupCss.rel='stylesheet';backupCss.href='backup.css';document.head.append(backupCss);backupStatus=createBackupStatus(client,main)}catch{const warning=document.createElement('p');warning.className='backup-status';warning.textContent='Não foi possível carregar o indicador do backup. Confira a cópia no Google antes de continuar.';main.append(warning)}
+  const navBtn=t=>[...document.querySelectorAll('#nav button')].find(b=>b.textContent.trim()===t);
+  const mk=(t,rotulo,d)=>({rotulo,d,ao:()=>navBtn(t)?.click(),ativo:()=>!!navBtn(t)?.classList.contains('active')});
+  import('../js/shell.js').then(({montarShell})=>montarShell({ativo:'fornecedores',raiz:'../',subs:[
+   mk('Painel','Painel','<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>'),
+   mk('Saldos a pagar','Saldos a pagar','<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>'),
+   mk('Compras','Compras','<path d="M3 8 12 3l9 5v8l-9 5-9-5V8Zm0 0 9 5 9-5M12 13v8"/>'),
+   mk('Histórico de pagamentos','Pagamentos','<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/>'),
+   mk('Fornecedores','Fornecedores','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3-5.5 6.5-5.5s5.9 2 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .6 3.2 2.3 3.5 5.2"/>'),
+   mk('Produtos e preços','Produtos e preços','<path d="M3 12V4h8l10 10-8 8L3 12Z"/><circle cx="7.5" cy="8.5" r="1.2"/>'),
+   mk('Relatórios','Relatórios','<path d="M4 20V10m6 10V4m6 16v-7m5 7H3"/>')
+  ]})).catch(e=>console.error('menu lateral',e));
   name.textContent=session.user.email.slice(0,1).toLocaleUpperCase('pt-BR');name.dataset.tooltip=session.user.email+' · Administrador';name.setAttribute('aria-label',name.dataset.tooltip);await refresh();
   if(!ready)unavailable('Não foi possível carregar o financeiro. Confira sua conexão e o acesso do seu usuário.');
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&ready&&!store.busy&&!modal.open)refresh()});
