@@ -3,12 +3,12 @@
 // Ele envolve o conteúdo que já está no <body> (não recria a tela) e desenha o menu lateral (celular: topo + pílula).
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
-import { S, ajustar, passo, limitar, depois, parada, registrar, acordar, pilula } from './molas.js';
+import { S, ajustar, passo, limitar, depois, parada, registrar, acordar } from './molas.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ic = (d) => `<svg class="sh-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const ADMINS_FINANCEIRO = ['ebccd17d-16d7-46cc-82cd-1622c3fd254d', '0cd665bf-e4fb-4087-91a7-e5312cbafe6a'];
-const APPS = [
+export const APPS = [
   { id: 'chat', nome: 'Chats', href: 'chat/', d: '<path d="M5.5 5h13L21 13v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5l2.5-8Z M3 13h5.5l1 2.5h5l1-2.5H21"/>' },
   { id: 'precificacao', nome: 'Precificação', href: 'precificacao/', d: '<path d="M12 3v18M16 7.5c-.7-1.3-2.2-2-4-2-2.4 0-4 1.2-4 3 0 4.2 8.4 2.2 8.4 6.4 0 1.8-1.8 3.1-4.4 3.1-1.9 0-3.4-.8-4.2-2.2"/>' },
   { id: 'estoque', nome: 'Estoque', href: 'estoque/', d: '<path d="M3 8 12 3l9 5v8l-9 5-9-5V8Zm0 0 9 5 9-5M12 13v8"/>' },
@@ -18,13 +18,14 @@ const APPS = [
   { id: 'financeiro', nome: 'Financeiro', href: 'financeiro/', usuarios: ADMINS_FINANCEIRO, d: '<path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v2M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3M3 7a2 2 0 0 0 2 2h14a1 1 0 0 1 1 1v3m0 3h-4a1.5 1.5 0 0 1 0-3h4v3Z"/>' },
   { id: 'ads', nome: 'Gestor de Ads', breve: true, d: '<path d="M4 20V10m6 10V4m6 16v-7m5 7H3"/>' },
 ];
-const GRUPOS = [['Vender', ['lucro', 'precificacao', 'ads']], ['Atender', ['chat', 'devolucoes']], ['Operar', ['estoque', 'financeiro', 'fornecedores']]];
+export const GRUPOS = [['Vender', ['lucro', 'precificacao', 'ads']], ['Atender', ['chat', 'devolucoes']], ['Operar', ['estoque', 'financeiro', 'fornecedores']]];
 const IC = {
   casa: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   lua: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   sair: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   lado: '<path d="M4 4h16v16H4zM9 4v16"/>',
+  engrenagem: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
 };
 const TEMA_CH = 'sandstride-tema', MENU_CH = 'sandstride-menu';
 
@@ -48,28 +49,25 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   const acessos = new Set((ac || []).map((x) => x.app));
   const pode = (a) => (a.usuarios ? a.usuarios.includes(user.id) : eu.papel === 'admin' || acessos.has(a.id));
   const url = (p) => (raiz + p);
-  const foto = eu.foto_path ? `${SUPABASE_URL}/storage/v1/object/public/avatares/${eu.foto_path}` : '';
-  const av = foto ? `<img class="sh-av" src="${esc(foto)}" alt="">` : `<span class="sh-av" aria-hidden="true">${esc(String(eu.nome || '?').charAt(0).toUpperCase())}</span>`;
 
-  const subHtml = subs.map((x, i) => `<button type="button" class="sh-nv sh-sub" data-sub="${i}" title="${esc(x.rotulo)}">${ic(x.d)}<span>${esc(x.rotulo)}</span><b class="sh-selo" hidden></b></button>`).join('');
+  const subHtml = subs.map((x, i) => `<button type="button" class="sh-nv sh-sub" data-sub="${i}" data-tip="${esc(x.rotulo)}" aria-label="${esc(x.rotulo)}">${ic(x.d)}<span>${esc(x.rotulo)}</span><b class="sh-selo" hidden></b></button>`).join('');
   const itens = (ids) => ids.map((id) => APPS.find((a) => a.id === id)).filter((a) => a && (a.breve || pode(a))).map((a) => {
-    if (a.breve) return `<span class="sh-nv sh-off" title="${esc(a.nome)}: em breve">${ic(a.d)}<span>${esc(a.nome)}</span><span class="sh-em-breve">Em breve</span></span>`;
+    if (a.breve) return `<span class="sh-nv sh-off" data-tip="${esc(a.nome)} · em breve">${ic(a.d)}<span>${esc(a.nome)}</span><span class="sh-em-breve">Em breve</span></span>`;
     const cur = a.id === ativo;
-    return `<a class="sh-nv" href="${url(a.href)}"${cur && !subs.length ? ' aria-current="page"' : ''}${cur && subs.length ? ' data-pai="1"' : ''} title="${esc(a.nome)}">${ic(a.d)}<span>${esc(a.nome)}</span></a>${cur ? subHtml : ''}`;
+    return `<a class="sh-nv" href="${url(a.href)}"${cur && !subs.length ? ' aria-current="page"' : ''}${cur && subs.length ? ' data-pai="1"' : ''} data-tip="${esc(a.nome)}" aria-label="${esc(a.nome)}">${ic(a.d)}<span>${esc(a.nome)}</span></a>${cur ? subHtml : ''}`;
   }).join('');
   const grupos = GRUPOS.map(([nome, ids]) => { const h = itens(ids); return h ? `<div class="sh-gl">${nome}</div>${h}` : ''; }).join('');
-  const papel = eu.papel === 'admin' ? 'Administrador' : 'Atendente';
-
-  const lat = `<aside class="sh-lat" aria-label="Menu"><div class="sh-marca"><img src="${url('img/sandstride.png')}" alt="Sandstride"><span class="sh-mk" aria-hidden="true">S</span></div>` +
-    `<nav aria-label="Ferramentas"><a class="sh-nv" href="${url('')}" title="Central">${ic(IC.casa)}<span>Central</span></a>${grupos}</nav>` +
-    `<div class="sh-pe"><div class="sh-eu">${av}<div class="sh-eu-txt"><b>${esc(eu.nome)}</b><span>${papel}</span></div></div>` +
-    '<div class="sh-seg" id="shTema" role="group" aria-label="Tema"><span class="sh-polegar"></span><button type="button" data-v="light">Claro</button><button type="button" data-v="dark">Escuro</button></div>' +
-    `<button class="sh-tema-ic" id="shTemaIc" type="button" aria-label="Trocar tema claro ou escuro">${ic(IC.lua)}</button>` +
-    `<button class="sh-nv" id="shSair" type="button">${ic(IC.sair)}<span>Sair</span></button>` +
-    `<button class="sh-nv" id="shRecolhe" type="button" aria-label="Recolher menu">${ic(IC.lado)}<span>Recolher menu</span></button></div></aside>`;
+  const cfg = ativo === 'configuracoes';
+  const central = ativo === 'central';
+  const lat = `<aside class="sh-lat" aria-label="Menu"><a class="sh-marca" href="${url('')}" data-tip="Central" aria-label="Sandstride, ir para a Central"><img class="sh-mk-full" src="${url('img/sandstride.png')}" alt=""><img class="sh-mk" src="${url('img/sandstride-marca.png')}" alt=""></a>` +
+    `<nav aria-label="Ferramentas"><a class="sh-nv" href="${url('')}" data-tip="Central" aria-label="Central"${central ? ' aria-current="page"' : ''}>${ic(IC.casa)}<span>Central</span></a>${grupos}</nav>` +
+    `<div class="sh-pe"><a class="sh-nv" href="${url('configuracoes/')}" data-tip="Configurações" aria-label="Configurações"${cfg ? ' aria-current="page"' : ''}>${ic(IC.engrenagem)}<span>Configurações</span></a>` +
+    `<button class="sh-nv" id="shRecolhe" type="button" data-tip="Expandir menu" aria-label="Recolher menu">${ic(IC.lado)}<span>Recolher menu</span></button></div></aside>`;
   const topo = `<header class="sh-topo"><img class="sh-logo-a" src="${url('img/sandstride-escuro.png')}" alt="Sandstride"><img class="sh-logo-b" src="${url('img/sandstride.png')}" alt=""><span class="sh-sp"></span>` +
-    `<button class="sh-ib" id="shTemaM" type="button" aria-label="Trocar tema claro ou escuro">${ic(IC.lua)}</button><button class="sh-ib" id="shSairM" type="button" aria-label="Sair">${ic(IC.sair)}</button></header>`;
-  const barra = `<nav class="sh-barra-m" aria-label="Atalhos"><div class="sh-barra"><a href="${url('')}" aria-label="Central">${ic(IC.casa)}<span>Central</span></a>` +
+    `<a class="sh-ib" href="${url('configuracoes/')}" aria-label="Configurações"${cfg ? ' aria-current="page"' : ''}>${ic(IC.engrenagem)}</a></header>`;
+  const favs = central ? ['lucro', 'chat', 'devolucoes', 'financeiro'].map((id) => APPS.find((a) => a.id === id)).filter((a) => a && pode(a)) : [];
+  const barra = `<nav class="sh-barra-m" aria-label="Atalhos"><div class="sh-barra"><a href="${url('')}" aria-label="Central"${central ? ' aria-current="page"' : ''}>${ic(IC.casa)}<span>Central</span></a>` +
+    favs.map((a) => `<a href="${url(a.href)}" aria-label="${esc(a.nome)}">${ic(a.d)}<span>${esc(a.nome)}</span></a>`).join('') +
     subs.map((x, i) => `<button type="button" data-sub="${i}" aria-label="${esc(x.rotulo)}">${ic(x.d)}<span>${esc(x.rotulo)}</span><b class="sh-selo" hidden></b></button>`).join('') + '</div></nav>';
 
   // envolve o conteúdo existente sem recriá-lo (os ouvintes e ids da ferramenta continuam valendo)
@@ -101,21 +99,7 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   if (subAt && navEl) { const r = subAt.getBoundingClientRect(), n = navEl.getBoundingClientRect(); if (r.bottom > n.bottom || r.top < n.top) navEl.scrollTop += (r.bottom > n.bottom ? r.bottom - n.bottom + 8 : r.top - n.top - 8); }
   window.addEventListener('hashchange', () => setTimeout(marca, 0));
 
-  // tema e menu recolhido
-  const seg = document.getElementById('shTema'), polegar = seg.querySelector('.sh-polegar'), bs = [...seg.querySelectorAll('button')];
-  const tp = pilula(polegar); // a pílula estica até o botão novo (mola)
-  const pinta = (t) => {
-    bs.forEach((b) => { const on = b.dataset.v === t; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); if (on && b.offsetWidth) tp.ir(b.offsetLeft - 4, b.offsetWidth); });
-    document.querySelectorAll('#shTemaIc,#shTemaM').forEach((b) => { b.innerHTML = ic(t === 'dark' ? IC.sol : IC.lua); });
-    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'dark' ? '#0A0A0A' : '#EDEDEC';
-  };
-  const poe = (t) => { document.documentElement.setAttribute('data-theme', t); try { localStorage.setItem(TEMA_CH, t); } catch (e) { /* idem */ } pinta(t); window.dispatchEvent(new CustomEvent('sandstride-tema', { detail: t })); };
-  bs.forEach((b) => b.addEventListener('click', () => poe(b.dataset.v)));
-  const alterna = () => poe(temaAtual() === 'dark' ? 'light' : 'dark');
-  document.getElementById('shTemaIc').onclick = alterna; document.getElementById('shTemaM').onclick = alterna;
-  pinta(temaAtual());
-  if (document.fonts?.ready) document.fonts.ready.then(() => pinta(temaAtual()));
-  window.addEventListener('resize', () => pinta(temaAtual()));
+  // menu recolhido
   // menu que recolhe por mola: largura 260/24, rótulos em cascata (60 ms + 35 ms por item), seta que vira
   const latEl = app.querySelector('.sh-lat'), btnRec = document.getElementById('shRecolhe');
   const rotulos = [...latEl.querySelectorAll('.sh-nv > span:not(.sh-em-breve)')].map((el) => ({ el, s: S(1, 300, 26) }));
@@ -136,10 +120,23 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
     },
     ativo() { return anim; },
   });
+  // dica com o nome da aba quando o menu está recolhido
+  const dica = document.createElement('div'); dica.className = 'sh-tip'; dica.setAttribute('role', 'tooltip'); document.body.appendChild(dica);
+  const mostra = (el) => {
+    if (!app.classList.contains('sh-rec') || !larg()) return;
+    const t = el.dataset.tip; if (!t) return;
+    dica.textContent = t; const r = el.getBoundingClientRect();
+    dica.style.left = (r.right + 10) + 'px'; dica.style.top = (r.top + r.height / 2) + 'px'; dica.classList.add('on');
+  };
+  const some = () => dica.classList.remove('on');
+  latEl.addEventListener('pointerover', (ev) => { const el = ev.target.closest('[data-tip]'); if (el) mostra(el); else some(); });
+  latEl.addEventListener('pointerleave', some); latEl.addEventListener('focusin', (ev) => { const el = ev.target.closest('[data-tip]'); if (el) mostra(el); });
+  latEl.addEventListener('focusout', some); latEl.addEventListener('click', some);
+  btnRec.dataset.tip = app.classList.contains('sh-rec') ? 'Expandir menu' : 'Recolher menu';
   btnRec.onclick = () => {
     const r = !app.classList.contains('sh-rec') && !(anim && !abrindo); // true = vai recolher
     try { localStorage.setItem(MENU_CH, r ? '1' : '0'); } catch (e) { /* idem */ }
-    btnRec.setAttribute('aria-label', r ? 'Expandir menu' : 'Recolher menu');
+    btnRec.setAttribute('aria-label', r ? 'Expandir menu' : 'Recolher menu'); btnRec.dataset.tip = r ? 'Expandir menu' : 'Recolher menu';
     if (!larg()) { app.classList.toggle('sh-rec', r); return; }
     anim = true; abrindo = !r;
     if (r) { // recolher: rótulos somem juntos, largura fecha
@@ -163,6 +160,4 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
     });
   };
   if (window.__selos) Object.entries(window.__selos).forEach(([k, v]) => window.shellSelo(k, v));
-  const sair = async () => { await sb.auth.signOut(); location.href = url(''); };
-  document.getElementById('shSair').onclick = sair; document.getElementById('shSairM').onclick = sair;
 }
