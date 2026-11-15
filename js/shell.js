@@ -63,13 +63,13 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   const cfg = ativo === 'configuracoes';
   const central = ativo === 'central';
   const lat = `<aside class="sh-lat" aria-label="Menu"><a class="sh-marca" href="${url('')}" data-tip="Central" aria-label="Sandstride, ir para a Central"><img class="sh-mk-full" src="${url('img/sandstride.png')}" alt=""><img class="sh-mk" src="${url('img/sandstride-marca.png')}" alt=""></a>` +
-    `<nav aria-label="Ferramentas"><a class="sh-nv" href="${url('')}" data-tip="Central" aria-label="Central"${central ? ' aria-current="page"' : ''}>${ic(IC.casa)}<span>Central</span></a>${grupos}</nav>` +
+    `<nav aria-label="Ferramentas"><a class="sh-nv" href="${url('')}" data-tip="Central" aria-label="Central"${central && !subs.length ? ' aria-current="page"' : ''}${central && subs.length ? ' data-pai="1"' : ''}>${ic(IC.casa)}<span>Central</span></a>${central ? subHtml : ''}${grupos}</nav>` +
     `<div class="sh-pe"><a class="sh-eu" href="${url('configuracoes/')}" data-tip="${esc(eu.nome)} · perfil" aria-label="Perfil de ${esc(eu.nome)}">${av}<span class="sh-eu-txt"><b>${esc(eu.nome)}</b><span>${papel}</span></span></a><a class="sh-nv" href="${url('configuracoes/')}" data-tip="Configurações" aria-label="Configurações"${cfg ? ' aria-current="page"' : ''}>${ic(IC.engrenagem)}<span>Configurações</span></a>` +
     `<button class="sh-nv" id="shRecolhe" type="button" data-tip="Expandir menu" aria-label="Recolher menu">${ic(IC.lado)}<span>Recolher menu</span></button></div></aside>`;
   const topo = `<header class="sh-topo"><img class="sh-logo-a" src="${url('img/sandstride-escuro.png')}" alt="Sandstride"><img class="sh-logo-b" src="${url('img/sandstride.png')}" alt=""><span class="sh-sp"></span>` +
     `<a class="sh-ib" href="${url('configuracoes/')}" aria-label="Perfil e configurações"${cfg ? ' aria-current="page"' : ''}>${av}</a></header>`;
-  const favs = central ? ['lucro', 'chat', 'devolucoes', 'financeiro'].map((id) => APPS.find((a) => a.id === id)).filter((a) => a && pode(a)) : [];
-  const barra = `<nav class="sh-barra-m" aria-label="Atalhos"><div class="sh-barra"><a href="${url('')}" aria-label="Central"${central ? ' aria-current="page"' : ''}>${ic(IC.casa)}<span>Central</span></a>` +
+  const favs = central && !subs.length ? ['lucro', 'chat', 'devolucoes', 'financeiro'].map((id) => APPS.find((a) => a.id === id)).filter((a) => a && pode(a)) : [];
+  const barra = `<nav class="sh-barra-m" aria-label="Atalhos"><div class="sh-barra"><a href="${url('')}" aria-label="Central"${central && !subs.length ? ' aria-current="page"' : ''}>${ic(IC.casa)}<span>Central</span></a>` +
     favs.map((a) => `<a href="${url(a.href)}" aria-label="${esc(a.nome)}">${ic(a.d)}<span>${esc(a.nome)}</span></a>`).join('') +
     subs.map((x, i) => `<button type="button" data-sub="${i}" aria-label="${esc(x.rotulo)}">${ic(x.d)}<span>${esc(x.rotulo)}</span><b class="sh-selo" hidden></b></button>`).join('') + '</div></nav>';
 

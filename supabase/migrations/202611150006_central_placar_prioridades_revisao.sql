@@ -1,0 +1,10 @@
+-- Central: placar da semana, prioridades do trimestre, revisão semanal e compromissos.
+-- Aplicada no banco em 15/11/2026 (migração "central_placar_prioridades_revisao").
+-- Tabelas: central_numeros, central_numeros_semanas, central_prioridades, central_revisoes, central_compromissos
+-- Coluna nova: central_tarefas.prioridade_id
+-- Função: central_placar_auto(p_desde date) -> (fonte, semana, valor): soma por semana (segunda a domingo) de
+--   lucro, faturamento, pedidos e pares (lucro_resumo_dia, só para quem tem acesso a 'lucro') e de devoluções novas
+--   (devol_casos, só para quem tem acesso a 'devolucoes').
+-- Regras: a equipe lê tudo; administrador cria e altera números, prioridades e revisões; o dono lança o valor do seu
+--   número, muda a situação da sua prioridade e cria os seus compromissos.
+-- O texto completo está no histórico de migrações do Supabase (supabase_migrations.schema_migrations).

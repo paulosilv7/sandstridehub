@@ -173,3 +173,69 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .md-acoes{display:flex;gap:var(--e2);align-items:center;flex-wrap:wrap}
 .md-dlg .campo select{height:44px}
 
+
+/* ===== Central: placar, prioridades e revisão ===== */
+.gs-cab{flex-direction:row;align-items:center;justify-content:space-between;gap:var(--e4);flex-wrap:wrap}
+.gs-nav{display:inline-flex;align-items:center;gap:var(--e2);background:var(--cartao);border-radius:var(--r-pilula);padding:4px}
+.gs-nav span{font-size:13px;font-weight:500;padding:0 var(--e2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.gs-nav .ibtn{border:0}
+.gs-nav .ibtn:disabled{opacity:.3;cursor:default}
+.gs-pontos{display:flex;gap:6px;flex-wrap:wrap;max-width:240px;justify-content:flex-end}
+.gs-pontos i{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.14)}
+.gs-pontos i.b-ok{background:#5CD08A}.gs-pontos i.b-nao{background:#F2B544}
+.gs-pontos i.b-and,.gs-pontos i.b-vz{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.35) 0 2px,transparent 2px 5px)}
+.gs-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.gs-num{display:grid;grid-template-columns:minmax(140px,1.4fr) 24px minmax(120px,1.2fr) 120px 128px 32px;align-items:center;gap:var(--e4);padding:var(--e3) 0;border-bottom:1px solid var(--borda)}
+.gs-num.rv{grid-template-columns:minmax(140px,1.4fr) 24px minmax(120px,1.2fr) 120px 128px}
+.gs-num:last-child{border-bottom:0}
+.gs-tit{display:flex;flex-direction:column;min-width:0}
+.gs-tit b{font-weight:600;overflow-wrap:anywhere}
+.gs-tit .sub{font-size:12px}
+.gs-hist{position:relative;display:flex;align-items:flex-end;gap:3px;height:40px}
+.gs-hist i{flex:1;min-width:3px;border-radius:3px;background:var(--ativo)}
+.gs-hist i.b-ok{background:var(--recebido)}.gs-hist i.b-nao{background:var(--atencao)}
+.gs-hist i.b-and,.gs-hist i.b-vz{background-color:transparent;background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--suave) 55%,transparent) 0 2px,transparent 2px 5px)}
+.gs-hist i.sel{box-shadow:0 0 0 2px var(--cartao),0 0 0 3.5px var(--texto)}
+.gs-hist u{position:absolute;left:0;right:0;height:0;border-top:1.5px dashed var(--suave);opacity:.6;pointer-events:none}
+.gs-campo{display:flex;justify-content:flex-end}
+.gs-val{width:100%;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.gs-val.ruim{border-color:var(--saida)}
+.gs-v{font-weight:600;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.gs-num .tag{justify-self:start}
+@media (max-width:899px){.gs-num,.gs-num.rv{grid-template-columns:minmax(0,1fr) auto;row-gap:var(--e2)}.gs-num .md-quem,.gs-num>span:empty{display:none}.gs-hist{grid-column:1/-1;order:5}.gs-campo{justify-content:flex-start}}
+
+.gs-prios{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--e3)}
+.gs-prio{background:var(--elevado);border-radius:var(--r-g);padding:var(--e4);display:flex;flex-direction:column;gap:var(--e3)}
+.gs-prio.feita .gs-abre b{color:var(--suave);text-decoration:line-through}
+.gs-prio-cab{display:flex;align-items:center;gap:var(--e3);flex-wrap:wrap}
+.gs-abre{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:2px;border:0;background:none;text-align:left;cursor:pointer;padding:0}
+.gs-abre b{font-size:15px;font-weight:600;overflow-wrap:anywhere}
+.gs-abre .sub{font-size:12px}
+.gs-st{display:inline-flex;background:var(--cartao);border-radius:var(--r-pilula);padding:3px;flex:none}
+.gs-st button{height:28px;padding:0 12px;border:0;border-radius:var(--r-pilula);background:none;color:var(--suave);font-size:12px;font-weight:500;white-space:nowrap;cursor:pointer;transition:background var(--t-medio),color var(--t-medio)}
+.gs-st button:disabled{cursor:default}
+.gs-st button.on{background:var(--ativo);color:var(--texto)}
+.gs-st button.on.no_trilho{background:color-mix(in srgb,var(--recebido) 16%,transparent);color:var(--recebido-t,var(--recebido))}
+.gs-st button.on.fora{background:color-mix(in srgb,var(--atencao) 18%,transparent);color:var(--atencao-t,var(--atencao))}
+.gs-prio .md-barra{background-color:var(--cartao)}
+.gs-prio-corpo{background:var(--cartao);border:1px solid var(--borda);border-radius:var(--r-m);padding:var(--e2) var(--e4) var(--e4);display:flex;flex-direction:column;gap:var(--e3)}
+.gs-nt input[name=t]{flex:1 1 100%}.gs-nt select,.gs-nt input[type=date]{flex:1 1 120px}
+
+.gs-passos{list-style:none;margin:0;padding:0;display:flex;gap:var(--e2);overflow-x:auto;scrollbar-width:none}
+.gs-passos button{display:inline-flex;align-items:center;gap:var(--e2);height:40px;padding:0 var(--e4) 0 6px;border:0;border-radius:var(--r-pilula);background:var(--elevado);color:var(--suave);font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer;transition:background var(--t-medio),color var(--t-medio)}
+.gs-passos i{font-style:normal;width:28px;height:28px;border-radius:50%;background:var(--cartao);display:grid;place-items:center;font-size:12px;font-weight:600}
+.gs-passos button.on{background:var(--destaque);color:var(--no-destaque)}
+.gs-passos button.on i{background:rgba(255,255,255,.2)}
+.gs-passos button.ja{color:var(--texto)}
+.gs-passos button.ja i{background:var(--texto);color:var(--cartao)}
+.gs-corpo{display:flex;flex-direction:column;gap:var(--e3);min-height:160px;animation:sobe 200ms var(--ease)}
+.gs-corpo h2{font-size:18px}
+.gs-adia{height:32px;padding:0 12px;font-size:12px;flex:none}
+.gs-comps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--e3)}
+@media (max-width:899px){.gs-comps{grid-template-columns:minmax(0,1fr)}}
+.gs-comp{background:var(--elevado);border-radius:var(--r-g);padding:var(--e4);display:flex;flex-direction:column;gap:var(--e3)}
+.gs-ant{display:flex;flex-direction:column;gap:var(--e2)}
+.gs-ant .sub{font-size:12px}
+.gs-prom{display:flex;align-items:center;gap:var(--e2);justify-content:space-between;background:var(--cartao);border-radius:var(--r-m);padding:var(--e2) var(--e3);font-size:13.5px;font-weight:500}
+.gs-prom>span{min-width:0;overflow-wrap:anywhere}
+.gs-rev{font-size:13.5px;font-weight:500}

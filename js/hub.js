@@ -3,6 +3,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { montarShell } from './shell.js';
 import { montarMeuDia } from './meudia.js';
+import { montarPlacar, montarPrioridades, montarRevisao, ICONES_CENTRAL } from './gestao.js';
 
 const sb = window.SB = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 const $ = (id) => document.getElementById(id);
@@ -91,9 +92,27 @@ const podeAbrir = (id) => {
 const visiveis = () => APPS.filter((a) => a.breve || podeAbrir(a.id));
 const porId = (id) => APPS.find((a) => a.id === id);
 
+// A Central tem quatro telas, trocadas pelo endereço (#placar, #prioridades, #revisao)
+const TELAS = { '': montarMeuDia, '#placar': montarPlacar, '#prioridades': montarPrioridades, '#revisao': montarRevisao };
+let shellPronto = false;
 async function tela() {
-  $('raiz').innerHTML = '<main class="wrap"><div id="meudia" class="md"></div></main>';
-  await Promise.all([montarMeuDia({ sb, user, eu, el: $('meudia') }), montarShell({ ativo: 'central', raiz: './' })]);
+  const monta = TELAS[location.hash] || montarMeuDia;
+  $('raiz').innerHTML = '<main class="wrap"><div class="md"></div></main>';
+  const el = $('raiz').querySelector('.md');
+  const p = monta({ sb, user, eu, el });
+  if (!shellPronto) {
+    shellPronto = true;
+    const vai = (h) => () => { if (location.hash === h || (!h && !location.hash)) return; location.hash = h; };
+    const em = (h) => () => (TELAS[location.hash] ? location.hash : '') === h;
+    await montarShell({ ativo: 'central', raiz: './', subs: [
+      { rotulo: 'Meu dia', d: ICONES_CENTRAL.dia, ao: vai(''), ativo: em('') },
+      { rotulo: 'Placar', d: ICONES_CENTRAL.placar, ao: vai('#placar'), ativo: em('#placar') },
+      { rotulo: 'Prioridades', d: ICONES_CENTRAL.prioridades, ao: vai('#prioridades'), ativo: em('#prioridades') },
+      { rotulo: 'Revisão semanal', d: ICONES_CENTRAL.revisao, ao: vai('#revisao'), ativo: em('#revisao') },
+    ] });
+    window.addEventListener('hashchange', () => { if (user && eu && !/type=(invite|recovery)/.test(location.hash)) tela(); });
+  }
+  await p;
 }
 let iniciando = false;
 async function iniciar() {
