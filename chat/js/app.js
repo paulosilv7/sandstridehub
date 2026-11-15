@@ -388,9 +388,9 @@ function renderFilters() {
   $('ats').innerHTML = at.map((x) => `<button type="button" class="pill sm" data-act="atend" data-v="${x[0]}" aria-pressed="${S.atend === x[0]}">${x[1]}</button>`).join('');
   const lojasVisiveis = S.lojas.filter((l) => S.mk === 'todos' || l.marketplace === S.mk);
   if (S.loja !== 'todas' && !lojasVisiveis.some((l) => l.id === S.loja)) S.loja = 'todas';
-  $('loja').innerHTML = '<option value="todas">Todas</option>' + lojasVisiveis.map((l) => `<option value="${l.id}"${S.loja === l.id ? ' selected' : ''}>${esc(l.nome)}</option>`).join('');
+  $('loja').innerHTML = '<option value="todas">Todas as lojas</option>' + lojasVisiveis.map((l) => `<option value="${l.id}"${S.loja === l.id ? ' selected' : ''}>${esc(l.nome)}</option>`).join('');
   if (S.etq !== 'todas' && !S.etiquetas.some((e) => e.nome === S.etq)) S.etq = 'todas';
-  $('etqSel').innerHTML = '<option value="todas">Todas</option>' + S.etiquetas.map((e) => `<option value="${esc(e.nome)}"${S.etq === e.nome ? ' selected' : ''}>${esc(e.nome)}</option>`).join('');
+  $('etqSel').innerHTML = '<option value="todas">Todas as tags</option>' + S.etiquetas.map((e) => `<option value="${esc(e.nome)}"${S.etq === e.nome ? ' selected' : ''}>${esc(e.nome)}</option>`).join('');
 }
 function renderList() {
   const lista = S.convs.filter(casa).sort((a, b) => (Number(b.aguardando) - Number(a.aguardando)) || (b.espera - a.espera));

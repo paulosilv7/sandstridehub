@@ -364,3 +364,30 @@ select.bt2{border:0;width:auto;max-width:100%;background-image:none}
   .seg-l{text-align:left}
   .seg.com-thumb{}
 }
+
+/* ajuste: respeitar a grade (24 px dentro dos quadros), topo mais baixo e lista bem maior */
+.lista,.thread{padding:24px}
+.lista{gap:16px}
+.sandy{gap:16px}
+.pal,.met{padding:20px 24px}
+.pal .pn{font-size:clamp(36px,3.6vw,44px)}
+.pal .pr{margin-top:4px}
+.met .mv{font-size:28px}
+.sandyq{grid-template-columns:72px minmax(0,1fr);padding:20px 24px;gap:0 20px}
+.sandy-fig{grid-row:auto;width:72px;border-radius:16px;padding:4px;align-self:center}
+.sandy-txt{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fala{margin-top:4px}
+.cols{height:max(720px,calc(100dvh - 48px));grid-template-columns:minmax(340px,400px) minmax(0,1fr)}
+.rows{margin:0 -12px;padding:0 12px}
+@media (max-width:1280px){
+  .sandy{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .sandyq{grid-column:1 / -1}
+  .cols{grid-template-columns:minmax(320px,360px) minmax(0,1fr)}
+}
+@media (max-width:999px){.cols{height:auto}.lista,.thread{padding:20px}}
+@media (max-width:700px){.sandyq{grid-template-columns:56px minmax(0,1fr)}.sandy-fig{width:56px}}
+.loja .eyebrow,.filtros2 .eyebrow{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.filtros2{gap:8px}
+.cols{height:max(860px,calc(100dvh - 48px))}
+.row{padding:12px 8px}
+@media (max-width:999px){.cols{height:auto}}
