@@ -57,14 +57,17 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
     return `<a class="sh-nv" href="${url(a.href)}"${cur && !subs.length ? ' aria-current="page"' : ''}${cur && subs.length ? ' data-pai="1"' : ''} data-tip="${esc(a.nome)}" aria-label="${esc(a.nome)}">${ic(a.d)}<span>${esc(a.nome)}</span></a>${cur ? subHtml : ''}`;
   }).join('');
   const grupos = GRUPOS.map(([nome, ids]) => { const h = itens(ids); return h ? `<div class="sh-gl">${nome}</div>${h}` : ''; }).join('');
+  const foto = eu.foto_path ? `${SUPABASE_URL}/storage/v1/object/public/avatares/${eu.foto_path}` : '';
+  const av = foto ? `<img class="sh-av" src="${esc(foto)}" alt="">` : `<span class="sh-av" aria-hidden="true">${esc(String(eu.nome || '?').charAt(0).toUpperCase())}</span>`;
+  const papel = eu.papel === 'admin' ? 'Administrador' : 'Atendente';
   const cfg = ativo === 'configuracoes';
   const central = ativo === 'central';
   const lat = `<aside class="sh-lat" aria-label="Menu"><a class="sh-marca" href="${url('')}" data-tip="Central" aria-label="Sandstride, ir para a Central"><img class="sh-mk-full" src="${url('img/sandstride.png')}" alt=""><img class="sh-mk" src="${url('img/sandstride-marca.png')}" alt=""></a>` +
     `<nav aria-label="Ferramentas"><a class="sh-nv" href="${url('')}" data-tip="Central" aria-label="Central"${central ? ' aria-current="page"' : ''}>${ic(IC.casa)}<span>Central</span></a>${grupos}</nav>` +
-    `<div class="sh-pe"><a class="sh-nv" href="${url('configuracoes/')}" data-tip="Configurações" aria-label="Configurações"${cfg ? ' aria-current="page"' : ''}>${ic(IC.engrenagem)}<span>Configurações</span></a>` +
+    `<div class="sh-pe"><a class="sh-eu" href="${url('configuracoes/')}" data-tip="${esc(eu.nome)} · perfil" aria-label="Perfil de ${esc(eu.nome)}">${av}<span class="sh-eu-txt"><b>${esc(eu.nome)}</b><span>${papel}</span></span></a><a class="sh-nv" href="${url('configuracoes/')}" data-tip="Configurações" aria-label="Configurações"${cfg ? ' aria-current="page"' : ''}>${ic(IC.engrenagem)}<span>Configurações</span></a>` +
     `<button class="sh-nv" id="shRecolhe" type="button" data-tip="Expandir menu" aria-label="Recolher menu">${ic(IC.lado)}<span>Recolher menu</span></button></div></aside>`;
   const topo = `<header class="sh-topo"><img class="sh-logo-a" src="${url('img/sandstride-escuro.png')}" alt="Sandstride"><img class="sh-logo-b" src="${url('img/sandstride.png')}" alt=""><span class="sh-sp"></span>` +
-    `<a class="sh-ib" href="${url('configuracoes/')}" aria-label="Configurações"${cfg ? ' aria-current="page"' : ''}>${ic(IC.engrenagem)}</a></header>`;
+    `<a class="sh-ib" href="${url('configuracoes/')}" aria-label="Perfil e configurações"${cfg ? ' aria-current="page"' : ''}>${av}</a></header>`;
   const favs = central ? ['lucro', 'chat', 'devolucoes', 'financeiro'].map((id) => APPS.find((a) => a.id === id)).filter((a) => a && pode(a)) : [];
   const barra = `<nav class="sh-barra-m" aria-label="Atalhos"><div class="sh-barra"><a href="${url('')}" aria-label="Central"${central ? ' aria-current="page"' : ''}>${ic(IC.casa)}<span>Central</span></a>` +
     favs.map((a) => `<a href="${url(a.href)}" aria-label="${esc(a.nome)}">${ic(a.d)}<span>${esc(a.nome)}</span></a>`).join('') +

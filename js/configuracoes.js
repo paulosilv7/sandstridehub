@@ -76,6 +76,7 @@ async function trocarFoto(file) {
     if (eu.foto_path) await sb.storage.from('avatares').remove([eu.foto_path]);
     eu.foto_path = path;
     lab.querySelector('.av').outerHTML = avatar(path, eu.nome, 'g');
+    document.querySelectorAll('.sh-av').forEach((el) => { el.outerHTML = `<img class="sh-av" src="${esc(fotoUrl(path))}" alt="">`; });
     lab.classList.remove('envia'); msg.textContent = 'Foto atualizada.';
   } catch (e) {
     console.error(e);
