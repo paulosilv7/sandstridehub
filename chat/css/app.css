@@ -391,3 +391,14 @@ select.bt2{border:0;width:auto;max-width:100%;background-image:none}
 .cols{height:max(860px,calc(100dvh - 48px))}
 .row{padding:12px 8px}
 @media (max-width:999px){.cols{height:auto}}
+
+/* Configurações: quadros menores, vários lado a lado no computador */
+.vista[data-v="config"]{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));gap:16px;align-items:start}
+.vista[data-v="config"]>.sub,.vista[data-v="config"]>.nota{grid-column:1 / -1}
+.vista[data-v="config"] .box{height:100%}
+.vista[data-v="config"] .form2{grid-template-columns:minmax(0,1fr)}
+.vista[data-v="config"]{display:block;column-width:340px;column-gap:16px}
+.vista[data-v="config"]>*{break-inside:avoid;margin-bottom:16px}
+.vista[data-v="config"]>.sub,.vista[data-v="config"]>.nota{column-span:all}
+.vista[data-v="config"] .box{height:auto}
+.membro{gap:8px 12px}.membro .mut{white-space:nowrap}
