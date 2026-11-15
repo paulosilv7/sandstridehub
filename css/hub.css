@@ -150,13 +150,14 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .md-meta-v b{color:var(--texto);font-weight:600}
 
 .md-equipe{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
-.md-pes{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(80px,1.4fr) 112px 56px 32px;align-items:center;gap:var(--e4);padding:var(--e3) 0;border-bottom:1px solid var(--borda)}
+.md-pes{display:flex;flex-direction:column;gap:var(--e3);padding:var(--e4) 0;border-bottom:1px solid var(--borda)}
+.md-lin{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(80px,1.4fr) 112px 56px 32px;align-items:center;gap:var(--e4)}
 .md-pes:last-child{border-bottom:0}
 .md-barra{height:10px;border-radius:5px;background-color:var(--elevado);overflow:hidden}
 .md-barra span{display:block;height:100%;border-radius:5px;background:var(--texto);transition:width 500ms var(--ease)}
 .md-pes .tag{justify-self:start}
 .md-sp{flex:1}
-@media (max-width:699px){.md-pes{grid-template-columns:minmax(0,1fr) auto 32px}.md-pes .md-barra,.md-pes .tag.ate,.md-pes .md-sp{display:none}}
+@media (max-width:699px){.md-lin{grid-template-columns:minmax(0,1fr) auto 32px}.md-pes .md-barra,.md-pes .tag.ate,.md-pes .md-sp{display:none}}
 
 .md-dlg{border:0;border-radius:var(--r-painel);background:var(--cartao);color:var(--texto);padding:var(--e6);width:min(520px,calc(100vw - 32px));max-height:calc(100dvh - 48px);font-family:var(--fonte)}
 .md-dlg::backdrop{background:rgba(0,0,0,.5)}
@@ -239,3 +240,31 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .gs-prom{display:flex;align-items:center;gap:var(--e2);justify-content:space-between;background:var(--cartao);border-radius:var(--r-m);padding:var(--e2) var(--e3);font-size:13.5px;font-weight:500}
 .gs-prom>span{min-width:0;overflow-wrap:anywhere}
 .gs-rev{font-size:13.5px;font-weight:500}
+
+/* tarefas: botão + e quadro sobreposto */
+.md-tarefas{position:relative}
+.md-mais{width:40px;padding:0;flex:none;transition:transform var(--t-medio) var(--ease)}
+.md-mais.on{transform:rotate(45deg)}
+.md-pop{position:absolute;z-index:30;top:60px;right:var(--e4);width:min(380px,calc(100% - 32px));background:var(--elevado);border:1px solid var(--borda);border-radius:var(--r-painel);padding:var(--e5);box-shadow:0 16px 40px rgba(0,0,0,.28);animation:sobe 160ms var(--ease)}
+.md-pop form{display:flex;flex-direction:column;gap:var(--e4)}
+.md-pop .campo>span{font-size:12px;font-weight:500;color:var(--suave)}
+.md-pop .md-in{height:44px;width:100%}
+.md-pop .md-duo{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:420px){.md-pop .md-duo{grid-template-columns:minmax(0,1fr)}}
+.md-pop .md-acoes{justify-content:flex-end}
+.md-imp{display:flex;gap:4px;background:var(--cartao);border-radius:var(--r-pilula);padding:4px}
+.md-imp button{flex:1;height:32px;border:0;border-radius:var(--r-pilula);background:none;color:var(--suave);font-size:13px;font-weight:500;cursor:pointer;transition:background var(--t-medio),color var(--t-medio)}
+.md-imp button.on{background:var(--texto);color:var(--cartao)}
+.tag.alta{background:var(--texto);color:var(--cartao);font-weight:600}
+@media (prefers-reduced-motion:reduce){.md-pop{animation:none}.md-mais{transition:none}}
+
+/* equipe hoje: tarefas pendentes de cada pessoa */
+.md-pendentes{display:flex;flex-direction:column;gap:var(--e2);padding-left:36px;min-width:0}
+.md-rot{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--suave)}
+.md-pend{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.md-pend li{display:flex;align-items:center;gap:var(--e2);min-height:34px;font-size:13.5px;font-weight:500}
+.md-pend .tx{flex:1;min-width:0;overflow-wrap:anywhere}
+.md-pend-vazio{margin:0;font-size:13px;color:var(--suave)}
+.md-mais-t{align-self:flex-start;border:0;background:none;padding:4px 0;color:var(--suave);font-size:12.5px;font-weight:500;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.md-mais-t:hover{color:var(--texto)}
+@media (max-width:699px){.md-pendentes{padding-left:0}}

@@ -33,7 +33,7 @@ function saudacao() {
 
 export async function montarMeuDia({ sb, user, eu, el }) {
   const admin = eu.papel === 'admin';
-  const E = { equipe: [], rotinas: [], feitos: new Set(), tarefas: [], metas: [], filtro: 'hoje', primeira: true, erro: '' };
+  const E = { equipe: [], rotinas: [], feitos: new Set(), tarefas: [], metas: [], filtro: 'hoje', primeira: true, erro: '', pop: false, aberta: new Set(), rasc: { titulo: '', resp: user.id, prazo: '', imp: 'normal' } };
   const hoje = hojeISO(), dsem = dataDe(hoje).getUTCDay(), mes = hoje.slice(0, 8) + '01';
   const fotoUrl = (p) => (p ? `${SUPABASE_URL}/storage/v1/object/public/avatares/${p}` : '');
   const av = (p, cls = '') => { const u = fotoUrl(p?.foto_path); return u ? `<img class="av ${cls}" src="${esc(u)}" alt="">` : `<span class="av ${cls}" aria-hidden="true">${esc(String(p?.nome || '?').charAt(0).toUpperCase())}</span>`; };
@@ -53,6 +53,7 @@ export async function montarMeuDia({ sb, user, eu, el }) {
     E.tarefas = ta.data || []; E.metas = me.data || [];
   }
   const rotinaDe = (uid) => E.rotinas.filter((r) => r.usuario_id === uid && (r.dias || []).includes(dsem));
+  const PESO = { baixa: 0, normal: 1, alta: 2 };
   const abertas = (uid) => E.tarefas.filter((t) => t.responsavel_id === uid && !t.feita_em);
   const atrasada = (t) => !t.feita_em && t.prazo && t.prazo < hoje;
 
@@ -93,24 +94,33 @@ export async function montarMeuDia({ sb, user, eu, el }) {
   function listaTarefas() {
     const sem = soma(hoje, 7);
     const f = { hoje: (t) => t.responsavel_id === user.id && (!t.prazo || t.prazo === hoje), atrasadas: (t) => t.responsavel_id === user.id && atrasada(t), semana: (t) => t.responsavel_id === user.id && t.prazo > hoje && t.prazo <= sem, equipe: (t) => t.responsavel_id !== user.id }[E.filtro];
-    const l = E.tarefas.filter((t) => f(t) && (E.filtro !== 'atrasadas' || !t.feita_em)).sort((a, b) => (!!a.feita_em - !!b.feita_em));
+    const l = E.tarefas.filter((t) => f(t) && (E.filtro !== 'atrasadas' || !t.feita_em)).sort((a, b) => (!!a.feita_em - !!b.feita_em) || (PESO[b.importancia] || 1) - (PESO[a.importancia] || 1));
     if (!l.length) return `<div class="md-vazio"><p>${{ hoje: 'Nada para hoje.', atrasadas: 'Nada atrasado.', semana: 'Nada nos próximos 7 dias.', equipe: 'A equipe não tem tarefas abertas.' }[E.filtro]}</p></div>`;
     return `<ul class="md-lista">${l.map((t) => {
       const on = !!t.feita_em, meu = t.responsavel_id === user.id, pode = meu || t.criado_por === user.id || admin, p = pessoa(t.responsavel_id);
       const prazo = t.prazo ? `<span class="tag${atrasada(t) ? ' ate' : ''}">${svg(atrasada(t) ? IC.alerta : IC.relogio)}${t.prazo === hoje ? 'Hoje' : fCurto.format(dataDe(t.prazo))}</span>` : '';
+      const imp = t.importancia === 'alta' && !on ? `<span class="tag alta">Alta</span>` : '';
       return `<li><button type="button" class="md-chk${on ? ' on' : ''}" data-tar="${t.id}" aria-pressed="${on}"${pode ? '' : ' disabled'}><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(t.titulo)}</span></button>` +
-        `${prazo}${!meu && p ? `<span class="md-quem" title="${esc(p.nome)}">${av(p, 'p')}</span>` : ''}${t.criado_por === user.id || admin ? `<button class="md-x" type="button" data-apaga="${t.id}" aria-label="Apagar tarefa">${svg(IC.x, 14)}</button>` : ''}</li>`;
+        `${imp}${prazo}${!meu && p ? `<span class="md-quem" title="${esc(p.nome)}">${av(p, 'p')}</span>` : ''}${t.criado_por === user.id || admin ? `<button class="md-x" type="button" data-apaga="${t.id}" aria-label="Apagar tarefa">${svg(IC.x, 14)}</button>` : ''}</li>`;
     }).join('')}</ul>`;
+  }
+  function popNova() {
+    const R = E.rasc, imp = (v, r) => `<button type="button" data-imp="${v}" class="${R.imp === v ? 'on' : ''}" aria-pressed="${R.imp === v}">${r}</button>`;
+    return `<div class="md-pop" role="dialog" aria-label="Nova tarefa"><form id="md-nova">` +
+      `<label class="campo"><span>Nome da tarefa</span><input class="md-in" id="md-titulo" maxlength="160" autocomplete="off" value="${esc(R.titulo)}"></label>` +
+      `<div class="md-duo"><label class="campo"><span>Responsável</span><select class="md-in" id="md-resp">${E.equipe.map((p) => `<option value="${p.usuario_id}"${p.usuario_id === R.resp ? ' selected' : ''}>${esc(p.usuario_id === user.id ? 'Para mim' : prim(p.nome))}</option>`).join('')}</select></label>` +
+      `<label class="campo"><span>Data</span><input class="md-in" id="md-prazo" type="date" min="${hoje}" value="${esc(R.prazo)}"></label></div>` +
+      `<div class="campo"><span>Importância</span><div class="md-imp" role="group" aria-label="Importância">${imp('baixa', 'Baixa')}${imp('normal', 'Normal')}${imp('alta', 'Alta')}</div></div>` +
+      `<div class="md-acoes"><button class="btn" type="button" data-pop="fecha">Cancelar</button><button class="btn pri" type="submit">Criar tarefa</button></div></form></div>`;
   }
   function qTarefas() {
     const ab = abertas(user.id), n = { hoje: ab.filter((t) => !t.prazo || t.prazo === hoje).length, atrasadas: ab.filter(atrasada).length };
     const bt = (v, r) => `<button type="button" data-f="${v}" class="${E.filtro === v ? 'on' : ''}" aria-pressed="${E.filtro === v}">${r}${n[v] ? `<i>${n[v]}</i>` : ''}</button>`;
-    return `<section class="card" aria-label="Tarefas"><div class="qcab"><span class="ico">${svg(IC.tarefa)}</span><h2>Tarefas</h2></div>` +
+    return `<section class="card md-tarefas" aria-label="Tarefas"><div class="qcab"><span class="ico">${svg(IC.tarefa)}</span><h2>Tarefas</h2>` +
+      `<button class="btn pri md-mais${E.pop ? ' on' : ''}" type="button" data-pop="abre" aria-label="Nova tarefa" aria-expanded="${E.pop}">${svg(IC.mais)}</button></div>` +
+      (E.pop ? popNova() : '') +
       `<div class="md-filtros" role="group" aria-label="Filtro">${bt('hoje', 'Hoje')}${bt('atrasadas', 'Atrasadas')}${bt('semana', 'Semana')}${bt('equipe', 'Equipe')}</div>` +
-      `<div id="md-tarefas">${listaTarefas()}</div>` +
-      `<form class="md-nova" id="md-nova"><input class="md-in" id="md-titulo" placeholder="Nova tarefa" maxlength="160" aria-label="Nova tarefa" autocomplete="off">` +
-      `<select class="md-in" id="md-resp" aria-label="Responsável">${E.equipe.map((p) => `<option value="${p.usuario_id}"${p.usuario_id === user.id ? ' selected' : ''}>${esc(p.usuario_id === user.id ? 'Para mim' : prim(p.nome))}</option>`).join('')}</select>` +
-      `<input class="md-in" id="md-prazo" type="date" min="${hoje}" aria-label="Prazo"><button class="btn pri" type="submit" aria-label="Adicionar tarefa">${svg(IC.mais)}</button></form></section>`;
+      `<div id="md-tarefas">${listaTarefas()}</div></section>`;
   }
   function qMetas() {
     const cards = E.metas.map((m) => {
@@ -131,21 +141,25 @@ export async function montarMeuDia({ sb, user, eu, el }) {
     const linhas = E.equipe.map((p) => {
       const r = rotinaDe(p.usuario_id), f = r.filter((x) => E.feitos.has(x.id)).length, ab = abertas(p.usuario_id), at = ab.filter(atrasada).length;
       const pct = r.length ? Math.round((f / r.length) * 100) : 0;
-      return `<li class="md-pes"><div class="pessoa">${av(p)}<div><b>${esc(p.nome)}</b><br><span class="sub">${r.length ? `${f} de ${r.length} da rotina` : 'sem rotina hoje'}</span></div></div>` +
+      const ord = ab.slice().sort((a, b) => (!!b.prazo && b.prazo < hoje) - (!!a.prazo && a.prazo < hoje) || (PESO[b.importancia] || 1) - (PESO[a.importancia] || 1) || (a.prazo || '9') .localeCompare(b.prazo || '9'));
+      const ver = E.aberta.has(p.usuario_id) ? ord : ord.slice(0, 3);
+      const pend = ord.length ? `<ul class="md-pend">${ver.map((t) => `<li><span class="tx">${esc(t.titulo)}</span>${t.importancia === 'alta' ? '<span class="tag alta">Alta</span>' : ''}${t.prazo ? `<span class="tag${atrasada(t) ? ' ate' : ''}">${svg(atrasada(t) ? IC.alerta : IC.relogio)}${t.prazo === hoje ? 'Hoje' : fCurto.format(dataDe(t.prazo))}</span>` : '<span class="tag">Sem data</span>'}</li>`).join('')}</ul>` +
+        (ord.length > 3 ? `<button class="md-mais-t" type="button" data-todas="${p.usuario_id}">${E.aberta.has(p.usuario_id) ? 'Mostrar menos' : `Ver as ${ord.length} tarefas`}</button>` : '') : '<p class="md-pend-vazio">Nenhuma tarefa aberta.</p>';
+      return `<li class="md-pes"><div class="md-lin"><div class="pessoa">${av(p)}<div><b>${esc(p.nome)}</b><br><span class="sub">${r.length ? `${f} de ${r.length} da rotina` : 'sem rotina hoje'}</span></div></div>` +
         `<div class="md-barra${r.length ? '' : ' listrado'}" aria-hidden="true"><span style="width:${pct}%"></span></div>` +
         `<span class="tag">${svg(IC.tarefa)}${ab.length} ${ab.length === 1 ? 'aberta' : 'abertas'}</span>${at ? `<span class="tag ate">${svg(IC.alerta)}${at}</span>` : '<span class="md-sp"></span>'}` +
-        `<button class="ibtn p" type="button" data-editar="${p.usuario_id}" aria-label="Editar rotina de ${esc(p.nome)}" title="Editar rotina">${svg(IC.lapis)}</button></li>`;
+        `<button class="ibtn p" type="button" data-editar="${p.usuario_id}" aria-label="Editar rotina de ${esc(p.nome)}" title="Editar rotina">${svg(IC.lapis)}</button></div>` +
+        `<div class="md-pendentes"><span class="md-rot">Pendente</span>${pend}</div></li>`;
     }).join('');
     return `<section class="card" aria-label="Equipe hoje"><div class="qcab"><span class="ico">${svg(IC.equipe)}</span><h2>Equipe hoje</h2></div><ul class="md-equipe">${linhas}</ul></section>`;
   }
 
   function desenhar() {
     const e = E.primeira ? ' entra' : ''; let n = 0; const o = () => (E.primeira ? ` style="--o:${n++}"` : '');
-    const foco = document.activeElement?.id, txt = el.querySelector('#md-titulo')?.value || '', resp = el.querySelector('#md-resp')?.value, prazo = el.querySelector('#md-prazo')?.value || '';
+    const foco = document.activeElement?.id;
     el.innerHTML = `<div class="pg-cab${e}"${o()}><h1>${saudacao()}, ${esc(prim(eu.nome))}.</h1><p class="sub md-data">${esc(fDia.format(dataDe(hoje)))}</p></div>` +
       (E.erro ? `<p class="erro" role="alert">${svg(IC.alerta)}<span>${esc(E.erro)}</span></p>` : '') +
       `<div class="${e.trim()}"${o()}>${palco()}</div><div class="md-g2${e}"${o()}>${qRotina()}${qTarefas()}</div><div class="${e.trim()}"${o()}>${qMetas()}</div>` + (admin ? `<div class="${e.trim()}"${o()}>${qEquipe()}</div>` : '');
-    if (txt) el.querySelector('#md-titulo').value = txt; if (resp) el.querySelector('#md-resp').value = resp; if (prazo) el.querySelector('#md-prazo').value = prazo;
     if (foco && el.querySelector('#' + foco)) el.querySelector('#' + foco).focus();
     E.primeira = false; acordar();
   }
@@ -171,7 +185,10 @@ export async function montarMeuDia({ sb, user, eu, el }) {
       const [t] = E.tarefas.splice(i, 1); desenhar();
       const { error } = await sb.from('central_tarefas').delete().eq('id', t.id);
       if (error) { E.tarefas.splice(i, 0, t); falhou('Não consegui apagar a tarefa.'); }
-    } else if (b.dataset.f) { E.filtro = b.dataset.f; desenhar(); }
+    } else if (b.dataset.pop) { E.pop = b.dataset.pop === 'abre' ? !E.pop : false; desenhar(); if (E.pop) el.querySelector('#md-titulo')?.focus(); }
+    else if (b.dataset.imp) { E.rasc.imp = b.dataset.imp; desenhar(); }
+    else if (b.dataset.todas) { const u = b.dataset.todas; if (E.aberta.has(u)) E.aberta.delete(u); else E.aberta.add(u); desenhar(); }
+    else if (b.dataset.f) { E.filtro = b.dataset.f; desenhar(); }
     else if (b.dataset.editar) janelaRotina(b.dataset.editar);
     else if (b.dataset.meta) janelaMeta(b.dataset.meta);
   });
@@ -179,15 +196,20 @@ export async function montarMeuDia({ sb, user, eu, el }) {
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
     if (on) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 600); }
   }
+  el.addEventListener('input', (ev) => {
+    const k = { 'md-titulo': 'titulo', 'md-resp': 'resp', 'md-prazo': 'prazo' }[ev.target.id]; if (k) E.rasc[k] = ev.target.value;
+  });
+  el.addEventListener('change', (ev) => { const k = { 'md-resp': 'resp', 'md-prazo': 'prazo' }[ev.target.id]; if (k) E.rasc[k] = ev.target.value; });
+  el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && E.pop) { E.pop = false; desenhar(); el.querySelector('.md-mais')?.focus(); } });
+  el.addEventListener('pointerdown', (ev) => { if (E.pop && !ev.target.closest('.md-pop, .md-mais')) { E.pop = false; desenhar(); } });
   el.addEventListener('submit', async (ev) => {
     if (ev.target.id !== 'md-nova') return; ev.preventDefault();
-    const ti = el.querySelector('#md-titulo'), titulo = ti.value.trim(); if (!titulo) { ti.focus(); return; }
-    const nova = { titulo, responsavel_id: el.querySelector('#md-resp').value, prazo: el.querySelector('#md-prazo').value || null, criado_por: user.id };
-    ti.value = ''; el.querySelector('#md-prazo').value = '';
+    const R = E.rasc, titulo = R.titulo.trim(); if (!titulo) { el.querySelector('#md-titulo').focus(); return; }
+    const nova = { titulo, responsavel_id: R.resp, prazo: R.prazo || null, importancia: R.imp, criado_por: user.id };
     const { data, error } = await sb.from('central_tarefas').insert(nova).select().single();
     if (error || !data) return falhou('Não consegui criar a tarefa. Tente de novo.');
     E.tarefas.push(data); if (data.responsavel_id !== user.id) E.filtro = 'equipe'; else if (data.prazo && data.prazo > hoje) E.filtro = 'semana'; else E.filtro = 'hoje';
-    E.erro = ''; desenhar(); el.querySelector('#md-titulo').focus();
+    E.rasc = { titulo: '', resp: user.id, prazo: '', imp: 'normal' }; E.pop = false; E.erro = ''; desenhar();
   });
 
   // ---- janelas (rotina de uma pessoa, meta)
