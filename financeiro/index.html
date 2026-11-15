@@ -662,7 +662,7 @@ function big(v,cls){var a=Math.abs(v),i=Math.floor(a),c=Math.round((a-i)*100);if
 
 // ===== Financeiro > Recebimentos (dados reais do Mercado Livre) =====
 var MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-var S={d:null,erro:null,carregando:true,per:'7',mes:0,nome:'',fotoUrl:'',uid:'',v:null,verro:false,vcarregando:true,ym:'',cats:[],contas:[],pagas:{},desp:[],filtro:'todas',fcat:'',fq:''};
+var S={d:null,erro:null,carregando:true,per:'7',mes:0,nome:'',fotoUrl:'',uid:'',v:null,verro:false,vcarregando:true,ym:'',cats:[],contas:[],pagas:{},desp:[],filtro:'todas',fcat:'',fq:'',gal:null,galErro:false,lpar:5};
 var TELAS=[['visao','Visão geral','grid'],['recebimentos','Recebimentos','cardin'],['vendas','Vendas','cart'],['despesas','Despesas','receipt'],['historico','Resultados','trend']];
 var ROTAS={visao:1,recebimentos:1,vendas:1,despesas:1,detalhe:1,historico:1,config:1};
 function rota(){var h=location.hash.slice(1);if(h==='resultado')return 'visao';if(h==='contas')return 'despesas';return ROTAS[h]?h:'visao'}
@@ -686,7 +686,7 @@ function meses(){ // meses (aaaa-mm) do mês atual até o último mês com liber
 }
 function milhar(v){return v>=1000?(new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(v/1000)+' mil'):brl0h(v)}
 // ===== Visual novo (Omni): ícones, peças e telas =====
-var NI={"wallet": "<path d=\"M3 7a2 2 0 0 1 2-2h13v4\"/><path d=\"M3 7v10a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3\"/><path d=\"M21 10h-5a2 2 0 0 0 0 4h5z\"/>", "alert": "<path d=\"M12 3l9 16H3z\"/><path d=\"M12 10v4M12 17h.01\"/>", "chart": "<path d=\"M4 20V10M10 20V4M16 20v-8M22 20H2\"/>", "cal": "<rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"3\"/><path d=\"M3 10h18M8 3v4M16 3v4\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 2\"/>", "list": "<path d=\"M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01\"/>", "bag": "<path d=\"M5 8h14l-1 12H6z\"/><path d=\"M9 8a3 3 0 0 1 6 0\"/>", "store": "<path d=\"M4 9l1-5h14l1 5M4 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 6 0 2.5 2.5 0 0 0 5 0M5 12v8h14v-8\"/>", "coin": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M14.5 9.5c-.6-.8-1.5-1.2-2.5-1.2-1.4 0-2.5.8-2.5 1.8s1 1.5 2.5 1.9 2.5.9 2.5 1.9-1.1 1.8-2.5 1.8c-1 0-1.9-.4-2.5-1.2M12 6.5v1.8M12 15.7v1.8\"/>", "arrow": "<path d=\"M7 17L17 7M8 7h9v9\"/>", "bell": "<path d=\"M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z\"/><path d=\"M10 21h4\"/>", "down": "<path d=\"M6 9l6 6 6-6\"/>", "sliders": "<path d=\"M4 7h10M18 7h2M4 17h2M10 17h10\"/><circle cx=\"16\" cy=\"7\" r=\"2\"/><circle cx=\"8\" cy=\"17\" r=\"2\"/>", "check": "<path d=\"M5 12l5 5 9-10\"/>", "tag": "<path d=\"M3 12V4h8l10 10-8 8z\"/><circle cx=\"7.5\" cy=\"8.5\" r=\"1\"/>", "building": "<path d=\"M4 21V5l8-2v18M12 9l8 2v10M8 9h.01M8 13h.01M8 17h.01M16 15h.01M16 18h.01\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "truck": "<path d=\"M2 6h12v10H2zM14 9h4l3 3v4h-7\"/><circle cx=\"7\" cy=\"18\" r=\"2\"/><circle cx=\"17\" cy=\"18\" r=\"2\"/>", "bolt": "<path d=\"M13 3L5 14h6l-1 7 8-11h-6z\"/>", "file": "<path d=\"M6 3h8l4 4v14H6z\"/><path d=\"M14 3v4h4M9 13h6M9 17h6\"/>", "bank": "<path d=\"M3 10l9-6 9 6M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18\"/>", "back": "<path d=\"M15 6l-6 6 6 6\"/>", "grid": "<rect x=\"3.5\" y=\"3.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"13.5\" y=\"3.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"3.5\" y=\"13.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"13.5\" y=\"13.5\" width=\"7\" height=\"7\" rx=\"2\"/>", "cardin": "<rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"3\"/><path d=\"M3 10h18M7 15h3\"/>", "cart": "<path d=\"M3 4h2l2.4 11h9.2L20 8H6.2\"/><circle cx=\"9\" cy=\"19\" r=\"1.5\"/><circle cx=\"17\" cy=\"19\" r=\"1.5\"/>", "receipt": "<path d=\"M6 3h12v18l-3-2-3 2-3-2-3 2z\"/><path d=\"M9 8h6M9 12h6\"/>", "trend": "<path d=\"M3 17l6-6 4 4 8-8\"/><path d=\"M15 7h6v6\"/>", "undo": "<path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10a6 6 0 0 1 0 12h-3\"/>", "repeat": "<path d=\"M4 12a8 8 0 0 1 14-5l2 2M20 4v5h-5M20 12a8 8 0 0 1-14 5l-2-2M4 20v-5h5\"/>"};
+var NI={"galpao": "<path d=\"M3 21V9l9-5 9 5v12\"/><path d=\"M7 21v-6h10v6\"/><path d=\"M7 12h10\"/>", "wallet": "<path d=\"M3 7a2 2 0 0 1 2-2h13v4\"/><path d=\"M3 7v10a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3\"/><path d=\"M21 10h-5a2 2 0 0 0 0 4h5z\"/>", "alert": "<path d=\"M12 3l9 16H3z\"/><path d=\"M12 10v4M12 17h.01\"/>", "chart": "<path d=\"M4 20V10M10 20V4M16 20v-8M22 20H2\"/>", "cal": "<rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"3\"/><path d=\"M3 10h18M8 3v4M16 3v4\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 2\"/>", "list": "<path d=\"M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01\"/>", "bag": "<path d=\"M5 8h14l-1 12H6z\"/><path d=\"M9 8a3 3 0 0 1 6 0\"/>", "store": "<path d=\"M4 9l1-5h14l1 5M4 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 6 0 2.5 2.5 0 0 0 5 0M5 12v8h14v-8\"/>", "coin": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M14.5 9.5c-.6-.8-1.5-1.2-2.5-1.2-1.4 0-2.5.8-2.5 1.8s1 1.5 2.5 1.9 2.5.9 2.5 1.9-1.1 1.8-2.5 1.8c-1 0-1.9-.4-2.5-1.2M12 6.5v1.8M12 15.7v1.8\"/>", "arrow": "<path d=\"M7 17L17 7M8 7h9v9\"/>", "bell": "<path d=\"M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z\"/><path d=\"M10 21h4\"/>", "down": "<path d=\"M6 9l6 6 6-6\"/>", "sliders": "<path d=\"M4 7h10M18 7h2M4 17h2M10 17h10\"/><circle cx=\"16\" cy=\"7\" r=\"2\"/><circle cx=\"8\" cy=\"17\" r=\"2\"/>", "check": "<path d=\"M5 12l5 5 9-10\"/>", "tag": "<path d=\"M3 12V4h8l10 10-8 8z\"/><circle cx=\"7.5\" cy=\"8.5\" r=\"1\"/>", "building": "<path d=\"M4 21V5l8-2v18M12 9l8 2v10M8 9h.01M8 13h.01M8 17h.01M16 15h.01M16 18h.01\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "truck": "<path d=\"M2 6h12v10H2zM14 9h4l3 3v4h-7\"/><circle cx=\"7\" cy=\"18\" r=\"2\"/><circle cx=\"17\" cy=\"18\" r=\"2\"/>", "bolt": "<path d=\"M13 3L5 14h6l-1 7 8-11h-6z\"/>", "file": "<path d=\"M6 3h8l4 4v14H6z\"/><path d=\"M14 3v4h4M9 13h6M9 17h6\"/>", "bank": "<path d=\"M3 10l9-6 9 6M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18\"/>", "back": "<path d=\"M15 6l-6 6 6 6\"/>", "grid": "<rect x=\"3.5\" y=\"3.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"13.5\" y=\"3.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"3.5\" y=\"13.5\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"13.5\" y=\"13.5\" width=\"7\" height=\"7\" rx=\"2\"/>", "cardin": "<rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"3\"/><path d=\"M3 10h18M7 15h3\"/>", "cart": "<path d=\"M3 4h2l2.4 11h9.2L20 8H6.2\"/><circle cx=\"9\" cy=\"19\" r=\"1.5\"/><circle cx=\"17\" cy=\"19\" r=\"1.5\"/>", "receipt": "<path d=\"M6 3h12v18l-3-2-3 2-3-2-3 2z\"/><path d=\"M9 8h6M9 12h6\"/>", "trend": "<path d=\"M3 17l6-6 4 4 8-8\"/><path d=\"M15 7h6v6\"/>", "undo": "<path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10a6 6 0 0 1 0 12h-3\"/>", "repeat": "<path d=\"M4 12a8 8 0 0 1 14-5l2 2M20 4v5h-5M20 12a8 8 0 0 1-14 5l-2-2M4 20v-5h5\"/>"};
 function nic(n,s){s=s||20;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+NI[n]+'</svg>'}
 function mpi(k,s){s=s||36;return '<img class="mpi" src="'+IC[k]+'" alt="'+MKN[k]+'" style="width:'+s+'px;height:'+s+'px">'}
 function r0(v){return (v<0?'−':'')+new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0}).format(Math.abs(Math.round(v)))}
@@ -953,6 +953,7 @@ function telaPainel(){
   h+='<section class="card met s4">'+chead('wallet','Entra em 7 dias','','recebimentos')+(mlOk?'<div><div class="val">'+UNR+bg2(sum(v7,function(v){return v}))+'</div><div class="lab" style="margin-top:4px">liberações até '+ddmm(d7[6])+'</div></div>'+thin(v7,32,0,'pe'):'<p class="sub">'+carr+'</p>')+'</section>';
   var DQ=byMk(function(l){return l.disputa?l.disputa.qtd:0}),DV=sum(T,function(l){return l.disputa?l.disputa.valor:0}),dq=DQ.ml+DQ.sp+DQ.tt;
   h+='<section class="card dk met s4">'+chead('alert','Atenção','','despesas')+'<div class="aten"><div><div class="val">'+atras.length+'<span class="un">'+(atras.length===1?'conta atrasada':'contas atrasadas')+'</span></div><div class="lab" style="margin-top:4px">'+(atras.length?'R$ '+d2(sumAt)+' vencidos':'Nenhuma conta vencida')+' · vencem hoje: '+venceHoje.length+'</div></div>'+(mlOk?'<div><div class="val">'+UNR+bg2(DV)+'</div><div class="lab" style="margin-top:4px">'+n0(dq)+' casos em disputa</div></div>':'')+'</div></section>';
+  h+=cardEstoque();
   return h+'</div>';
 }
 // ---------- Detalhe do mês: anúncios, contas fixas e extrato ----------
@@ -1338,7 +1339,33 @@ async function carregarHist(){
   try{var hm=mesAtual();if(hm>'2026-10'){var vv=await SB.rpc('financeiro_vendas',{p_ini:hm+'-01',p_fim:ymSomar(hm,1)+'-01'});S.hv=vv.error?null:{ym:hm,rows:vv.data||[]}}}catch(e){S.hv=null}
   S.hcarregando=false;if(rota()==='historico'||rota()==='visao')seguro();
 }
-function carregar(force){carregarML(force);carregarMes();carregarHist();carregarAds().then(function(){carregarRes();seguro()})}
+async function carregarEstoque(){
+  try{var c=JSON.parse(sessionStorage.getItem('sandstride-fin-est')||'null');if(c&&Date.now()-c.t<600000){S.gal={pares:c.pares,valor:c.valor};seguro()}}catch(e){}
+  try{var cf=await SB.from('configuracoes').select('valor').eq('chave','estoque_lucro_par').maybeSingle();var lv=cf.data?parseFloat(String(cf.data.valor).replace(',','.')):NaN;if(isFinite(lv)&&lv>=0)S.lpar=lv}catch(e){}
+  try{
+    var r=await SB.functions.invoke('estoque',{method:'POST',body:{fn:'iniciar',args:[],base:'oficial'}});
+    var t=r.data&&r.data.ok&&r.data.r&&r.data.r.totais;
+    if(!t)throw new Error('estoque');
+    S.gal={pares:+t.pares,valor:+t.valor};S.galErro=false;
+    try{sessionStorage.setItem('sandstride-fin-est',JSON.stringify({t:Date.now(),pares:S.gal.pares,valor:S.gal.valor}))}catch(e){}
+  }catch(e){if(!S.gal)S.galErro=true}
+  seguro();
+}
+function modalLucroPar(){
+  modal('Lucro médio por par','<label class="fld">Lucro por par (R$)<input name="l" inputmode="decimal" value="'+d2(S.lpar)+'" maxlength="8"></label>',[{t:'Salvar',fn:async function(m){
+    var v=parseFloat(mv(m,'l').replace(/\./g,'').replace(',','.'));if(!(v>=0&&v<=1000)){toast('Digite um valor entre 0 e 1.000.');return false}
+    var r=await SB.from('configuracoes').upsert({chave:'estoque_lucro_par',valor:String(v)},{onConflict:'chave'});if(r.error){toast('Não consegui salvar.');return false}
+    S.lpar=v;seguro();toast('Lucro por par atualizado.')}}]);
+}
+function cardEstoque(){
+  var h='<section class="card s12">'+chead('galpao','Estoque no galpão','<button type="button" class="go" data-lpar aria-label="Ajustar o lucro por par" title="Ajustar o lucro por par">'+nic('sliders',18)+'</button>','');
+  if(!S.gal)return h+'<p class="sub">'+(S.galErro?'Não consegui ler o estoque agora.':'Lendo o estoque…')+'</p></section>';
+  var lucro=S.gal.pares*S.lpar,tot=S.gal.valor+lucro,ep=tot>0?S.gal.valor/tot*100:100;
+  return h+'<div><div class="val">'+UNR+bg2(tot)+'</div><div class="lab" style="margin-top:8px">valor do estoque + lucro previsto</div></div>'+
+    '<div class="bar sem" style="margin-top:auto"><div class="trk"><b class="ci" style="width:'+ep.toFixed(1)+'%"></b><b class="pe" style="flex:1"></b></div></div>'+
+    '<div class="leg"><span><i style="background:var(--cinza)"></i>Em estoque R$ '+d2(S.gal.valor)+' · '+r0(S.gal.pares)+' pares</span><span><i style="background:var(--f-rec)"></i>Lucro previsto R$ '+d2(lucro)+' · R$ '+d2(S.lpar)+' por par</span></div></section>';
+}
+function carregar(force){carregarML(force);carregarEstoque();carregarMes();carregarHist();carregarAds().then(function(){carregarRes();seguro()})}
 
 // ---------- Janelas ----------
 function modal(t,corpo,botoes){
@@ -1478,6 +1505,7 @@ document.addEventListener('click',async function(e){
   if(d.cver)return verComp(d.cver);
   if(d.conta)return modalConta(d.conta);
   if(b.hasAttribute('data-nconta'))return modalNovaConta();
+  if(b.hasAttribute('data-lpar'))return modalLucroPar();
   if(b.hasAttribute('data-ncat'))return modalNovaCat();
   if(d.ecat)return modalEditarCat(d.ecat);
   if(d.dcat)return modalApagarCat(d.dcat);
