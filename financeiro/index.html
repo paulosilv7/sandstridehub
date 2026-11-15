@@ -355,13 +355,14 @@ body{background:var(--bg);color:var(--ink);font-size:14px}
 .nv .wave{display:none}
 /* tabelas e extratos */
 .nv .tb{display:flex;flex-direction:column}
-.nv .tb .th,.nv .tb .tr{display:flex;align-items:center;gap:16px;min-width:780px}
+.nv .tb .th,.nv .tb .tr{display:flex;align-items:center;gap:16px;min-width:0}
 .nv .tb .th{padding:0 12px 12px;margin:0 -12px;font-size:12px;color:var(--mut);font-weight:500}
 .nv .tb .tr{padding:12px;margin:0 -12px;border-radius:16px;font-size:14px;border-bottom:0;transition:background 120ms var(--ease)}
-.nv .scroll{overflow-x:auto}
-.nv .cA{flex:1 1 220px;min-width:0;display:flex;align-items:center;gap:12px;font-weight:500}
-.nv .cN{flex:1 1 112px;text-align:right}
-.nv .cB{flex:0 0 200px}
+.nv .scroll{overflow:visible}
+.nv .cA{flex:1 1 160px;min-width:0;display:flex;align-items:center;gap:12px;font-weight:500}
+.nv .cA>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nv .cN{flex:1 1 80px;text-align:right;min-width:0}
+.nv .cB{flex:0 0 140px}
 .nv .stk{display:flex;gap:2px;height:8px;border-radius:999px;overflow:hidden;background:var(--soft)}
 .nv .stk b{display:block;border-radius:999px;min-width:6px}
 .nv .bx{position:relative;display:block;height:8px}
@@ -502,6 +503,18 @@ button.kpi:hover{background:var(--hover)}
 .mes{background:var(--card)}
 @media (max-width:1100px){.kpis,.kpis.k5,.kpis.k3{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:700px){.kpis,.kpis.k5,.kpis.k3{grid-template-columns:minmax(0,1fr)}.kpi{padding:20px;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"c k" "v v" "s s"}.kpi .val{font-size:28px}}
+
+.nv .col .vl{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap}
+.nv .col:hover .vl{opacity:0}
+.nv .tb .tr>.cA>span{min-width:0}
+.er{align-items:center}
+.er .l{flex-wrap:nowrap;min-width:0}
+.er>span,.er .l>span:not(.chip):not(.sti){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.er>.r{overflow:visible}
+.er .l .chip{flex:none}
+.sti{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;flex:none;background:var(--soft);color:var(--ink2)}
+.sti.rec{background:var(--rec-bg);color:var(--rec)}.sti.att{background:var(--disp-bg);color:var(--disp)}
+.sti.neu{background:var(--soft);color:var(--mut)}
 /* celular */
 @media (max-width:640px){
   .page{padding:16px 16px 96px;gap:16px}
@@ -555,9 +568,9 @@ const ic = {
   visao: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
   recebimentos: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
   vendas: '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
-  despesas: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',
-  historico: '<path d="M3 17l5-5 4 4 8-9M15 7h5v5"/>',
-  detalhe: '<path d="M3 3v18h18"/><path d="M7 16V9M12 16V5M17 16v-4"/>',
+  despesas: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+  historico: '<path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M15.5 3.5A9 9 0 0 1 20.5 8.5H15.5z"/>',
+  detalhe: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h4"/>',
   atualizar: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>',
   config: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>'
 };
@@ -714,7 +727,8 @@ function mchart(L,H,sel){
     var wrap=pos?'justify-content:flex-end;padding-bottom:'+zero.toFixed(1)+'px':'justify-content:flex-start;padding-top:'+(H-zero).toFixed(1)+'px;height:100%';
     var tip=pos?'bottom:'+(zero+hh+14).toFixed(1)+'px':'top:'+(H-zero+hh+14).toFixed(1)+'px';
     var mini=on?'<span class="mini" style="bottom:'+(pos?(zero+hh+12):(zero+12)).toFixed(1)+'px">'+mes3(x.ym).toLowerCase()+'<b>R$ '+mil(v)+'</b></span>':'';
-    h+='<div class="col'+(on?' sel':'')+'" data-ym="'+x.ym+'" style="'+wrap+'"><div class="b '+cls+'" style="height:'+hh.toFixed(1)+'px"></div><span class="tip" style="'+tip+'">R$ '+r0(v)+'</span>'+mini+'</div>';
+    var vl='<span class="vl" style="'+(pos?'bottom:'+(zero+hh+6).toFixed(1)+'px':'top:'+(H-zero+hh+6).toFixed(1)+'px')+'">'+r0(v/1000)+'</span>';
+    h+='<div class="col'+(on?' sel':'')+'" data-ym="'+x.ym+'" style="'+wrap+'"><div class="b '+cls+'" style="height:'+hh.toFixed(1)+'px"></div>'+(on?'':vl)+'<span class="tip" style="'+tip+'">R$ '+r0(v)+'</span>'+mini+'</div>';
   });
   return h+'</div><div class="ml">'+L.map(function(x){return '<span class="'+(x.ym===sel?'on':'')+'">'+mes3(x.ym)+'</span>'}).join('')+'</div>';
 }
@@ -751,7 +765,8 @@ function telaReceb(){
   var v7=d7.map(function(k){return totalDia(k).t}),v14=d14.map(function(k){return totalDia(k).t});
   h+='<div class="grid">';
   h+='<section class="card s4">'+chead('wallet','Pago nos últimos 7 dias','','')+'<div><div class="val">'+UNR+bg2(pago)+'</div><div class="lab" style="margin-top:8px">já pago pelos marketplaces</div></div>'+split(PB)+'</section>';
-  h+='<section class="card s4">'+chead('clock','A receber','','')+'<div><div class="val">'+UNR+bg2(arec)+'</div><div class="lab" style="margin-top:8px">liberações futuras do Mercado Livre e da Shopee</div></div>'+thin(v14,56,-1,'')+dlabels(d14.map(function(k){return k.slice(8)}),-1,11)+'</section>';
+  var arT=B.ml+B.sp+B.tt||1;
+  h+='<section class="card s4">'+chead('clock','A receber','','')+'<div><div class="val">'+UNR+bg2(arec)+'</div><div class="lab" style="margin-top:8px">liberações futuras dos marketplaces</div></div><div class="bar sem" style="margin-top:auto"><div class="trk">'+['ml','sp','tt'].filter(function(k){return B[k]>0}).map(function(k,j){return '<b class="pe" style="width:'+(B[k]/arT*100).toFixed(1)+'%;opacity:'+(1-j*.35)+'"></b>'}).join('')+'</div></div><div class="leg">'+['ml','sp','tt'].filter(function(k){return B[k]>0}).map(function(k,j){return '<span><i style="background:var(--f-rec);opacity:'+(1-j*.35)+'"></i>'+MKN[k]+' R$ '+mil(B[k])+'</span>'}).join('')+'</div></section>';
   var tmx=DQ.ml+DQ.sp+DQ.tt;
   h+='<section class="card s4">'+chead('alert','Em disputa','','')+'<div><div class="val">'+UNR+bg2(disp)+'</div><div class="lab" style="margin-top:8px">'+n0(ndisp)+' casos retidos pelos marketplaces</div></div><div class="bar" style="padding-top:0"><div class="trk">'+(tmx?'<b class="pa" style="width:'+(DQ.ml/tmx*100).toFixed(1)+'%"></b><b class="pa" style="flex:1;opacity:.55"></b>':'')+'</div></div><div class="leg"><span><i style="background:var(--f-att)"></i>Mercado Livre '+DQ.ml+'</span><span><i style="background:var(--f-att);opacity:.55"></i>Shopee '+DQ.sp+'</span></div></section>';
   h+=calSec(v7)+'';
@@ -871,7 +886,7 @@ function xrow(nm,v,base,icn,cls,color,neg,extra){
   return '<div class="xr '+(cls||'')+'"><span class="l">'+(icn||'')+'<span>'+nm+'</span>'+(extra||'')+'</span><span class="v">'+(neg?'−':'')+'R$ '+d2(Math.abs(v))+'</span><span class="p">'+pc1(Math.abs(v)/base*100)+'</span><span class="tk"><b style="width:'+w.toFixed(1)+'%;background:'+(color||'var(--n-pos)')+'"></b></span></div>';
 }
 function cic(n){return '<span class="cic">'+nic(n,18)+'</span>'}
-var VTABS=[['ext','Extrato'],['desp','Despesas'],['forn','Fornecedores'],['ads','Anúncios']];
+var VTABS=[['ext','Extrato'],['desp','Despesas'],['forn','Fornecedores']];
 var CATN={'Ads':'bolt','Nota Fiscal':'file','Embalagem':'bag','Custo Envio':'truck','Receita Federal':'bank','Estrutura/Operação':'building','Pró-Labore':'user','Salários':'user','Transporte':'truck','Marketing':'bolt','ERP':'file','Contabilidade':'file','Tarifa Banco':'bank','Alimento':'bag','Cursos/Eventos':'file','Dívida':'bank','Fornecedor / mercadoria':'truck','Investimento':'coin','Retirada / gasto de sócio':'user','Transferência entre contas':'repeat'};
 function catN(c){return CATN[c]||'coin'}
 function cardDet(c,A){
@@ -880,11 +895,11 @@ function cardDet(c,A){
     var base=(c.cash?c.rec:c.fat)||1;
     body='<div class="xt"><div class="xh"><span>Linha</span><span style="text-align:right">Valor</span><span style="text-align:right">'+(c.cash?'% do recebido':'% do vendido')+'</span><span></span></div>';
     if(c.cash){
-      body+=xrow('Recebi dos marketplaces',c.rec,base,cic('wallet'),'st')+['ml','sp','tt'].filter(function(k){return c.recMk[k]}).map(function(k){return xrow(MKN[k],c.recMk[k],base,mpi(k,32),'','var(--cinza)')}).join('');
+      body+=xrow('Recebi dos marketplaces',c.rec,base,cic('wallet'),'st');
     }else{
       body+=xrow('Vendi',c.fat,base,cic('cart'),'st')+xrow('Estornos e devoluções',c.est,base,cic('repeat'),'','var(--f-neg)',true)+xrow(c.hist?'Taxas e frete dos marketplaces':'Taxas dos marketplaces',c.tax,base,cic('tag'),'','var(--f-neg)',true)+(c.hist?'':xrow('Frete pago pela loja',c.fr,base,cic('truck'),'','var(--f-neg)',true));
     }
-    body+=(c.fornOk?xrow('Pago a fornecedores',c.pf,base,cic('truck'),'','var(--n-neg)',true):'')+xrow('Despesas',c.desp,base,cic('file'),'','var(--f-neg)',true)+xrow('Resultado do mês',c.res,base,cic('chart'),'tot',c.res<0?'var(--n-neg)':'var(--n-pos)',c.res<0)+'</div>';
+    body+=(c.fornOk?xrow('Pago a fornecedores',c.pf,base,cic('truck'),'','var(--n-neg)',true):'')+(c.porCat['Ads']>0?xrow('Anúncios',c.porCat['Ads'],base,cic('bolt'),'','var(--f-neg)',true)+xrow('Outras despesas',c.desp-c.porCat['Ads'],base,cic('file'),'','var(--f-neg)',true):xrow('Despesas',c.desp,base,cic('file'),'','var(--f-neg)',true))+xrow('Resultado do mês',c.res,base,cic('chart'),'tot',c.res<0?'var(--n-neg)':'var(--n-pos)',c.res<0)+'</div>';
     if(c.cash&&c.fat)body+='<p class="xnote">Vendi R$ '+r0(c.fat)+' em '+mesNome(S.ym).toLowerCase()+(ehAtual()?' até '+ddmm(hojeSP()):'')+'. O que ainda não foi liberado entra nos próximos meses.</p>';
   }else if(tab==='desp'){
     var cats=S.cats.filter(function(k){return k.entra_resultado});
@@ -893,9 +908,9 @@ function cardDet(c,A){
       xrow('Total de despesas',c.desp,c.desp,cic('file'),'tot','var(--n-neg)',true)+'</div>'+(c.fora>0?'<p class="xnote">Fora do resultado: R$ '+d2(c.fora)+' (mercadoria, investimento, retirada de sócio, transferências).</p>':'');
   }else if(tab==='forn'){
     body=c.fornOk?'<div class="xt f"><div class="xh"><span>Fornecedor</span><span style="text-align:right">Comprado no mês</span><span style="text-align:right">Pago no mês</span><span style="text-align:right">Ainda a pagar</span></div>'+(c.F.length?c.F.map(function(f){return '<div class="xr"><span class="l">'+cic('truck')+'<span>'+esc(f.n)+'</span></span><span class="rw2">'+(f.comp?'R$ '+r0(f.comp):'—')+'</span><span class="rw2" style="font-weight:600">'+(f.pago?'R$ '+r0(f.pago):'—')+'</span><span class="rw2'+(f.saldo>0?' amb':'')+'" style="font-weight:600">R$ '+r0(f.saldo)+'</span></div>'}).join('')+'<div class="xr tot"><span class="l">'+cic('truck')+'<span>Total</span></span><span class="rw2">R$ '+r0(sum(c.F,function(f){return f.comp}))+'</span><span class="rw2">R$ '+r0(c.pf)+'</span><span class="rw2">R$ '+r0(c.apagar)+'</span></div>':'<div class="xr"><span class="l">Nenhuma compra ou pagamento neste mês.</span></div>')+'</div>':'<p class="sub">Os fornecedores não estão disponíveis agora. Use o botão de atualizar.</p>';
-  }else body=adsPainel(c,A);
+  }
   var tabs='<div class="tabs" id="vtabs">'+VTABS.map(function(t){return '<button type="button" class="tab" data-vt="'+t[0]+'" aria-pressed="'+(tab===t[0])+'">'+t[1]+'</button>'}).join('')+'</div>';
-  return '<section class="card s12">'+chead('chart','Detalhe do mês',tabs,'')+body+'</section>';
+  return '<section class="card s12">'+chead('list','Fechamento do mês',tabs,'')+body+'</section>';
 }
 // ---------- Visão geral ----------
 function rowConta(c,hj){
@@ -1005,10 +1020,9 @@ function telaHistorico(){
   h+='<div class="grid"><section class="card s4">'+chead('wallet','Resultado acumulado')+'<div><div class="val">'+UNR+(acum<0?'−':'')+r0(Math.abs(acum))+'</div><div class="lab" style="margin-top:10px">o que sobrou, de '+MESES[+L[0].ym.slice(5,7)-1].toLowerCase()+' a '+MESES[+(fechados.length?fechados[fechados.length-1].ym:L[0].ym).slice(5,7)-1].toLowerCase()+'</div></div><div class="leg"><span><i style="background:var(--f-pos)"></i>Mês positivo</span><span><i style="background:var(--f-neg)"></i>Mês negativo</span></div></section>'+
     '<section class="card s8">'+chead('chart','Resultado por mês')+mchart(L,220,sel)+'</section>';
   var mx=Math.max.apply(null,L.map(function(x){return Math.abs(x.res)}).concat([1]));
-  h+='<section class="card s12">'+chead('list','Por mês')+'<div class="scroll"><div class="tb"><div class="th"><span class="cA" style="flex:0 0 190px">Mês</span><span class="cN">Vendi</span><span class="cN">Entrou</span><span class="cN">Fornecedores</span><span class="cN">Despesas</span><span class="cN">Resultado</span><span class="cB">Resultado do mês</span></div>'+
-    L.slice().reverse().map(function(y){var w=Math.abs(y.res)/mx*50,bar=y.res>=0?'left:50%;width:'+w.toFixed(1)+'%;background:var(--f-pos)':'left:'+(50-w).toFixed(1)+'%;width:'+w.toFixed(1)+'%;background:var(--f-neg)';
-      return '<div class="tr" data-ym="'+y.ym+'" style="cursor:pointer"><span class="cA" style="flex:0 0 190px">'+MESES[+y.ym.slice(5,7)-1]+(y.atual?'<span class="mut" style="font-size:12px;font-weight:400"> · até '+ddmm(hojeSP())+'</span>':'')+'</span><span class="cN">'+(y.vendi?'R$ '+r0(y.vendi):'—')+'</span><span class="cN">R$ '+r0(y.rec)+'</span><span class="cN">R$ '+r0(y.f)+'</span><span class="cN">R$ '+r0(y.d)+'</span><span class="cN" style="font-weight:600;color:'+(y.res>=0?'var(--pago)':'var(--sai)')+'">'+(y.res<0?'−':'')+'R$ '+r0(Math.abs(y.res))+'</span><span class="cB"><span class="bx"><b style="'+bar+'"></b></span></span></div>'}).join('')+'</div></div></section>';
-  h+='<section class="card s12">'+chead('alert','Como ler')+'<p class="sub"><b>Vendi</b> é o bruto dos pedidos feitos no mês. <b>Entrou</b> é o dinheiro liberado pelos marketplaces naquele mês, seja de venda do mês ou do anterior. <b>Fornecedores</b> e <b>Despesas</b> são o que foi pago no mês, e <b>Resultado</b> é Entrou menos o que saiu: verde sobrou, vermelho faltou. Os anúncios (ads) de setembro em diante vêm direto do marketplace; antes disso valem os lançados na planilha, e abril e maio não têm anúncios lançados, então o resultado desses dois meses pode estar um pouco maior que o real. No Mercado Livre entram só pedidos aprovados; na Shopee, pedidos concluídos; no TikTok, pedidos já liquidados. Os meses mais recentes ainda podem crescer. O valor pago a fornecedores é o pago no mês, não o custo exato do que foi vendido. No filtro de 30 dias, o &quot;Quanto vendemos&quot; fica em branco enquanto a leitura diária das vendas não cobre os 30 dias.</p></section></div>';
+  h+='<section class="card s12">'+chead('list','Por mês')+'<div class="scroll"><div class="tb"><div class="th"><span class="cA" style="flex:0 0 140px">Mês</span><span class="cN">Vendi</span><span class="cN">Entrou</span><span class="cN">Fornecedores</span><span class="cN">Despesas</span><span class="cN">Resultado</span></div>'+
+    L.slice().reverse().map(function(y){return '<div class="tr" data-ym="'+y.ym+'" style="cursor:pointer"><span class="cA" style="flex:0 0 140px">'+MESES[+y.ym.slice(5,7)-1]+(y.atual?'<span class="mut" style="font-size:12px;font-weight:400"> · até '+ddmm(hojeSP())+'</span>':'')+'</span><span class="cN">'+(y.vendi?'R$ '+r0(y.vendi):'—')+'</span><span class="cN">R$ '+r0(y.rec)+'</span><span class="cN">R$ '+r0(y.f)+'</span><span class="cN">R$ '+r0(y.d)+'</span><span class="cN" style="font-weight:600;color:'+(y.res>=0?'var(--pago)':'var(--sai)')+'">'+(y.res<0?'−':'')+'R$ '+r0(Math.abs(y.res))+'</span></div>'}).join('')+'</div></div></section>';
+  h+='</div>';
   return h;
 }
 
@@ -1133,8 +1147,8 @@ function corpoDesp(){
     if(q&&(d.descricao+' '+d.categoria).toLowerCase().indexOf(q)<0)return false;return true});
   var ad=sum(S.ads||[],function(r){return +r.valor}),ci=catInfo('Ads');
   var mostraAds=ad>0&&(S.filtro==='todas'||(S.filtro==='res'?ci.entra_resultado:!ci.entra_resultado))&&(!S.fcat||S.fcat==='Ads')&&(!q||'ads anúncios anuncios lido dos marketplaces'.indexOf(q)>=0);
-  var h=(mostraAds?'<div class="er"><span>mês</span><span class="l"><span class="chip sm neu" style="width:30px;height:30px">'+ic(catI('Ads'),15)+'</span><span style="font-weight:600">Anúncios lidos dos marketplaces</span></span><span>Ads</span><span>'+pill('neu','','Automático')+'</span><span class="r" style="font-weight:600">'+brlh(ad)+'</span></div>':'')+
-    (lista.length?lista.map(function(d){var c=catInfo(d.categoria);return '<div class="er" data-desp="'+d.id+'" style="cursor:pointer"><span>'+ddmm(d.data)+'</span><span class="l"><span class="chip sm neu" style="width:30px;height:30px">'+ic(catI(d.categoria),15)+'</span><span style="font-weight:600">'+esc(d.descricao)+'</span>'+(d.mes_conta&&d.data.slice(0,7)!==d.mes_conta.slice(0,7)?'<span class="refm" title="Paga em '+ddmm(d.data)+', mas a conta é de '+mesNome(d.mes_conta.slice(0,7)).toLowerCase()+'">Conta de '+mesNome(d.mes_conta.slice(0,7)).toLowerCase()+'</span>':'')+'</span><span style="'+(c.entra_resultado?'':'color:var(--mut)')+'">'+esc(d.categoria)+'</span><span>'+(d.comprovante_path?pill('rec','clip','Comprovante'):pill('disp','pencil','Sem comprovante'))+'</span><span class="r" style="font-weight:600">'+brlh(+d.valor)+'</span></div>'}).join(''):(mostraAds?'':'<div class="er"><span></span><span class="sub">'+(S.fcat||q?'Nenhuma despesa com esse filtro.':'Nenhuma despesa neste mês.')+'</span></div>'));
+  var h=(mostraAds?'<div class="er"><span>mês</span><span class="l"><span class="chip sm neu">'+ic(catI('Ads'),15)+'</span><span style="font-weight:600" title="Anúncios lidos dos marketplaces">Anúncios lidos dos marketplaces</span></span><span title="Ads">Ads</span><span><span class="sti neu" title="Lançado automaticamente">'+ic('spark',16)+'</span></span><span class="r" style="font-weight:600">'+brlh(ad)+'</span></div>':'')+
+    (lista.length?lista.map(function(d){var c=catInfo(d.categoria);return '<div class="er" data-desp="'+d.id+'" style="cursor:pointer"><span>'+ddmm(d.data)+'</span><span class="l"><span class="chip sm neu">'+ic(catI(d.categoria),15)+'</span><span style="font-weight:600" title="'+esc(d.descricao)+'">'+esc(d.descricao)+'</span>'+(d.mes_conta&&d.data.slice(0,7)!==d.mes_conta.slice(0,7)?'<span class="sti att" title="Paga em '+ddmm(d.data)+', mas a conta é de '+mesNome(d.mes_conta.slice(0,7)).toLowerCase()+'">'+ic('cal',14)+'</span>':'')+'</span><span title="'+esc(d.categoria)+'" style="'+(c.entra_resultado?'':'color:var(--mut)')+'">'+esc(d.categoria)+'</span><span><span class="sti '+(d.comprovante_path?'rec':'att')+'" title="'+(d.comprovante_path?'Com comprovante':'Sem comprovante')+'">'+ic(d.comprovante_path?'clip':'alert',16)+'</span></span><span class="r" style="font-weight:600">'+brlh(+d.valor)+'</span></div>'}).join(''):(mostraAds?'':'<div class="er"><span></span><span class="sub">'+(S.fcat||q?'Nenhuma despesa com esse filtro.':'Nenhuma despesa neste mês.')+'</span></div>'));
   return h+'<div class="er tot"><span></span><span>Total'+(S.fcat||q?' do filtro':'')+'</span><span></span><span></span><span class="r">'+brlh(sum(lista,function(d){return +d.valor})+(mostraAds?ad:0))+'</span></div>';
 }
 function telaDespesas(){
@@ -1168,10 +1182,10 @@ function telaDespesas(){
   h+='<div class="g2 dsp grow1"><section class="card dockpad"><div class="ch">'+chip('cal','sai',1)+'<h2>Contas fixas</h2><div class="sp"></div>'+pill(pagas.length===C.length&&C.length?'pago':'neu','check',pagas.length+' de '+C.length+' pagas')+'</div>'+
     '<div class="bar1" role="img" aria-label="Contas fixas pagas"><span style="width:'+(C.length?pagas.length/C.length*100:0).toFixed(0)+'%;background:var(--pago)"></span></div>'+
     '<div class="scr">'+(corpoC||'<p class="sub">Nenhuma conta fixa cadastrada.</p>')+'</div></section>'+
-    '<section class="card dockpad"><div class="ch dch">'+chip('receipt','sai',1)+'<h2>Lançamentos de '+mesNome(S.ym).toLowerCase()+'</h2><div class="sp"></div><div class="seg" role="group" aria-label="Filtro"><button type="button" data-fd="todas" aria-pressed="'+(S.filtro==='todas')+'">Todas</button><button type="button" data-fd="res" aria-pressed="'+(S.filtro==='res')+'">'+ic('check',14)+'No resultado</button><button type="button" data-fd="fora" aria-pressed="'+(S.filtro==='fora')+'">Fora do resultado</button></div></div>'+
+    '<section class="card dockpad"><div class="ch dch">'+chip('receipt','sai',1)+'<h2>Lançamentos de '+mesNome(S.ym).toLowerCase()+'</h2><div class="sp"></div></div>'+
     '<div class="dflt"><label class="fld">Categoria<select class="selx" data-fcat aria-label="Filtrar por categoria"><option value="">Todas as categorias</option>'+S.cats.map(function(k){return '<option value="'+esc(k.nome)+'"'+(S.fcat===k.nome?' selected':'')+'>'+esc(k.nome)+'</option>'}).join('')+'</select></label>'+
     '<label class="fld grow">Buscar<input type="search" data-fq value="'+esc(S.fq||'')+'" placeholder="Nome da despesa, ex.: aluguel" autocomplete="off"></label>'+(S.fcat||S.fq?'<button type="button" class="btn sm" data-fclr>Limpar filtros</button>':'')+'</div>'+
-    '<div class="ext scr" style="--cols:68px minmax(0,1.5fr) minmax(0,.8fr) 140px 110px"><div class="eh"><span>Pago em</span><span>Descrição</span><span>Categoria</span><span>Origem</span><span class="r">Valor</span></div><div id="dlist" style="display:contents">'+corpoDesp()+'</div></div></section></div>';
+    '<div class="ext scr" style="--cols:56px minmax(0,1.6fr) minmax(0,.9fr) 32px 128px"><div class="eh"><span>Pago em</span><span>Descrição</span><span>Categoria</span><span></span><span class="r">Valor</span></div><div id="dlist" style="display:contents">'+corpoDesp()+'</div></div></section></div>';
   return h;
 }
 
