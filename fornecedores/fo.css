@@ -211,3 +211,49 @@ main tbody tr{transition:background 120ms}
 .pn-g .graf{flex:1;min-height:200px}
 :root:root main button,:root:root main button *{-webkit-text-fill-color:currentColor!important}
 @media (max-width:999px){:root:root .portfolio-totals{grid-template-columns:minmax(0,1fr)!important}:root:root .portfolio-totals strong{white-space:nowrap}}
+/* tabelas sem rolagem horizontal desnecessária (a partir de 901px; abaixo disso viram cartões) */
+@media (min-width:901px){
+  :root:root main .table{overflow-x:visible;padding:8px 16px 4px}
+  :root:root main table{white-space:normal;table-layout:auto;width:100%}
+  :root:root main th{white-space:normal;vertical-align:bottom;line-height:1.25;padding:14px 10px!important;font-size:12.5px!important}
+  :root:root main td{padding:14px 10px!important;font-size:14px}
+  :root:root main td:not(:first-child){white-space:nowrap}
+  :root:root main td:first-child{min-width:0}
+  :root:root main .statement-detail td,:root:root main .statement-detail th{padding:12px 8px!important}
+}
+
+/* blocos por mês, extrato e botões de operação (também no escuro) */
+:root:root .payment-month,:root:root .purchase-month,:root:root .purchase-order,:root:root .allocation-card,:root:root .supplier-statement{background:var(--card)!important;color:var(--ink)!important;border:0!important}
+:root:root .payment-month .table,:root:root .purchase-month .table,:root:root .purchase-orders .table{background:var(--soft)!important}
+:root:root .payment-month-totals,:root:root .purchase-month-totals,:root:root .purchase-order-totals{background:transparent!important;color:var(--ink)!important}
+:root:root .payment-month-totals *,:root:root .purchase-month-totals *{color:inherit}
+:root:root .payment-month h3,:root:root .payment-month strong,:root:root .purchase-month h3,:root:root .purchase-month strong{color:var(--ink)!important}
+:root:root .payment-month small,:root:root .purchase-month small,:root:root .payment-month .muted,:root:root .purchase-month .muted{color:var(--mut)!important}
+:root:root .operation-credit,:root:root .operation-cancel,:root:root .operation-buy:not(.hero *){background:var(--soft)!important;color:var(--ink)!important}
+:root:root .operation-pay{background:var(--destaque)!important;color:var(--no-destaque)!important}
+:root:root .statement-balance{background:var(--soft)!important;color:var(--ink)!important;border:0!important}
+:root:root .statement-balance *,:root:root .statement-top *,:root:root .statement-title *{color:inherit}
+:root:root .statement-balance small,:root:root .statement-top small,:root:root .statement-notes,:root:root .statement-notes *{color:var(--mut)!important}
+:root:root .statement-summary,:root:root .statement-closing,:root:root .statement-notes{background:transparent!important;border-color:var(--line)!important}
+:root:root .statement-top img,:root:root .statement-title img{filter:invert(1) hue-rotate(180deg)}
+:root:root[data-theme="light"] .statement-top img{filter:none}
+.cell-actions{display:flex!important;flex-wrap:wrap;gap:6px}
+@media (min-width:901px){
+  :root:root main td.cell-actions,:root:root main td:has(.cell-actions){white-space:normal}
+  :root:root main .statement-detail table{table-layout:auto}
+  :root:root main .statement-detail td{white-space:normal;font-size:13px}
+  :root:root main .statement-detail td:nth-child(n+3):nth-child(-n+7){white-space:nowrap}
+  :root:root main .statement-detail th,:root:root main .statement-detail td{padding:10px 6px!important}
+}
+@media (min-width:901px) and (max-width:1250px){:root:root .supplier-statement{padding:20px!important}:root:root main .statement-detail th,:root:root main .statement-detail td{padding:10px 4px!important}}
+@media (min-width:901px) and (max-width:1100px){
+  :root:root main td:not(:first-child),:root:root main td{white-space:normal!important;overflow-wrap:anywhere}
+  :root:root main th,:root:root main td{padding:10px 5px!important;font-size:12.5px!important}
+  :root:root main .table{padding:6px 10px 2px}
+  :root:root main .cell-actions .button,:root:root main .cell-actions button{padding:6px 10px;font-size:12px}
+}
+@media (min-width:901px) and (max-width:1100px){
+  :root:root main td{overflow-wrap:normal}
+  :root:root main td .pill,:root:root main td .badge,:root:root main td .status,:root:root main td [class*="status"],:root:root main td [class*="type"]{white-space:nowrap}
+  :root:root main td:nth-child(2),:root:root main td:nth-child(5){white-space:nowrap!important}
+}
