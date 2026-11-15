@@ -34,6 +34,7 @@ function temaAtual() {
 }
 
 export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
+  if (!document.documentElement.getAttribute('data-theme')) document.documentElement.setAttribute('data-theme', temaAtual());
   const sb = window.SB || createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
   const { data: s } = await sb.auth.getSession();
   const user = s?.session?.user;

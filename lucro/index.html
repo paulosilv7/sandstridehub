@@ -1,6 +1,6 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png"><link rel="apple-touch-icon" href="/favicon-192.png"><title>Lucro ao vivo · Sandstride</title>
 <meta name="theme-color" content="#EDEDEC">
-<script>try{var t=localStorage.getItem("sandstride-tema");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<script>try{var t=localStorage.getItem("sandstride-tema");if(t!=="dark"&&t!=="light")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <link rel="stylesheet" href="../css/shell.css">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,7 +10,7 @@
 /* Layout: a primeira tela inteira é um palco preto (número gigante e leve, estatísticas, gráfico com projeção do dia); abaixo, faixa de métricas, produtos em destaque, lojas, composição e pendências */
 :root{
   --bg:#EDEDEC; --card:#FFFFFF; --ink:#1A1A1A; --muted:#5E5E5E; --line:#E4E4E1; --chip:#EDEDEC; --hover:#F6F6F5;
-  --dock:#0A0A0A; --on-dark-muted:#8C8C88; --accent:#2A4FB3; --on-accent:#FFFFFF; --acc-claro:#A9C4FF; --sel:#2A4FB3; --accent-soft:#EDF3FF; --accent-ink:#A9C4FF;
+  --dock:#0A0A0A; --on-dark-muted:#8C8C88; --accent:#2A4FB3; --on-accent:#FFFFFF; --acc-claro:#A9C4FF; --sel:#2A4FB3; --accent-soft:#EDF3FF; --accent-ink:#2A4FB3;
   --good:#1E7B45; --good-bg:#DDF3E5; --bad:#B42318; --bad-bg:#FDE5E2; --warn:#8A5A00; --warn-bg:#FFF1CC; --info:#2C3E7A; --info-bg:#E4EAFB;
   --k-prod:#2B2B2B; --k-mkt:#4A63C4; --k-frete:#2F9C95; --k-imp:#E0A33B; --k-ger:#B5B5AF; --k-luc:#2E9D5B;
   --f:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
@@ -110,7 +110,7 @@ body{overflow-x:clip}
 .pf .ph{display:flex;align-items:center;gap:14px;margin-top:auto}
 .pf .nm{font-size:24px;font-weight:500;letter-spacing:-.4px}
 .pf .pv{font-size:clamp(36px,4.2vw,60px);margin-top:0}
-.pf .ds{font-size:13.5px;color:var(--accent-ink)}
+.pf .ds{font-size:13.5px;color:#C9DAFF}
 .pf .bar{height:4px;border-radius:2px;background:rgba(255,255,255,.22);overflow:hidden}
 .pf .bar span{display:block;height:100%;background:#fff;border-radius:2px}
 .pc2{background:var(--card);border-radius:26px;padding:20px 22px;display:flex;flex-direction:column;gap:8px}
@@ -216,6 +216,10 @@ body.sh-com{padding:0}
 /* foto do produto no ranking */
 .th.ft{background:var(--chip);overflow:hidden;padding:0}
 .th.ft img{width:100%;height:100%;object-fit:cover;display:block}
+/* dicas e textos que ficavam brancos no tema escuro */
+:root[data-theme="dark"] #tip{background:#242424;color:#fff;box-shadow:inset 0 0 0 1px #3A3A3A,0 8px 24px rgba(0,0,0,.5)}
+:root[data-theme="dark"] .cd .n{color:rgba(255,255,255,.85)}
+:root[data-theme="dark"] .cd.fut .n,:root[data-theme="dark"] .cd.fut .cv{color:#7A7A76}
 #toast{position:fixed;z-index:60;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--dock);color:#fff;border-radius:14px;padding:9px 16px;font-size:13px;font-weight:500;max-width:calc(100vw - 40px)}
 #toast[hidden]{display:none}
 
@@ -337,7 +341,7 @@ html.tv-on,html.tv-on body{overflow:hidden!important;scrollbar-width:none}html.t
 .cd .n{font-size:12.5px;font-weight:500;color:rgba(26,26,26,.7)}
 .cd .cv{font-size:13px;font-weight:500;white-space:nowrap}
 .cd.vz{background:transparent;pointer-events:none}
-.cd.fut{background:transparent;border:1.5px dashed var(--line);pointer-events:none}.cd.fut .n{color:#A8A8A4}
+.cd.fut{background:transparent;border:1.5px dashed var(--line);pointer-events:none}.cd.fut .n{color:#8A8A86}
 .cd.hoje{outline:2px solid var(--ink);outline-offset:-2px}
 .cd .mt{position:absolute;top:9px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 2px rgba(255,255,255,.7)}
 .cd .ab{position:absolute;top:8px;right:9px;font-size:9.5px;font-weight:500;letter-spacing:.3px;color:rgba(26,26,26,.55)}
@@ -394,7 +398,7 @@ html.tv-on,html.tv-on body{overflow:hidden!important;scrollbar-width:none}html.t
 .exf .gbtn{grid-column:1 / -1}
 .mhoje{font-size:12.5px;color:#D8D8D4;background:#0C0C0C;border-radius:14px;padding:9px 12px;line-height:1.45}
 .mhoje b{font-weight:500;color:#fff}
-.cd.fut .cv{font-size:11px;font-weight:400;color:#A8A8A4}
+.cd.fut .cv{font-size:11px;font-weight:400;color:#8A8A86}
 .pbk{height:40px;border:0;border-radius:20px;background:var(--card);padding:0 18px 0 14px;display:inline-flex;align-items:center;gap:8px;font-weight:500;font-size:14px}
 .pbk:hover{background:#F6F6F5}
 .calpg{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(280px,1fr);gap:14px;align-items:start}
