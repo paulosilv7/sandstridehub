@@ -2,7 +2,7 @@
    Autônomo: não depende de css/sistema.css nem de css/hub.css, e tudo usa o prefixo .sh- para não colidir com o css de cada ferramenta.
    Tema: html[data-theme="light"|"dark"] (o mesmo guardado pela Central em localStorage "sandstride-tema"). */
 :root{
-  --sh-lateral:#1A1A1A; --sh-ativo:#2F2F2F; --sh-suave:#A7A7A2; --sh-borda:#2F2F2F; --sh-destaque:#BCCBF5; --sh-no-destaque:#1A1A1A;
+  --sh-lateral:#1A1A1A; --sh-ativo:#2F2F2F; --sh-suave:#A7A7A2; --sh-borda:#2F2F2F; --sh-destaque:#2A4FB3; --sh-no-destaque:#FFFFFF; --sh-ponto:#A9C4FF;
   --sh-ease:cubic-bezier(.2,.7,.2,1);
 }
 :root[data-theme="dark"]{--sh-lateral:#121212;--sh-ativo:#2F2F2F;--sh-borda:#262626;--sh-suave:#9A9A9A}
@@ -17,7 +17,7 @@
 .sh-nv{display:flex;align-items:center;gap:12px;height:40px;width:100%;padding:0 11px;border:0;border-radius:12px;background:none;color:var(--sh-suave);font:500 13.5px/1 'Plus Jakarta Sans',system-ui,sans-serif;text-align:left;text-decoration:none;white-space:nowrap;cursor:pointer;transition:background 250ms var(--sh-ease),color 250ms}
 .sh-nv:hover{color:#fff}
 .sh-nv[aria-current="page"]{background:var(--sh-ativo);color:#fff}
-.sh-nv[aria-current="page"]::after{content:"";margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--sh-destaque);flex:none}
+.sh-nv[aria-current="page"]::after{content:"";margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--sh-ponto);flex:none}
 .sh-sub{padding-left:30px;height:36px;font-size:13px}
 .sh-sub .sh-i{width:16px;height:16px}
 .sh-gl{padding:14px 11px 4px;font:500 12px/1.4 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--sh-suave);white-space:nowrap;overflow:hidden}

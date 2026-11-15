@@ -6,7 +6,7 @@
   --fundo:#EDEDEC; --cartao:#FFFFFF; --elevado:#F4F4F2; --ativo:#E4E4E1; --borda:rgba(26,26,26,.10);
   --texto:#1A1A1A; --suave:#63635F; --palco:#121212; --lateral:#1A1A1A;
   /* destaque: um por quadro, nunca em dinheiro */
-  --destaque:#BCCBF5; --no-destaque:#1A1A1A; --foco:#2F6BEA;
+  --destaque:#2A4FB3; --no-destaque:#FFFFFF; --destaque-claro:#A9C4FF; --foco:#2F6BEA;
   /* significado único em todas as telas (preenchimentos, barras, faixas) */
   --recebido:#1F9D57; --areceber:#2F6BEA; --atencao:#B0730A; --saida:#D8433D;
   /* mesmos significados para TEXTO pequeno (contraste mínimo 4,5:1 sobre o fundo da tag) */
@@ -29,7 +29,7 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --fundo:#0A0A0A; --cartao:#161616; --elevado:#1F1F1F; --ativo:#2F2F2F; --borda:rgba(255,255,255,.09);
-    --texto:#FFFFFF; --suave:#9A9A9A; --palco:#000000; --lateral:#121212; --foco:#BCCBF5;
+    --texto:#FFFFFF; --suave:#9A9A9A; --palco:#000000; --lateral:#121212; --foco:#A9C4FF;
     --recebido:#5CD08A; --areceber:#6E9BFF; --atencao:#F2B544; --saida:#F0605A;
     --recebido-t:#5CD08A; --areceber-t:#6E9BFF; --atencao-t:#F2B544; --saida-t:#F0605A;
     --logo-a:none; --logo-b:block; color-scheme:dark;
@@ -37,7 +37,7 @@
 }
 :root[data-theme="dark"]{
   --fundo:#0A0A0A; --cartao:#161616; --elevado:#1F1F1F; --ativo:#2F2F2F; --borda:rgba(255,255,255,.09);
-  --texto:#FFFFFF; --suave:#9A9A9A; --palco:#000000; --lateral:#121212; --foco:#BCCBF5;
+  --texto:#FFFFFF; --suave:#9A9A9A; --palco:#000000; --lateral:#121212; --foco:#A9C4FF;
   --recebido:#5CD08A; --areceber:#6E9BFF; --atencao:#F2B544; --saida:#F0605A;
   --recebido-t:#5CD08A; --areceber-t:#6E9BFF; --atencao-t:#F2B544; --saida-t:#F0605A;
   --logo-a:none; --logo-b:block; color-scheme:dark;
