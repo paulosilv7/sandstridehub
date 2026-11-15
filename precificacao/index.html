@@ -375,7 +375,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))}
     <label class="busca-top"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.8"/><path d="m14 14 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="busca" type="search" placeholder="Buscar produto ou marca" aria-label="Buscar modelo ou marca" autocomplete="off"></label></div>
   <main class="main" id="app" aria-live="polite">
     <div class="head"><h1>Produtos</h1></div>
-    <div class="card"><p class="eyebrow">Carregando</p><p class="muted">Lendo produtos, lojas, canais, taxas e versões da planilha…</p><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
+    <div class="card"><p class="eyebrow">Carregando</p><p class="muted">Lendo produtos, lojas, canais, taxas e versões…</p><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
   </main>
   </div>
 </div>
@@ -393,8 +393,6 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))}
 <script>
 (function(){
 'use strict';
-var TESTE=/[?&]base=teste\b/.test(location.search);
-var SHEET_ID=TESTE?'10o_H9kqwgwKMrKRpUKvS_tG0oQPvzFEy_7rCJJWoXSs':'1wBNFiJSXASoe7ru_E-zo_JhhBnyK8cqegiTiTUYBFGg'; // oficial ou [TESTE]
 function api(corpo){return window.SB.auth.getSession().then(function(s){var tk=s&&s.data&&s.data.session&&s.data.session.access_token;if(!tk){var e=new Error('Sua sessão expirou. Entre de novo.');e.code='sessao';throw e;}return fetch(window.FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk,'apikey':window.SB_KEY},body:JSON.stringify(corpo)});}).then(function(r){return r.json().catch(function(){return {ok:false,erro:'Resposta inválida do servidor.'};}).then(function(j){if(!j.ok){var e=new Error(j.erro||'Erro no servidor.');e.code='servidor';throw e;}return j;});});}
 function urlImagem(id){return (window.ASSETS_CONHECIDOS||{})[id]?('assets/'+id+'.png'):(window.ASSETS_URL+id);}
 var SHEETS='Google Sheets', DRIVE='Google Drive';
@@ -479,13 +477,73 @@ var TAGI={
 };
 
 /* ---------- conector ---------- */
-function erroTexto(e){ return (e&&e.message)?e.message:'Não foi possível falar com a planilha. Tente de novo em alguns segundos.'; }
-function ler(range,tentou,sid){
-  return api({op:'get',spreadsheetId:sid||SHEET_ID,range:range}).then(function(r){return r.values||[];})
-  .catch(function(e){if(!tentou&&e&&e.code==='servidor'){return new Promise(function(ok){setTimeout(ok,1200+Math.random()*600);}).then(function(){return ler(range,true,sid);});}throw e;});
+function erroTexto(e){ return (e&&e.message)?e.message:'Não foi possível falar com o banco de dados. Tente de novo em alguns segundos.'; }
+/* Os dados da Precificação moram no banco (tabelas prec_*). Estas funções mantêm o formato antigo de "planilha"
+   (aba!A1:M300 → matriz de textos) para o resto do app continuar igual; só o estoque ainda vem da planilha dele. */
+var PREC={
+ PRODUTOS:{t:'prec_produtos',h:['id_produto','nome','modelo','unidades','sku','custo','embalagem','ativo','observacoes','marca','modelo_estoque','composicao','foto'],ty:{unidades:'n',custo:'$',embalagem:'$',ativo:'b'}},
+ LOJAS:{t:'prec_lojas',h:['id_loja','nome','imposto_pct','atualizado_em','atualizado_por','observacoes'],ty:{imposto_pct:'%'}},
+ CUSTOS_GERAIS:{t:'prec_custos_gerais',h:['chave','nome','valor','unidade','atualizado_em','atualizado_por','observacoes'],ty:{valor:'n'}},
+ CANAIS:{t:'prec_canais',h:['id_canal','nome','ativo','imposto_pct','afiliado_pct','comissao_vendedor_pct','campanhas_pct','programa_frete_pct','ads_por_pedido','nfe_por_unidade','outros_por_pedido','frete_por_pedido','base_da_taxa','variante_padrao','taxas_conferidas_em','fonte','observacoes','regra_taxa_fixa','cor','sigla','logo','taxa_pedido','taxa_pedido_nome'],ty:{ativo:'b',imposto_pct:'%',afiliado_pct:'%',comissao_vendedor_pct:'%',campanhas_pct:'%',programa_frete_pct:'%',ads_por_pedido:'$',nfe_por_unidade:'$',outros_por_pedido:'$',frete_por_pedido:'$',taxa_pedido:'n'}},
+ TAXAS:{t:'prec_taxas',h:['id_canal','variante','preco_min','preco_max','comissao_pct','taxa_fixa','observacoes'],ty:{preco_min:'$',preco_max:'$',comissao_pct:'%',taxa_fixa:'$'}},
+ VERSOES:{t:'prec_versoes',h:['id_versao','id_produto','id_canal','nome','status','preco_venda','variante','desconto_pct','cupom','quantidade','frete','ads','outros_custos','embalagem','reembolso','cenario','lucro_na_criacao','criado_por','criado_em','atualizado_em','observacoes','custo','imposto_pct','afiliado_pct','nfe','ordem'],ty:{preco_venda:'n',desconto_pct:'%',cupom:'n',quantidade:'n',frete:'n',ads:'n',outros_custos:'n',embalagem:'n',reembolso:'n',lucro_na_criacao:'n',custo:'n',imposto_pct:'%',afiliado_pct:'%',nfe:'n',ordem:'n'}},
+ TESTES_PRECO:{t:'prec_testes_preco',h:['id_teste','id_produto','id_canal','status','data_inicio','data_fim','preco_anterior','preco_teste','lucro_previsto_unid','vendas_antes','vendas_durante','lucro_real_total','responsavel','conclusao','observacoes'],ty:{}},
+ HISTORICO:{t:'prec_historico',h:['data_hora','usuario','aba','chave','campo','valor_anterior','valor_novo','origem'],ty:{}},
+ SUGESTOES_TAXAS:{t:'prec_sugestoes_taxas',h:['id_sugestao','data','id_canal','tabela','variante','preco_min','campo','valor_atual','valor_sugerido','fonte','observacao','status'],ty:{}}
+};
+function pfmt(v,mn,mx){return v.toLocaleString('pt-BR',{minimumFractionDigits:mn,maximumFractionDigits:mx,useGrouping:false});}
+function celulaTxt(v,t){
+  if(v===null||v===undefined) return '';
+  if(t==='b') return v?'TRUE':'FALSE';
+  if(t==='$') return 'R$ '+pfmt(Number(v),2,6);
+  if(t==='%') return pfmt(Number((Number(v)*100).toPrecision(12)),2,6)+'%';
+  if(t==='n') return pfmt(Number(v),0,6);
+  return String(v);
 }
-function gravar(range,values){return api({op:'update',spreadsheetId:SHEET_ID,range:range,values:values});}
-function anexar(range,values){return api({op:'append',spreadsheetId:SHEET_ID,range:range,values:values});}
+function celulaDb(v,t){
+  if(v===null||v===undefined||v==='') return null;
+  if(t==='b') return bool(v);
+  if(t==='$'||t==='%'||t==='n'){ var n=num(v); return n===null?null:n; }
+  return String(v);
+}
+function colNum(L){var n=0;for(var i=0;i<L.length;i++)n=n*26+(L.charCodeAt(i)-64);return n-1;}
+function alvoRange(range){
+  var m=/^([A-Z_]+)!([A-Z]+)(\d+)?(?::([A-Z]+)(\d+)?)?$/.exec(range); if(!m||!PREC[m[1]]) throw new Error('Intervalo desconhecido: '+range);
+  var c0=colNum(m[2]), c1=m[4]?colNum(m[4]):c0;
+  return {aba:m[1],cfg:PREC[m[1]],c0:c0,c1:c1,r0:m[3]?+m[3]:null,r1:m[5]?+m[5]:(m[3]?+m[3]:null)};
+}
+function erroBanco(e){var x=new Error((e&&e.message)||'Não consegui falar com o banco de dados.');x.code='servidor';return x;}
+function ler(range,tentou,sid){
+  if(sid){ // planilha do estoque (somente leitura)
+    return api({op:'get',spreadsheetId:sid,range:range}).then(function(r){return r.values||[];})
+    .catch(function(e){if(!tentou&&e&&e.code==='servidor'){return new Promise(function(ok){setTimeout(ok,1200+Math.random()*600);}).then(function(){return ler(range,true,sid);});}throw e;});
+  }
+  var a=alvoRange(range), cfg=a.cfg;
+  return window.SB.from(cfg.t).select('*').order('linha').range(0,9999).then(function(r){
+    if(r.error) throw erroBanco(r.error);
+    var out=[cfg.h.slice()], pos={};
+    (r.data||[]).forEach(function(x){pos[x.linha]=x;});
+    var max=0; (r.data||[]).forEach(function(x){if(x.linha>max)max=x.linha;});
+    for(var ln=2;ln<=max;ln++){ var x=pos[ln]; out.push(cfg.h.map(function(k){return x?celulaTxt(x[k],cfg.ty[k]):'';})); }
+    return out;
+  });
+}
+function gravar(range,values){
+  var a=alvoRange(range), cfg=a.cfg, sb=window.SB.from(cfg.t), jobs=[];
+  (values||[]).forEach(function(linhaV,i){
+    var patch={}, todos=true;
+    linhaV.forEach(function(v,j){ var k=cfg.h[a.c0+j]; if(!k) return; var d=celulaDb(v,cfg.ty[k]); patch[k]=d; if(d!==null) todos=false; });
+    var row=a.r0+i, cobreTudo=a.c0===0&&linhaV.length>=cfg.h.length;
+    jobs.push((todos&&cobreTudo)?window.SB.from(cfg.t).delete().eq('linha',row):window.SB.from(cfg.t).update(patch).eq('linha',row));
+  });
+  return Promise.all(jobs).then(function(rs){rs.forEach(function(r){if(r.error)throw erroBanco(r.error);});return {ok:true};});
+}
+function anexar(range,rows){
+  var a=alvoRange(range), cfg=a.cfg;
+  var regs=(rows||[]).map(function(r){var o={};cfg.h.forEach(function(k,j){if(j<r.length)o[k]=celulaDb(r[j],cfg.ty[k]);});return o;});
+  if(!regs.length) return Promise.resolve({ok:true});
+  return window.SB.from(cfg.t).insert(regs).then(function(r){if(r.error)throw erroBanco(r.error);return {ok:true};});
+}
 function hist(aba,chave,campo,ant,novo,origem){return [agora(),'App',aba,chave,campo,ant,novo,origem];}
 function registrar(linhas){ if(!linhas.length) return Promise.resolve(true); return anexar('HISTORICO!A:H',linhas).then(function(){return true;}).catch(function(){return false;}); }
 function seq(ops){var p=Promise.resolve();ops.forEach(function(o){p=p.then(function(){return gravar(o[0],o[1]);});});return p;}
@@ -687,7 +745,7 @@ function salvarProd(){
   if(!(custo>0)){msg.innerHTML='<p class="note err">Informe o custo do par.</p>';return;}
   if(D.produtos.some(function(p){return p.modelo.toLowerCase()===nome.toLowerCase();})){msg.innerHTML='<p class="note err">Já existe um modelo com esse nome. Os modelos do estoque já aparecem sozinhos.</p>';return;}
   var id=slug(nome).replace(/_/g,'')+'-1';
-  S.busy=true; msg.innerHTML='<p class="note warn">Gravando na planilha…</p>';
+  S.busy=true; msg.innerHTML='<p class="note warn">Gravando…</p>';
   anexar('PRODUTOS!A:M',[linhaProd({id_produto:id,nome:nome,modelo:nome,unidades:1,custo:custo,ativo:true,observacoes:'Criado pelo app em '+hoje(),marca:marca})])
   .then(function(){return registrar([hist('PRODUTOS',id,'novo produto','',nome+' · '+brl(custo),'Adicionou o produto '+nome+(marca?' ('+marca+')':''))]);})
   .then(function(){return carregarTudo();}).then(function(){S.busy=false;S.addProd=false;S.modelo=nome;S.produto=id;S.canal=null;S.sel=null;S.ed=null;irPara('produto');toast(nome+' adicionado. Crie a primeira versão de preço em cada marketplace.','ok');})
@@ -704,7 +762,7 @@ function formEditProd(m,p){
   var travado=!!p.est&&p.unid===1;
   h+='<div class="field"><label for="e-custo">Custo de '+pares(p.unid)+'</label><div class="inp"><span>R$</span><input id="e-custo" inputmode="decimal" value="'+(lig&&p.unid>1&&!p.custoProprio?'':fmt(p.custo))+'" placeholder="'+(lig?fmt(p.custoBase)+(p.mix?' (soma dos pares)':' (par × '+p.unid+')'):'0,00')+'"'+(travado?' disabled':'')+'></div>'+(lig&&p.unid>1?'<p class="sub" style="margin:6px 0 0">'+(p.mix?'Vazio usa a soma do custo dos pares.':'Vazio usa o custo do par do estoque vezes '+p.unid+'.')+'</p>':'')+'</div>';
   h+='<div class="field" style="align-self:end"><button type="button" class="btn dark" style="width:100%" data-a="salvarEditProd">Salvar</button></div></div>';
-  h+='<div id="e-msg"></div><div class="rem"><span class="sub">Remover do app (as versões ficam guardadas na planilha):</span><button type="button" class="btn ghost" data-a="remProd" data-v="opcao">Só '+pares(p.unid)+'</button><button type="button" class="btn ghost" data-a="remProd" data-v="modelo">'+esc(m.nome)+' inteiro</button></div></div>';
+  h+='<div id="e-msg"></div><div class="rem"><span class="sub">Remover do app (as versões ficam guardadas):</span><button type="button" class="btn ghost" data-a="remProd" data-v="opcao">Só '+pares(p.unid)+'</button><button type="button" class="btn ghost" data-a="remProd" data-v="modelo">'+esc(m.nome)+' inteiro</button></div></div>';
   return h;
 }
 function salvarEditProd(){
@@ -718,7 +776,7 @@ function salvarEditProd(){
   var pre=Promise.resolve();
   if(S.fotoTmp!==undefined){ var iF=D.prodHdr.indexOf('foto'), nova=S.fotoTmp||'', ant=(m.produtos.find(function(x){return x.foto;})||{}).foto||'';
     if(nova!==ant){
-      if(iF<0){document.getElementById('e-msg').innerHTML='<p class="note err">A planilha não tem a coluna foto na aba PRODUTOS.</p>';return;}
+      if(iF<0){document.getElementById('e-msg').innerHTML='<p class="note err">Não foi possível gravar a foto do produto.</p>';return;}
       m.produtos.forEach(function(x){ if(x.row) ops.push(['PRODUTOS!'+col(iF)+x.row,[[nova]]]); });
       var vir=m.produtos.filter(function(x){return x.virtual;}); if(vir.length) pre=Promise.all(vir.map(function(x){return garantirProduto(x,true,{foto:nova});}));
       H.push(hist('PRODUTOS',m.nome,'foto',ant?'tinha foto':'sem foto',nova?'foto nova':'sem foto',(nova?'Trocou a foto do ':'Tirou a foto do ')+m.nome));
@@ -927,15 +985,15 @@ function renderPainel(){var pn=document.getElementById('panel');if(pn){pn.innerH
 /* ---------- gravação de versões ---------- */
 function o(x){return x===null||x===undefined?'':x;}
 function linha(id,cat,v,r){return [id,v.prod,v.canal,brl(v.preco),cat,v.preco,v.variante||'',v.desc,v.cupom,1,o(v.frete),o(v.ads),o(v.outros),o(v.emb),v.reemb||0,'',Math.round(r.lucro*100)/100,'App',agora(),agora(),'',o(v.custo),o(v.imp),o(v.af),o(v.nfe)];}
-function falha(err){S.busy=false;S.msg={t:'err',x:erroTexto(err)+' Confira a planilha antes de tentar de novo: parte da gravação pode ter acontecido.'};atualizarPainel();}
+function falha(err){S.busy=false;S.msg={t:'err',x:erroTexto(err)+' Confira os dados antes de tentar de novo: parte da gravação pode ter acontecido.'};atualizarPainel();}
 function salvarVersao(acao){
   var e=S.ed, v=edV(); if(acao!=='arquivar'&&!(v.preco>0)){S.msg={t:'err',x:'Informe um preço de venda maior que zero.'};atualizarPainel();return;}
-  S.busy=true;S.msg={t:'warn',x:'Gravando na planilha…'};atualizarPainel();
+  S.busy=true;S.msg={t:'warn',x:'Gravando…'};atualizarPainel();
   var H=[], texto='', novoSel=e.id;
   carregarTudo().then(function(){
     var r=calc(v), nomeP=produto(S.produto).modelo+' '+pares(produto(S.produto).unid)+' · '+canal(S.canal).nome;
     var me=e.id?D.versoes.find(function(x){return x.id===e.id;}):null;
-    if(e.id&&!me) throw {code:'tool_error',message:'a versão não foi encontrada na planilha'};
+    if(e.id&&!me) throw {code:'tool_error',message:'a versão não foi encontrada'};
     if(acao==='arquivar'){
       H.push(hist('VERSOES',me.id,'status',me.status,'Arquivada','Arquivou a versão de '+brl(me.preco)+' ('+nomeP+')'));
       texto='Versão de '+brl(me.preco)+' arquivada.'; novoSel=null;
@@ -1042,7 +1100,7 @@ function salvarMkt(){
   var cid=c?c.id:slug(nome);
   if(!c&&D.canaisAll.some(function(x){return x.id===cid&&x.ativo;})){msg.innerHTML='<p class="note err">Já existe um marketplace com esse nome.</p>';return;}
   var dados={id_canal:cid,nome:nome,ativo:true,imposto_pct:'',afiliado_pct:inNum(val('m-af'))/100,comissao_vendedor_pct:c?c.cv:0,campanhas_pct:c?c.camp:0,programa_frete_pct:inNum(val('m-pf'))/100,ads_por_pedido:'',nfe_por_unidade:'',outros_por_pedido:'',frete_por_pedido:inNum(val('m-frete')),base_da_taxa:val('m-base'),variante_padrao:faixas[0].variante,taxas_conferidas_em:hoje(),fonte:'Configurações do app',observacoes:c?'':'Criado pelo app em '+hoje(),regra_taxa_fixa:val('m-regra'),taxa_pedido:inNum(val('m-tp'))||0,taxa_pedido_nome:val('m-tpn'),cor:val('m-cor'),sigla:(val('m-sigla')||nome.slice(0,2)).toUpperCase(),logo:S.logoTmp!==undefined?S.logoTmp:(c?c.logo:'')};
-  S.busy=true; msg.innerHTML='<p class="note warn">Gravando na planilha…</p>';
+  S.busy=true; msg.innerHTML='<p class="note warn">Gravando…</p>';
   var ops=[], antigo=c?D.canaisAll.find(function(x){return x.id===c.id;}):D.canaisAll.find(function(x){return x.id===cid;});
   var linhaC=D.canaisHdr.map(function(k){return dados[k]!==undefined?dados[k]:'';});
   var p;
@@ -1055,7 +1113,7 @@ function salvarMkt(){
     return seq(up).then(function(){return novas.length?anexar('TAXAS!A:G',novas):null;});
   }).then(function(){return registrar([hist('CANAIS / TAXAS',cid,'',c?'':'novo',faixas.length+' faixas','Salvou o marketplace '+nome+' em Configurações')]);})
   .then(function(){return carregarTudo();}).then(function(){S.busy=false;S.cfg=cid;S.logoTmp=undefined;render();toast(c?nome+' salvo.':nome+' adicionado. Ele já aparece no Início.','ok');})
-  .catch(function(e){S.busy=false;msg.innerHTML='<p class="note err">'+esc(erroTexto(e))+' Confira a planilha: parte pode ter sido gravada.</p>';});
+  .catch(function(e){S.busy=false;msg.innerHTML='<p class="note err">'+esc(erroTexto(e))+' Confira os dados: parte pode ter sido gravada.</p>';});
 }
 var formCache=null;
 function guardarForm(){var f=document.getElementById('mform');if(!f){formCache=null;return;}formCache={};f.querySelectorAll('input[id],select[id]').forEach(function(x){if(x.type!=='file')formCache[x.id]=x.value;});formCache.__faixas=f.querySelector('#m-faixas tbody').innerHTML;formCache.__vals=[].slice.call(f.querySelectorAll('#m-faixas tbody input')).map(function(x){return x.value;});}
@@ -1070,7 +1128,7 @@ function enviarLogo(file){
 }
 function removerMkt(id,confirmado){
   var c=canal(id), msg=document.getElementById('m-msg');
-  if(!confirmado){msg.innerHTML='<div class="note warn">'+esc(c.nome)+' vai sair do Início e da precificação. As versões ficam guardadas na planilha.<div class="choice"><button type="button" data-a="removerMktOk" data-v="'+esc(id)+'">Remover</button><button type="button" data-a="cancelRem">Cancelar</button></div></div>';return;}
+  if(!confirmado){msg.innerHTML='<div class="note warn">'+esc(c.nome)+' vai sair do Início e da precificação. As versões ficam guardadas.<div class="choice"><button type="button" data-a="removerMktOk" data-v="'+esc(id)+'">Remover</button><button type="button" data-a="cancelRem">Cancelar</button></div></div>';return;}
   var i=D.canaisHdr.indexOf('ativo'); S.busy=true;
   gravar('CANAIS!'+col(i)+c.row,[[false]]).then(function(){return registrar([hist('CANAIS',c.id,'ativo','TRUE','FALSE','Removeu o marketplace '+c.nome+' do app')]);}).then(function(){return carregarTudo();}).then(function(){S.busy=false;S.cfg=null;render();toast(c.nome+' removido do app.','ok');}).catch(function(e){S.busy=false;toast(erroTexto(e),'err');});
 }
@@ -1086,7 +1144,7 @@ function salvarGeral(){
     ops.push(['CUSTOS_GERAIS!C'+g.row,[[val]]]); ops.push(['CUSTOS_GERAIS!E'+g.row+':G'+g.row,[[agora(),'App','']]]); H.push(hist('CUSTOS_GERAIS',g.chave,'valor',brl(g.valor),brl(val),'Atualizou '+g.nome.toLowerCase()+' (custo geral)')); });
   if(!ops.length){toast('Nenhum custo geral foi alterado.','info');return;}
   S.busy=true;
-  seq(ops).then(function(){return registrar(H);}).then(function(){return carregarTudo();}).then(function(){S.busy=false;render();toast(H.length+(H.length>1?' custos gerais salvos.':' custo geral salvo.')+' Todas as versões já usam o valor novo.','ok');}).catch(function(e){S.busy=false;toast(erroTexto(e)+' Confira a planilha.','err');});
+  seq(ops).then(function(){return registrar(H);}).then(function(){return carregarTudo();}).then(function(){S.busy=false;render();toast(H.length+(H.length>1?' custos gerais salvos.':' custo geral salvo.')+' Todas as versões já usam o valor novo.','ok');}).catch(function(e){S.busy=false;toast(erroTexto(e)+' Confira os dados.','err');});
 }
 
 
@@ -1133,7 +1191,7 @@ function salvarMix(){
   var comp=L.map(function(x){return x.id+':'+x.n;}).join(';'), tot=L.reduce(function(a,x){return a+x.n;},0), id='MIX-'+slug(nome).replace(/_/g,'').slice(0,24);
   while(D.produtos.some(function(p){return p.id===id;})) id+='X';
   var vir=L.map(function(x){return produto(x.id);}).filter(function(p){return p.virtual;});
-  S.busy=true; msg.innerHTML='<p class="note warn">Gravando na planilha…</p>';
+  S.busy=true; msg.innerHTML='<p class="note warn">Gravando…</p>';
   Promise.all(vir.map(function(p){return garantirProduto(p);}))
   .then(function(){return anexar('PRODUTOS!A:M',[linhaProd({id_produto:id,nome:nome,modelo:nome,unidades:tot,custo:'',ativo:true,observacoes:'Kit misto criado pelo app em '+hoje(),marca:'Kit misto',modelo_estoque:'',composicao:comp})]);})
   .then(function(){return registrar([hist('PRODUTOS',id,'novo kit misto','',nome+' · '+comp,'Criou o kit misto '+nome)]);})
@@ -1201,7 +1259,7 @@ function loteTabela(vs){
   var sel=linhas.filter(function(x){return x.on;}), negAntes=sel.filter(function(x){return x.r.lucro<0;}).length, negDepois=sel.filter(function(x){return x.r2.lucro<0;}).length;
   var lA=sel.reduce(function(a,x){return a+x.r.lucro;},0), lD=sel.reduce(function(a,x){return a+x.r2.lucro;},0);
   var h='<div class="lote-sum"><div><span class="lbl">Versões selecionadas</span><b>'+sel.length+' de '+linhas.length+'</b></div><div><span class="lbl">Lucro somado por venda</span><b>'+brl(lA)+' → <span class="'+(lD<lA?'negc':'pos')+'">'+brl(lD)+'</span></b></div><div><span class="lbl">No prejuízo</span><b>'+negAntes+' → <span class="'+(negDepois>negAntes?'negc':'')+'">'+negDepois+'</span></b></div><div class="lote-acts">';
-  if(L.conf){ h+='<span class="sub" style="max-width:280px">'+(L.conf==='atualizar'?'O preço de '+sel.length+' versões será trocado na planilha.':sel.length+' versões novas serão criadas em Testando. As atuais não mudam.')+'</span><button type="button" class="btn dark" data-a="loteOk">Confirmar</button><button type="button" class="btn ghost" data-a="loteNao">Cancelar</button>'; }
+  if(L.conf){ h+='<span class="sub" style="max-width:280px">'+(L.conf==='atualizar'?'O preço de '+sel.length+' versões será trocado.':sel.length+' versões novas serão criadas em Testando. As atuais não mudam.')+'</span><button type="button" class="btn dark" data-a="loteOk">Confirmar</button><button type="button" class="btn ghost" data-a="loteNao">Cancelar</button>'; }
   else h+='<button type="button" class="btn" data-a="loteNovas"'+(sel.length?'':' disabled')+'>Criar como novas em Testando</button><button type="button" class="btn dark" data-a="loteAtualizar"'+(sel.length?'':' disabled')+'>Atualizar preços</button>';
   h+='</div></div>';
   h+='<div class="card tbl"><table class="lined lote-t"><thead><tr><th style="width:36px"><input type="checkbox" id="l-todos" aria-label="Marcar todas"'+(sel.length===linhas.filter(function(x){return x.np!==null&&Math.abs(x.np-x.v.preco)>=0.005;}).length&&sel.length?' checked':'')+'></th><th>Produto</th><th>Canal</th><th>Categoria</th><th class="r">Preço atual</th><th class="r">Novo preço</th><th class="r">Lucro</th><th class="r">Margem</th></tr></thead><tbody>';
@@ -1227,7 +1285,7 @@ function aplicarLote(){
   var L=S.lote, modo=L.conf;
   var sel=loteBase().map(function(v){var np=novoPreco(v);return {v:v,np:np};}).filter(function(x){return !L.fora[x.v.id]&&x.np!==null&&Math.abs(x.np-x.v.preco)>=0.005;});
   if(!sel.length){L.conf=null;atualizarLote();return;}
-  S.busy=true; document.getElementById('lote-res').insertAdjacentHTML('afterbegin','<p class="note warn" role="status">Gravando '+sel.length+' versões na planilha…</p>');
+  S.busy=true; document.getElementById('lote-res').insertAdjacentHTML('afterbegin','<p class="note warn" role="status">Gravando '+sel.length+' versões…</p>');
   var desc=(L.tipo==='margem'?'margem de '+L.valor+'%':(L.tipo==='pct'?L.valor+'%':(L.tipo==='fixo'?'preço definido em R$ '+L.valor:'R$ '+L.valor)))+(L.arred!=='nao'&&L.tipo!=='fixo'?', final ,'+L.arred:''), H=[], pr;
   if(modo==='atualizar'){
     var ops=[]; sel.forEach(function(x){ ops.push(['VERSOES!D'+x.v.row,[[brl(x.np)]]]); ops.push(['VERSOES!F'+x.v.row,[[x.np]]]); ops.push(['VERSOES!T'+x.v.row,[[agora()]]]);
@@ -1240,7 +1298,7 @@ function aplicarLote(){
   }
   pr.then(function(){return registrar(H);}).then(function(){return carregarTudo();})
   .then(function(){S.busy=false;L.conf=null;L.fora={};render();toast(modo==='atualizar'?sel.length+' preços atualizados. Lembre de mudar também nos marketplaces.':sel.length+' versões criadas em Testando.','ok');})
-  .catch(function(e){S.busy=false;L.conf=null;render();toast(erroTexto(e)+' Confira a planilha: parte da gravação pode ter acontecido.','err');});
+  .catch(function(e){S.busy=false;L.conf=null;render();toast(erroTexto(e)+' Confira os dados: parte da gravação pode ter acontecido.','err');});
 }
 
 /* ---------- render e eventos ---------- */
@@ -1382,7 +1440,6 @@ const app = document.getElementById('app');
 function aviso(titulo, texto, botao, destino) {
   app.innerHTML = '<div class="head"><h1>' + titulo + '</h1></div><div class="card"><p class="muted">' + texto + '</p><div class="btns" style="margin-top:14px"><a class="btn dark" style="display:inline-flex;align-items:center;text-decoration:none" href="' + destino + '">' + botao + '</a></div></div>';
 }
-if (/[?&]base=teste\b/.test(location.search)) document.getElementById('aviso-teste').hidden = false;
 (async () => {
   const { data } = await sb.auth.getSession();
   const user = data?.session?.user;
