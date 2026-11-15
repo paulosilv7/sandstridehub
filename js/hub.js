@@ -26,15 +26,32 @@ const APPS = [
   { id: 'ads', nome: 'Gestor de Ads', desc: 'Gastos e resultados dos anúncios pagos em cada marketplace.', breve: true,
     icone: '<path d="M4 20V10m6 10V4m6 16v-7m5 7H3"/>' },
 ];
+const GRUPOS = [['Vender', ['lucro', 'precificacao', 'ads']], ['Atender', ['chat', 'devolucoes']], ['Operar', ['estoque', 'financeiro', 'fornecedores']]];
+const FAVORITOS = ['lucro', 'chat', 'devolucoes', 'financeiro'];
+const IC = {
+  casa: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  lua: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.500z"/>',
+  sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.900 4.900l1.400 1.400M17.700 17.700l1.400 1.400M2 12h2M20 12h2M4.900 19.100l1.400-1.400M17.700 6.300l1.400-1.400"/>',
+  sair: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  lado: '<path d="M4 4h16v16H4zM9 4v16"/>',
+  seta: '<path d="M7 17 17 7M8 7h9v9"/>',
+  relogio: '<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/>',
+  alerta: '<path d="M12 4 2.500 20h19zM12 10v4M12 17h.01"/>',
+  check: '<path d="M5 12.500 10 17 19 7"/>',
+  usuarios: '<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM21 21v-2a4 4 0 0 0-3-3.900M16 3.100a4 4 0 0 1 0 7.800"/>'
+};
+const svg = (d, t = 18) => `<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const logo = () => '<img class="logo-a" src="img/sandstride-escuro.png" alt="Sandstride"><img class="logo-b" src="img/sandstride.png" alt="">';
+const msgIcone = (tipo) => svg(tipo === 'ok' ? IC.check : IC.alerta);
 let user = null, eu = null, acessos = new Set();
 const proximo = new URLSearchParams(location.search).get('next');
 
 function telaLogin(msg = '', tipo = 'erro', modo = 'entrar') {
   const rec = modo === 'recuperar';
-  $('raiz').innerHTML = `<div class="login"><form class="login-card" id="f" novalidate><img src="img/sandstride.png" alt="Sandstride"><div style="text-align:center"><h2>Central Sandstride</h2><p class="sub" style="margin:4px 0 0">${rec ? 'Informe seu e-mail para receber o link de nova senha.' : 'Entre com o e-mail e a senha da equipe.'}</p></div>` +
-    (msg ? `<p class="${tipo}" role="alert">${esc(msg)}</p>` : '') +
-    '<label class="campo"><span class="eyebrow">E-mail</span><input id="e" type="email" autocomplete="username" required></label>' +
-    (rec ? '' : '<label class="campo"><span class="eyebrow">Senha</span><input id="s" type="password" autocomplete="current-password" required></label>') +
+  $('raiz').innerHTML = `<div class="login"><form class="login-card" id="f" novalidate>${logo()}<div class="titulo"><h2>Central Sandstride</h2><p class="sub">${rec ? 'Informe seu e-mail para receber o link de nova senha.' : 'Entre com o e-mail e a senha da equipe.'}</p></div>` +
+    (msg ? `<p class="${tipo}" role="alert">${msgIcone(tipo)}<span>${esc(msg)}</span></p>` : '') +
+    '<label class="campo"><span class="rot">E-mail</span><input id="e" type="email" autocomplete="username" required></label>' +
+    (rec ? '' : '<label class="campo"><span class="rot">Senha</span><input id="s" type="password" autocomplete="current-password" required></label>') +
     `<button class="btn dark" type="submit">${rec ? 'Enviar link' : 'Entrar'}</button><button type="button" class="link" id="troca">${rec ? 'Voltar para o login' : 'Esqueci a senha'}</button></form></div>`;
   $('troca').onclick = () => telaLogin('', 'erro', rec ? 'entrar' : 'recuperar');
   $('f').onsubmit = async (ev) => {
@@ -51,9 +68,9 @@ function telaLogin(msg = '', tipo = 'erro', modo = 'entrar') {
   };
 }
 function telaNovaSenha(msg = '') {
-  $('raiz').innerHTML = `<div class="login"><form class="login-card" id="f" novalidate><img src="img/sandstride.png" alt="Sandstride"><h2 style="text-align:center">Crie sua senha</h2><p class="sub" style="margin:0;text-align:center">Pelo menos 8 caracteres.</p>` +
-    (msg ? `<p class="erro" role="alert">${esc(msg)}</p>` : '') +
-    '<label class="campo"><span class="eyebrow">Nova senha</span><input id="a" type="password" autocomplete="new-password"></label><label class="campo"><span class="eyebrow">Repita a senha</span><input id="b" type="password" autocomplete="new-password"></label><button class="btn dark" type="submit">Salvar e entrar</button></form></div>';
+  $('raiz').innerHTML = `<div class="login"><form class="login-card" id="f" novalidate>${logo()}<div class="titulo"><h2>Crie sua senha</h2><p class="sub">Pelo menos 8 caracteres.</p></div>` +
+    (msg ? `<p class="erro" role="alert">${msgIcone('erro')}<span>${esc(msg)}</span></p>` : '') +
+    '<label class="campo"><span class="rot">Nova senha</span><input id="a" type="password" autocomplete="new-password"></label><label class="campo"><span class="rot">Repita a senha</span><input id="b" type="password" autocomplete="new-password"></label><button class="btn dark" type="submit">Salvar e entrar</button></form></div>';
   $('f').onsubmit = async (ev) => {
     ev.preventDefault();
     const a = $('a').value;
@@ -70,11 +87,6 @@ function avatar(p, nome, cls = '') {
   const u = fotoUrl(p);
   return u ? `<img class="av ${cls}" src="${esc(u)}" alt="">` : `<span class="av ${cls}" aria-hidden="true">${esc(String(nome || '?').charAt(0).toUpperCase())}</span>`;
 }
-function topo() {
-  return `<header class="top"><img src="img/sandstride.png" alt="Sandstride"><span class="sp"></span>` +
-    `<label class="meu-av" title="Trocar minha foto" for="foto">${avatar(eu.foto_path, eu.nome, 'g')}<span class="cam" aria-hidden="true">+</span></label><input id="foto" class="sr" type="file" accept="image/*">` +
-    `<span class="eu">${esc(eu.nome)} · ${eu.papel === 'admin' ? 'Administrador' : 'Atendente'}</span><button class="btn ghost" id="sair" type="button">Sair</button></header>`;
-}
 function reduzir(file) {
   return new Promise((ok, falha) => {
     const img = new Image(), url = URL.createObjectURL(file);
@@ -90,10 +102,11 @@ function reduzir(file) {
   });
 }
 async function trocarFoto(file) {
-  const label = document.querySelector('.meu-av');
+  const labels = [...document.querySelectorAll('.meu-av')];
+  const marca = (fn) => labels.forEach(fn);
   try {
     if (!file.type.startsWith('image/')) throw new Error('tipo');
-    label.classList.add('envia');
+    marca((l) => l.classList.add('envia'));
     const blob = await reduzir(file);
     const path = `${user.id}/${Date.now()}.jpg`;
     const { error } = await sb.storage.from('avatares').upload(path, blob, { contentType: 'image/jpeg' });
@@ -105,9 +118,7 @@ async function trocarFoto(file) {
     await tela();
   } catch (e) {
     console.error(e);
-    label.classList.remove('envia');
-    label.title = 'Não consegui enviar a foto. Use uma imagem JPG, PNG ou WEBP.';
-    label.classList.add('erro-foto');
+    marca((l) => { l.classList.remove('envia'); l.title = 'Não consegui enviar a foto. Use uma imagem JPG, PNG ou WEBP.'; l.classList.add('erro-foto'); });
   }
 }
 const podeAbrir = (id) => {
@@ -115,31 +126,117 @@ const podeAbrir = (id) => {
   if (app?.usuarios) return app.usuarios.includes(user.id);
   return eu.papel === 'admin' || acessos.has(id);
 };
+const visiveis = () => APPS.filter((a) => a.breve || podeAbrir(a.id));
+const porId = (id) => APPS.find((a) => a.id === id);
+
+// Tema claro e escuro (preferência guardada neste navegador)
+const TEMA_CH = 'sandstride-tema', MENU_CH = 'sandstride-menu';
+let marcaTema = null;
+function temaAtual() {
+  const t = document.documentElement.getAttribute('data-theme');
+  if (t === 'dark' || t === 'light') return t;
+  return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function pintaTema(t) {
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'dark' ? '#0A0A0A' : '#EDEDEC';
+  document.querySelectorAll('#temaIc,#temaM').forEach((b) => { b.innerHTML = svg(t === 'dark' ? IC.sol : IC.lua); });
+  if (marcaTema) marcaTema(t);
+}
+function poeTema(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem(TEMA_CH, t); } catch (e) { /* sem armazenamento: vale só nesta visita */ }
+  pintaTema(t);
+}
+// Seletor em pílula: o segmento ativo desliza (200 ms)
+function seg(el, valor, ao) {
+  const bs = [...el.querySelectorAll('button')], p = el.querySelector('.polegar');
+  const marca = (v, chama) => {
+    bs.forEach((b) => {
+      const on = b.dataset.v === v; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+      if (on && b.offsetWidth) { p.style.width = b.offsetWidth + 'px'; p.style.transform = `translateX(${b.offsetLeft}px)`; }
+    });
+    if (chama && ao) ao(v);
+  };
+  bs.forEach((b) => b.addEventListener('click', () => marca(b.dataset.v, true)));
+  marca(valor, false);
+  return (v) => marca(v, false);
+}
+function recolher(rec) {
+  $('app').classList.toggle('rec', rec);
+  try { localStorage.setItem(MENU_CH, rec ? '1' : '0'); } catch (e) { /* idem */ }
+  $('recolhe').setAttribute('aria-label', rec ? 'Expandir menu' : 'Recolher menu');
+  setTimeout(() => marcaTema && marcaTema(temaAtual()), 300);
+}
+
+function itemMenu(a) {
+  const ic = svg(a.icone);
+  if (a.breve) return `<span class="nv off" title="${esc(a.nome)}: em breve">${ic}<span>${esc(a.nome)}</span><span class="tag ex">Em breve</span></span>`;
+  return `<a class="nv" href="${a.href}" title="${esc(a.nome)}"${a.externo ? ' rel="noopener"' : ''}>${ic}<span>${esc(a.nome)}</span></a>`;
+}
+function lateral() {
+  const grupos = GRUPOS.map(([nome, ids]) => {
+    const itens = ids.map(porId).filter((a) => a && (a.breve || podeAbrir(a.id)));
+    return itens.length ? `<div class="gl">${nome}</div>${itens.map(itemMenu).join('')}` : '';
+  }).join('');
+  const papel = eu.papel === 'admin' ? 'Administrador' : 'Atendente';
+  return `<aside class="lat" aria-label="Menu"><div class="lat-marca"><img src="img/sandstride.png" alt="Sandstride"><span class="mk" aria-hidden="true">S</span></div>` +
+    `<nav aria-label="Ferramentas"><a class="nv" href="./" aria-current="page">${svg(IC.casa)}<span>Central</span></a>${grupos}</nav>` +
+    `<div class="pe"><div class="eu-bloco"><label class="meu-av" title="Trocar minha foto" for="foto">${avatar(eu.foto_path, eu.nome, 'g')}<span class="cam" aria-hidden="true">+</span></label><div class="eu-txt"><b>${esc(eu.nome)}</b><span>${papel}</span></div></div>` +
+    '<div class="seg" id="tema" role="group" aria-label="Tema"><span class="polegar"></span><button type="button" data-v="light">Claro</button><button type="button" data-v="dark">Escuro</button></div>' +
+    `<button class="ibtn tema-ic" id="temaIc" type="button" aria-label="Trocar tema claro ou escuro">${svg(IC.lua)}</button>` +
+    `<button class="nv" data-sair type="button">${svg(IC.sair)}<span>Sair</span></button>` +
+    `<button class="nv" id="recolhe" type="button" aria-label="Recolher menu">${svg(IC.lado)}<span>Recolher menu</span></button></div></aside>`;
+}
+function topoM() {
+  return `<header class="topo-m">${logo()}<span class="sp"></span><button class="ibtn" id="temaM" type="button" aria-label="Trocar tema claro ou escuro">${svg(IC.lua)}</button>` +
+    `<button class="ibtn" data-sair type="button" aria-label="Sair">${svg(IC.sair)}</button>` +
+    `<label class="meu-av" title="Trocar minha foto" for="foto">${avatar(eu.foto_path, eu.nome, 'g')}<span class="cam" aria-hidden="true">+</span></label></header>`;
+}
+function barraM() {
+  const fav = FAVORITOS.filter((id) => podeAbrir(id)).slice(0, 3).map(porId);
+  return `<nav class="barra-m" aria-label="Atalhos"><div class="barra"><a href="./" aria-current="page" aria-label="Central">${svg(IC.casa)}<span>Central</span></a>` +
+    fav.map((a) => `<a href="${a.href}" aria-label="${esc(a.nome)}">${svg(a.icone)}<span>${esc(a.nome)}</span></a>`).join('') + '</div></nav>';
+}
 
 async function tela() {
-  const tiles = APPS.filter((a) => a.breve || podeAbrir(a.id)).map((a) => {
-    const ic = `<span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${a.icone}</svg></span>`;
-    if (a.breve) return `<div class="tile off">${ic}<h2>${a.nome}</h2><p class="sub" style="margin:0">${a.desc}</p><span class="tag">Em breve</span></div>`;
-    return `<a class="tile" href="${a.href}"${a.externo ? ' rel="noopener"' : ''}>${ic}<h2>${a.nome}</h2><p class="sub" style="margin:0">${a.desc}</p></a>`;
+  const itens = new Map(visiveis().map((a) => [a.id, a]));
+  let n = 1;
+  const grupos = GRUPOS.map(([nome, ids]) => {
+    const lista = ids.map((id) => itens.get(id)).filter(Boolean);
+    if (!lista.length) return '';
+    const tiles = lista.map((a) => {
+      const ic = `<span class="ico">${svg(a.icone, 20)}</span>`, o = `style="--o:${n++}"`;
+      if (a.breve) return `<div class="tile off entra" ${o}><div class="topo">${ic}</div><h3>${esc(a.nome)}</h3><p>${esc(a.desc)}</p><span class="tag ex">${svg(IC.relogio)}Em breve</span></div>`;
+      return `<a class="tile entra" ${o} href="${a.href}"${a.externo ? ' rel="noopener"' : ''}><div class="topo">${ic}<span class="ir">${svg(IC.seta)}</span></div><h3>${esc(a.nome)}</h3><p>${esc(a.desc)}</p></a>`;
+    }).join('');
+    return `<section class="grupo" aria-label="${nome}"><h2 class="gt">${nome}</h2><div class="tiles">${tiles}</div></section>`;
   }).join('');
-  let h = `<div class="wrap">${topo()}<div><h1>Olá, ${esc(eu.nome.split(' ')[0])}.</h1><p class="sub" style="margin:4px 0 0">Escolha uma ferramenta.</p></div>` +
-    (tiles ? `<div class="tiles">${tiles}</div>` : '<div class="card"><p class="muted" style="margin:0">Você ainda não tem acesso a nenhuma ferramenta. Peça a um administrador para liberar.</p></div>');
-  h += '<section class="card" id="coruja" aria-label="Modo Corujão"><h2>Modo Corujão</h2><p class="sub" style="margin:0">Das 00h às 06h as atualizações automáticas rodam de hora em hora, para economizar. Vai trabalhar de madrugada? Ligue o modo: tudo volta ao ritmo normal e ele desliga sozinho às 6h.</p><div id="coruja-st" class="coruja-linha"><span class="muted">Carregando…</span></div></section>';
-  if (eu.papel === 'admin') h += '<section class="card" id="acessos" aria-label="Acessos da equipe"><h2>Quem acessa o quê</h2><p class="sub" style="margin:0">Marque as ferramentas que cada pessoa pode abrir. Administradores acessam tudo.</p><div id="tab" class="tbl"><p class="muted">Carregando…</p></div></section>';
-  $('raiz').innerHTML = h + '</div>';
-  $('sair').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  let h = `<div class="pg-cab entra" style="--o:0"><h1>Olá, ${esc(eu.nome.split(' ')[0])}.</h1><p class="sub">Escolha uma ferramenta.</p></div>` +
+    (grupos || '<div class="card"><p class="sub">Você ainda não tem acesso a nenhuma ferramenta. Peça a um administrador para liberar.</p></div>');
+  h += `<section class="card entra" style="--o:${n++}" id="coruja" aria-label="Modo Corujão"><div class="qcab"><span class="ico">${svg(IC.lua)}</span><h2>Modo Corujão</h2></div><p class="corpo">Das 00h às 06h as atualizações automáticas rodam de hora em hora. Ligue para manter o ritmo normal; ele desliga sozinho às 6h.</p><div id="coruja-st" class="corujao-st"><span class="sub">Carregando…</span></div></section>`;
+  if (eu.papel === 'admin') h += `<section class="card entra" style="--o:${n++}" id="acessos" aria-label="Acessos da equipe"><div class="qcab"><span class="ico">${svg(IC.usuarios)}</span><h2>Quem acessa o quê</h2></div><p class="corpo">Marque as ferramentas que cada pessoa pode abrir. Administradores acessam tudo.</p><div id="tab" class="tbl"><p class="sub">Carregando…</p></div></section>`;
+  let rec = false; try { rec = localStorage.getItem(MENU_CH) === '1'; } catch (e) { /* idem */ }
+  $('raiz').innerHTML = `<div class="app${rec ? ' rec' : ''}" id="app">${lateral()}<div class="col">${topoM()}<main class="wrap">${h}</main></div>${barraM()}<input id="foto" class="sr" type="file" accept="image/*"></div>`;
+  document.querySelectorAll('[data-sair]').forEach((b) => { b.onclick = async () => { await sb.auth.signOut(); location.reload(); }; });
   $('foto').onchange = (ev) => { const f = ev.target.files[0]; if (f) trocarFoto(f); };
+  marcaTema = seg($('tema'), temaAtual(), poeTema);
+  pintaTema(temaAtual());
+  const alterna = () => poeTema(temaAtual() === 'dark' ? 'light' : 'dark');
+  $('temaIc').onclick = alterna; $('temaM').onclick = alterna;
+  $('recolhe').onclick = () => recolher(!$('app').classList.contains('rec'));
+  if (document.fonts?.ready) document.fonts.ready.then(() => marcaTema && marcaTema(temaAtual()));
   carregarCoruja();
   if (eu.papel === 'admin') tabelaAcessos();
 }
+window.addEventListener('resize', () => marcaTema && marcaTema(temaAtual()));
 const fHora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 function desenharCoruja(st, erro = '') {
   const el = $('coruja-st'); if (!el) return;
-  if (!st) { el.innerHTML = '<span class="muted">Não foi possível carregar o estado do modo.</span>'; return; }
+  if (!st) { el.innerHTML = '<span class="sub">Não foi possível carregar o estado do modo.</span>'; return; }
   el.innerHTML = (st.ativo
-    ? `<span class="ok">Ligado até as ${fHora.format(new Date(st.ate))}</span><button class="btn" id="coruja-bt" type="button">Desligar</button>`
-    : '<span class="muted">Desligado: de madrugada as atualizações rodam de hora em hora.</span><button class="btn dark" id="coruja-bt" type="button">Ligar até as 6h</button>') +
-    (erro ? `<span class="erro">${esc(erro)}</span>` : '');
+    ? `<span class="tag ate">${svg(IC.lua)}Ligado até as ${fHora.format(new Date(st.ate))}</span><button class="btn sec" id="coruja-bt" type="button">Desligar</button>`
+    : `<span class="tag">${svg(IC.relogio)}Desligado</span><button class="btn pri" id="coruja-bt" type="button">Ligar até as 6h</button>`) +
+    (erro ? `<span class="erro">${svg(IC.alerta)}<span>${esc(erro)}</span></span>` : '');
   $('coruja-bt').onclick = async () => {
     $('coruja-bt').disabled = true;
     const { data, error } = await sb.rpc('corujao_definir', { p_ativar: !st.ativo });
@@ -155,10 +252,11 @@ async function tabelaAcessos() {
   const [{ data: eq }, { data: ac }] = await Promise.all([
     sb.from('equipe').select('usuario_id, nome, papel, foto_path').order('nome'), sb.from('acessos_apps').select('usuario_id, app')]);
   const tem = new Set((ac || []).map((x) => `${x.usuario_id}|${x.app}`));
-  $('tab').innerHTML = `<table><thead><tr><th>Pessoa</th>${APPS.filter((a) => !a.breve).map((a) => `<th class="c">${a.nome}</th>`).join('')}</tr></thead><tbody>` +
-    (eq || []).map((p) => `<tr><td><div style="display:flex;align-items:center;gap:10px">${avatar(p.foto_path, p.nome)}<div><b>${esc(p.nome)}</b><br><span class="sub">${p.papel === 'admin' ? 'Administrador' : 'Atendente'}</span></div></div></td>` +
-      APPS.filter((a) => !a.breve).map((a) => a.usuarios ? `<td class="c sub">${a.usuarios.includes(p.usuario_id) ? 'Administrador' : 'Restrito'}</td>` : p.papel === 'admin' ? '<td class="c sub">Tudo</td>' :
-        `<td class="c"><input type="checkbox" data-u="${p.usuario_id}" data-a="${a.id}" aria-label="${esc(p.nome)}: ${a.nome}"${tem.has(`${p.usuario_id}|${a.id}`) ? ' checked' : ''}></td>`).join('') + '</tr>').join('') + '</tbody></table><p id="msg-acessos" class="sub" style="margin:8px 0 0" aria-live="polite"></p>';
+  const cols = APPS.filter((a) => !a.breve);
+  $('tab').innerHTML = `<table><thead><tr><th>Pessoa</th>${cols.map((a) => `<th class="c">${esc(a.nome)}</th>`).join('')}</tr></thead><tbody>` +
+    (eq || []).map((p) => `<tr><td><div class="pessoa">${avatar(p.foto_path, p.nome)}<div><b>${esc(p.nome)}</b><br><span class="sub">${p.papel === 'admin' ? 'Administrador' : 'Atendente'}</span></div></div></td>` +
+      cols.map((a) => a.usuarios ? `<td class="c"><span class="tag">${a.usuarios.includes(p.usuario_id) ? 'Administrador' : 'Restrito'}</span></td>` : p.papel === 'admin' ? '<td class="c"><span class="tag">Tudo</span></td>' :
+        `<td class="c"><input type="checkbox" data-u="${p.usuario_id}" data-a="${a.id}" aria-label="${esc(p.nome)}: ${esc(a.nome)}"${tem.has(`${p.usuario_id}|${a.id}`) ? ' checked' : ''}></td>`).join('') + '</tr>').join('') + '</tbody></table><p id="msg-acessos" class="sub" style="margin:12px 0 0" aria-live="polite"></p>';
   $('tab').onchange = async (ev) => {
     const c = ev.target; if (!c.dataset.u) return;
     const q = c.checked ? sb.from('acessos_apps').insert({ usuario_id: c.dataset.u, app: c.dataset.a })

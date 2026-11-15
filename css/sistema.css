@@ -1,0 +1,91 @@
+/* Sistema Sandstride: base do Briefing de design v2 (aprovado em 14/11/2026).
+   Tokens nos dois temas, listrado, valor com centavos apagados, tag, botão, seletor em pílula e movimento.
+   Carregar ANTES do css de cada ferramenta. Referência completa no cérebro: "Briefing de design do sistema Sandstride". */
+:root{
+  /* superfícies e texto (tema claro) */
+  --fundo:#EDEDEC; --cartao:#FFFFFF; --elevado:#F4F4F2; --ativo:#E4E4E1; --borda:rgba(26,26,26,.10);
+  --texto:#1A1A1A; --suave:#63635F; --palco:#121212; --lateral:#1A1A1A;
+  /* destaque: um por quadro, nunca em dinheiro */
+  --destaque:#BCCBF5; --no-destaque:#1A1A1A; --foco:#2F6BEA;
+  /* significado único em todas as telas (preenchimentos, barras, faixas) */
+  --recebido:#1F9D57; --areceber:#2F6BEA; --atencao:#B0730A; --saida:#D8433D;
+  /* mesmos significados para TEXTO pequeno (contraste mínimo 4,5:1 sobre o fundo da tag) */
+  --recebido-t:#157A42; --areceber-t:#2557CC; --atencao-t:#8A5A00; --saida-t:#C2332E;
+  /* menu lateral (escuro nos dois temas) */
+  --lat-suave:#9C9C9C; --lat-ativo:#2F2F2F; --lat-borda:rgba(255,255,255,.10);
+  /* grade de 4 px */
+  --e1:4px; --e2:8px; --e3:12px; --e4:16px; --e5:20px; --e6:24px; --e8:32px; --e12:48px;
+  /* formas */
+  --r-p:8px; --r-m:12px; --r-g:16px; --r-painel:24px; --r-pilula:999px;
+  /* letra */
+  --fonte:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  /* movimento */
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --t-rapido:120ms; --t-medio:200ms; --t-entrada:400ms; --t-numero:1000ms;
+  /* logo: a escura no tema claro, a branca no tema escuro */
+  --logo-a:block; --logo-b:none;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --fundo:#0A0A0A; --cartao:#161616; --elevado:#1F1F1F; --ativo:#2F2F2F; --borda:rgba(255,255,255,.09);
+    --texto:#FFFFFF; --suave:#9A9A9A; --palco:#000000; --lateral:#121212; --foco:#BCCBF5;
+    --recebido:#5CD08A; --areceber:#6E9BFF; --atencao:#F2B544; --saida:#F0605A;
+    --recebido-t:#5CD08A; --areceber-t:#6E9BFF; --atencao-t:#F2B544; --saida-t:#F0605A;
+    --logo-a:none; --logo-b:block; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --fundo:#0A0A0A; --cartao:#161616; --elevado:#1F1F1F; --ativo:#2F2F2F; --borda:rgba(255,255,255,.09);
+  --texto:#FFFFFF; --suave:#9A9A9A; --palco:#000000; --lateral:#121212; --foco:#BCCBF5;
+  --recebido:#5CD08A; --areceber:#6E9BFF; --atencao:#F2B544; --saida:#F0605A;
+  --recebido-t:#5CD08A; --areceber-t:#6E9BFF; --atencao-t:#F2B544; --saida-t:#F0605A;
+  --logo-a:none; --logo-b:block; color-scheme:dark;
+}
+
+/* logo com as duas versões */
+.logo-a{display:var(--logo-a)}.logo-b{display:var(--logo-b)}
+
+/* listrado: o que ainda falta (a receber, em disputa, em breve, exemplo) */
+.listrado{background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--suave) 45%,transparent) 0 2px,transparent 2px 6px)}
+
+/* dinheiro com centavos apagados: <span class="valor"><span class="c">R$</span> 2.887<span class="c">,30</span></span> */
+.valor{font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}
+.valor .c{color:var(--suave);font-weight:400}
+
+/* tag: sempre com ícone */
+.tag{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:var(--r-pilula);font-size:12px;font-weight:500;line-height:1;white-space:nowrap;background:var(--elevado);color:var(--texto)}
+.tag svg{width:14px;height:14px;flex:none}
+.tag.rec{color:var(--recebido-t);background:color-mix(in srgb,var(--recebido) 13%,transparent)}
+.tag.are{color:var(--areceber-t);background:color-mix(in srgb,var(--areceber) 13%,transparent)}
+.tag.ate{color:var(--atencao-t);background:color-mix(in srgb,var(--atencao) 15%,transparent)}
+.tag.sai{color:var(--saida-t);background:color-mix(in srgb,var(--saida) 13%,transparent)}
+.tag.ex{background-color:transparent;background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--suave) 22%,transparent) 0 2px,transparent 2px 6px);color:var(--suave);box-shadow:inset 0 0 0 1px var(--borda)}
+
+/* botões */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--e2);height:40px;padding:0 var(--e5);border:0;border-radius:var(--r-pilula);font-family:inherit;font-size:13.5px;font-weight:500;text-decoration:none;white-space:nowrap;cursor:pointer;background:var(--elevado);color:var(--texto);transition:transform var(--t-rapido) var(--ease),background var(--t-medio),opacity var(--t-medio)}
+.btn:active{transform:scale(.97)}
+.btn.pri,.btn.dark{background:var(--texto);color:var(--cartao)}
+.btn.sec{background:transparent;box-shadow:inset 0 0 0 1px var(--borda)}
+.btn.sec:hover{background:var(--elevado)}
+.btn.des{background:var(--destaque);color:var(--no-destaque)}
+.btn:disabled{opacity:.5;cursor:default}
+.ibtn{width:40px;height:40px;border-radius:50%;display:inline-grid;place-items:center;border:1px solid var(--borda);background:transparent;color:inherit;flex:none;cursor:pointer;transition:background var(--t-rapido)}
+.ibtn:hover{background:var(--elevado)}
+.ibtn svg{width:18px;height:18px}
+.ico{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--elevado);flex:none}
+.ico svg{width:20px;height:20px}
+
+/* seletor em pílula (o segmento ativo desliza) */
+.seg{position:relative;display:inline-flex;background:var(--elevado);border-radius:var(--r-pilula);padding:4px;max-width:100%}
+.seg button{position:relative;z-index:1;height:32px;padding:0 14px;border:0;background:none;border-radius:var(--r-pilula);font-family:inherit;font-size:13px;font-weight:500;color:var(--suave);display:inline-flex;align-items:center;gap:6px;white-space:nowrap;cursor:pointer;transition:color var(--t-medio)}
+.seg button.on{color:var(--texto)}
+.seg .polegar{position:absolute;top:4px;bottom:4px;left:0;border-radius:var(--r-pilula);background:var(--cartao);box-shadow:0 1px 2px rgba(0,0,0,.08);transition:transform var(--t-medio) var(--ease),width var(--t-medio) var(--ease)}
+.card .seg .polegar{background:var(--ativo);box-shadow:none}
+
+/* movimento: entrada escalonada (400 ms, 60 ms entre quadros) */
+@keyframes sobe{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.entra{animation:sobe var(--t-entrada) var(--ease) both;animation-delay:calc(var(--o,0)*60ms)}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:100ms!important}
+}
