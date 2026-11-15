@@ -263,8 +263,8 @@ body{background:var(--bg);color:var(--ink);font-size:14px}
 /* números */
 .nv .val{font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
 .nv .val.palco{font-size:clamp(56px,4.8vw,72px);letter-spacing:-.03em;line-height:1}
-.cc,.nv .val .cts{color:var(--mut);font-weight:400;font-size:1em;letter-spacing:inherit;margin:0}
-.nv .dk .cc,.nv .palco .cc,.nv .dk .val .cts,.nv .palco .val .cts{color:var(--on-p2)}
+.cc,.nv .val .cts{color:inherit;font-weight:400;font-size:1em;letter-spacing:inherit;margin:0}
+.nv .dk .cc,.nv .palco .cc,.nv .dk .val .cts,.nv .palco .val .cts{color:inherit}
 .nv .val .un{font-size:14px;font-weight:400;color:var(--mut);letter-spacing:0;margin-left:8px}
 .nv .dk .val .un,.nv .palco .val .un{color:var(--on-p2)}
 .nv .val.assenta{animation:assenta 400ms var(--ease)}
@@ -286,6 +286,7 @@ body{background:var(--bg);color:var(--ink);font-size:14px}
 .nv .palco .scale{color:var(--on-p2)}
 /* sólido é fato, listrado é o que falta */
 .g-pos{background:var(--f-pos)}.g-neg{background:var(--f-neg)}.g-acc{background:var(--cinza)}
+.mkh{background:repeating-linear-gradient(135deg,var(--h) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--h) 70%,transparent)}
 .pe{background:repeating-linear-gradient(135deg,var(--f-rec) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--f-rec) 55%,transparent)}
 .pa{background:repeating-linear-gradient(135deg,var(--f-att) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--f-att) 55%,transparent)}
 .listrado{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--mut) 45%,transparent) 0 2px,transparent 2px 6px)}
@@ -767,9 +768,9 @@ function telaReceb(){
   h+='<div class="grid">';
   h+='<section class="card s4">'+chead('wallet','Pago nos últimos 7 dias','','')+'<div><div class="val">'+UNR+bg2(pago)+'</div><div class="lab" style="margin-top:8px">já pago pelos marketplaces</div></div>'+split(PB)+'</section>';
   var arT=B.ml+B.sp+B.tt||1;
-  h+='<section class="card s4">'+chead('clock','A receber','','')+'<div><div class="val">'+UNR+bg2(arec)+'</div><div class="lab" style="margin-top:8px">liberações futuras dos marketplaces</div></div><div class="bar sem" style="margin-top:auto"><div class="trk">'+['ml','sp','tt'].filter(function(k){return B[k]>0}).map(function(k,j){return '<b class="pe" style="width:'+(B[k]/arT*100).toFixed(1)+'%;opacity:'+(1-j*.35)+'"></b>'}).join('')+'</div></div><div class="leg">'+['ml','sp','tt'].filter(function(k){return B[k]>0}).map(function(k,j){return '<span><i style="background:var(--f-rec);opacity:'+(1-j*.35)+'"></i>'+MKN[k]+' R$ '+mil(B[k])+'</span>'}).join('')+'</div></section>';
+  h+='<section class="card s4">'+chead('clock','A receber','','')+'<div><div class="val">'+UNR+bg2(arec)+'</div><div class="lab" style="margin-top:8px">liberações futuras dos marketplaces</div></div><div class="bar sem" style="margin-top:auto"><div class="trk">'+['ml','sp','tt'].filter(function(k){return B[k]>0}).map(function(k,j){return '<b class="mkh" style="--h:'+MKC[k]+';width:'+(B[k]/arT*100).toFixed(1)+'%"></b>'}).join('')+'</div></div><div class="leg">'+['ml','sp','tt'].filter(function(k){return B[k]>0}).map(function(k,j){return '<span><i style="background:'+MKC[k]+'"></i>'+MKN[k]+' R$ '+mil(B[k])+'</span>'}).join('')+'</div></section>';
   var tmx=DQ.ml+DQ.sp+DQ.tt;
-  h+='<section class="card s4">'+chead('alert','Em disputa','','')+'<div><div class="val">'+UNR+bg2(disp)+'</div><div class="lab" style="margin-top:8px">'+n0(ndisp)+' casos retidos pelos marketplaces</div></div><div class="bar" style="padding-top:0"><div class="trk">'+(tmx?'<b class="pa" style="width:'+(DQ.ml/tmx*100).toFixed(1)+'%"></b><b class="pa" style="flex:1;opacity:.55"></b>':'')+'</div></div><div class="leg"><span><i style="background:var(--f-att)"></i>Mercado Livre '+DQ.ml+'</span><span><i style="background:var(--f-att);opacity:.55"></i>Shopee '+DQ.sp+'</span></div></section>';
+  h+='<section class="card s4">'+chead('alert','Em disputa','','')+'<div><div class="val">'+UNR+bg2(disp)+'</div><div class="lab" style="margin-top:8px">'+n0(ndisp)+' casos retidos pelos marketplaces</div></div><div class="bar" style="padding-top:0"><div class="trk">'+(tmx?'<b class="mkh" style="--h:var(--mk-ml);width:'+(DQ.ml/tmx*100).toFixed(1)+'%"></b><b class="mkh" style="--h:var(--mk-sp);flex:1"></b>':'')+'</div></div><div class="leg"><span><i style="background:var(--mk-ml)"></i>Mercado Livre '+DQ.ml+'</span><span><i style="background:var(--mk-sp)"></i>Shopee '+DQ.sp+'</span></div></section>';
   h+=calSec(v7)+'';
   var tot=B.ml+B.sp+B.tt+PB.ml+PB.sp+PB.tt;
   h+='<section class="card s4">'+chead('store','Por marketplace')+gauge([[B.ml+PB.ml,'var(--mk-ml)'],[B.sp+PB.sp,'var(--mk-sp)'],[B.tt+PB.tt,'var(--mk-tt)']],'R$ '+mil(tot),'entre pago e a receber')+'<div class="rows" style="gap:0">'+['ml','sp','tt'].filter(function(k){return L.some(function(l){return l.mk===k})}).map(function(k){return '<div class="rw" style="padding:10px 12px">'+mpi(k,34)+'<div class="g">'+MKN[k]+'</div><div class="v">R$ '+mil(PB[k]+B[k])+'</div></div>'}).join('')+'</div></section>';
