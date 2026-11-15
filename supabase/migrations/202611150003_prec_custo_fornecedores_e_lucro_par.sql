@@ -1,0 +1,6 @@
+-- Custo do produto (Precificação) segue o preço mais recente do Fornecedores (fin_prices),
+-- via prec_produtos.fornecedor_produto; kits explícitos (W-Box) = preço x unidades.
+-- Lucro médio por par do estoque (Financeiro) = lucro/pares dos últimos 30 dias do Lucro ao vivo,
+-- atualizado todo dia, a menos que alguém digite o valor à mão no Financeiro (chave estoque_lucro_par_manual).
+-- Aplicada pelo painel (apply_migration prec_custo_segue_fornecedores_e_lucro_par); ver funções
+-- prec_sincronizar_custos_fornecedor, lucro_sincronizar_lucro_par e o gatilho prec_custo_segue_fornecedor.

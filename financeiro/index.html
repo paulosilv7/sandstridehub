@@ -1362,7 +1362,7 @@ async function carregarEstoque(){
 function modalLucroPar(){
   modal('Lucro médio por par','<label class="fld">Lucro por par (R$)<input name="l" inputmode="decimal" value="'+d2(S.lpar)+'" maxlength="8"></label>',[{t:'Salvar',fn:async function(m){
     var v=parseFloat(mv(m,'l').replace(/\./g,'').replace(',','.'));if(!(v>=0&&v<=1000)){toast('Digite um valor entre 0 e 1.000.');return false}
-    var r=await SB.from('configuracoes').upsert({chave:'estoque_lucro_par',valor:String(v)},{onConflict:'chave'});if(r.error){toast('Não consegui salvar.');return false}
+    var r=await SB.from('configuracoes').upsert({chave:'estoque_lucro_par',valor:String(v)},{onConflict:'chave'});if(r.error){toast('Não consegui salvar.');return false}try{await SB.from('configuracoes').upsert({chave:'estoque_lucro_par_manual',valor:'1'},{onConflict:'chave'})}catch(e){}
     S.lpar=v;seguro();toast('Lucro por par atualizado.')}}]);
 }
 function cardEstoque(){
