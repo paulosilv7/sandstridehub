@@ -11,6 +11,10 @@ const ID = {
   seta: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   dir: '<path d="M9 6l6 6-6 6"/>',
   bandeira: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  mais: '<circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/>',
+  varinha: '<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8 19 13M17.8 6.2 19 5M12.2 6.2 11 5M3 21l9-9"/>',
+  brilho: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.7 1.8L21.5 18.5l-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
 };
 const reduz = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const M = (x, k, c) => { const s = S(x, k, c); ajustar(s, k, c); return s; };
@@ -22,6 +26,8 @@ const IMP = { baixa: 'Baixa', normal: 'Normal', alta: 'Alta' };
 const ROT_TIPO = { tarefa: 'Criar uma tarefa', meta: 'Criar uma meta do mês', prioridade: 'Criar uma prioridade do trimestre' };
 const ICO_TIPO = { tarefa: IC.tarefa, meta: IC.meta, prioridade: ID.bandeira };
 const PAD_X = 16, PAD_Y = 10;
+const SUGESTOES = ['Ideia de produto', 'Melhorar um processo', 'Conteúdo para vídeo', 'Algo para cobrar alguém', 'Outra coisa'];
+const PREFIXO = { 'Ideia de produto': 'Produto: ', 'Melhorar um processo': 'Processo: ', 'Conteúdo para vídeo': 'Vídeo: ', 'Algo para cobrar alguém': 'Cobrar: ' };
 
 export async function montarCaixaIdeias(ctx) {
   const { el } = ctx, B = base(ctx), { sb, user } = B, admin = B.admin;
@@ -30,18 +36,21 @@ export async function montarCaixaIdeias(ctx) {
   const pessoa = (id) => E.equipe.find((p) => p.usuario_id === id);
   const ideiaDe = (id) => E.ideias.find((i) => i.id === id);
   const salvarProposta = (i) => sb.from('central_ideias').update({ proposta: i.proposta, estado: i.estado, atualizado_em: new Date().toISOString() }).eq('id', i.id);
-  const podeMexer = (i) => i.autor_id === user.id || admin;
+  const podeMexer = (i) => i.autor_id === user.id;
 
   // ---------------------------------------------------------------- esqueleto
   el.innerHTML =
     `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="id-goo" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="b"/><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 20 -8"/></filter></svg>` +
-    `<section class="card id-inbox" aria-label="Caixa de ideias"><div class="qcab"><span class="ico">${svg(ID.ideia)}</span><h2>Caixa de ideias</h2><div class="md-filtros" id="id-filtros" role="group" aria-label="Filtro"></div></div>` +
+    `<section class="card id-inbox" aria-label="Caixa de ideias"><div class="qcab"><span class="ico">${svg(ID.ideia)}</span><h2>Caixa de ideias</h2>` +
+    `<div class="id-mwrap"><button class="ibtn p" type="button" id="id-mbt" aria-haspopup="true" aria-expanded="false" aria-label="Opções da caixa" title="Opções">${svg(ID.mais, 18)}</button>` +
+    `<div class="id-menu" id="id-menu" role="menu" hidden><div id="id-filtros" role="group" aria-label="Mostrar"></div><hr><button type="button" role="menuitemcheckbox" id="id-ia" aria-checked="${E.ia}" class="id-mi"><span>A IA organiza ao enviar</span><span class="tr" aria-hidden="true"></span></button></div></div></div>` +
     (E.erro ? `<p class="erro" role="alert">${svg(IC.alerta)}<span>${esc(E.erro)}</span></p>` : '') +
     `<div class="id-stream" id="id-stream" aria-live="polite"></div>` +
     `<div class="id-pb"><div class="id-status" id="id-status" aria-live="polite"><span class="mark"></span><span class="label" id="id-status-t">Pensando</span></div>` +
-    `<div class="id-row"><textarea id="id-campo" rows="1" maxlength="2000" placeholder="Anote uma ideia…" aria-label="Nova ideia"></textarea>` +
-    `<button class="id-envia" id="id-envia" type="button" aria-label="Enviar ideia"><i class="seta">${svg(ID.seta, 16)}</i><i class="para"></i></button></div></div>` +
-    `<label class="id-ia"><input type="checkbox" id="id-ia"${E.ia ? ' checked' : ''}><span class="tr" aria-hidden="true"></span><span>A IA organiza ao enviar</span></label></section>`;
+    `<div class="id-row"><span class="id-varinha" aria-hidden="true">${svg(ID.varinha, 18)}</span><textarea id="id-campo" rows="1" maxlength="2000" placeholder="Anote uma ideia…" aria-label="Nova ideia"></textarea></div>` +
+    `<div class="id-base"><button type="button" class="id-chip" id="id-ia-chip" aria-pressed="${E.ia}">${svg(ID.brilho, 14)}<span>Organizar com IA</span></button>` +
+    `<span class="id-gap"></span><button type="button" class="id-mic" id="id-mic" aria-label="Falar a ideia" title="Falar a ideia" hidden>${svg(ID.mic, 18)}</button>` +
+    `<button class="id-envia" id="id-envia" type="button" aria-label="Enviar ideia"><span class="id-ei"><i class="seta">${svg(ID.seta, 16)}</i><i class="para"></i></span><span class="id-et">Enviar</span></button></div></div></section>`;
   const $ = (s) => el.querySelector(s);
   const stream = $('#id-stream');
 
@@ -59,7 +68,7 @@ export async function montarCaixaIdeias(ctx) {
 
   function filtros() {
     const n = E.ideias.filter((i) => ['nova', 'aprovar', 'guardada'].includes(situacao(i))).length;
-    const bt = (v, r, c) => `<button type="button" data-ficha="${v}" class="${E.ficha === v ? 'on' : ''}" aria-pressed="${E.ficha === v}">${r}${c ? `<i>${c}</i>` : ''}</button>`;
+    const bt = (v, r, c) => `<button type="button" role="menuitemradio" class="id-mi${E.ficha === v ? ' on' : ''}" data-ficha="${v}" aria-checked="${E.ficha === v}"><span>${r}</span>${c ? `<i>${c}</i>` : ''}</button>`;
     $('#id-filtros').innerHTML = bt('abertas', 'Abertas', n) + bt('resolvidas', 'Resolvidas', 0) + bt('descartadas', 'Descartadas', 0);
   }
   function pintaItem(i) {
@@ -88,14 +97,16 @@ export async function montarCaixaIdeias(ctx) {
     // ordem do chat: mais antigas em cima
     vis.forEach((i) => { const no = nos.get(i.id); if (stream.lastElementChild !== no) stream.appendChild(no); });
     stream.querySelector('.md-vazio')?.remove();
-    if (!vis.length) stream.innerHTML = `<div class="md-vazio${E.ficha === 'abertas' ? ' listrado' : ''}"><p>${{ abertas: 'Nenhuma ideia aberta. Anote a primeira aqui embaixo.', resolvidas: 'Nada resolvido ainda.', descartadas: 'Nada descartado.' }[E.ficha]}</p></div>`;
+    if (!vis.length) stream.innerHTML = E.ficha === 'abertas'
+      ? `<div class="id-vazio"><div class="id-orbe" aria-hidden="true"></div><h3>O que você quer anotar?</h3><div class="id-sug">${SUGESTOES.map((t) => `<button type="button" data-sug="${esc(t)}">${esc(t)}</button>`).join('')}</div><p>Só você vê o que anota aqui. Quando uma ideia vira tarefa, o time passa a ver a tarefa.</p></div>`
+      : `<div class="md-vazio"><p>${E.ficha === 'resolvidas' ? 'Nada resolvido ainda.' : 'Nenhuma ideia descartada.'}</p></div>`;
   }
   const rola = () => { stream.scrollTo({ top: stream.scrollHeight, behavior: reduz() ? 'auto' : 'smooth' }); };
   sincroniza(); stream.scrollTop = stream.scrollHeight;
 
   // ---------------------------------------------------------------- Prompt box
   const campo = $('#id-campo'), envia = $('#id-envia'), status = $('#id-status'), statusT = $('#id-status-t');
-  const seta = envia.querySelector('.seta'), para = envia.querySelector('.para');
+  const seta = envia.querySelector('.seta'), para = envia.querySelector('.para'), etxt = envia.querySelector('.id-et');
   const H = M(22, 420, 34), SH = M(0, 380, 30), Bt = M(0, 520, 30);
   registrar({
     quadro(dt) { [H, SH, Bt].forEach((s) => passo(s, dt)); },
@@ -115,14 +126,14 @@ export async function montarCaixaIdeias(ctx) {
   const dizer = (tipo, t) => { status.className = 'id-status ' + tipo; statusT.textContent = t; };
   let tFecha = null;
   function fecha(tipo, t) {
-    E.busy = false; Bt.t = 0; dizer(tipo, t); envia.setAttribute('aria-label', 'Enviar ideia'); ajusta();
+    E.busy = false; Bt.t = 0; dizer(tipo, t); envia.setAttribute('aria-label', 'Enviar ideia'); etxt.textContent = 'Enviar'; ajusta();
     if (tFecha) cancelar(tFecha); tFecha = depois(tipo === 'erro' ? 3 : 1.8, () => { SH.t = 0; acordar(); });
   }
   let rodada = 0;
   async function enviar() {
     const texto = campo.value.trim(); if (E.busy || !texto) return;
     if (tFecha) cancelar(tFecha);
-    const minha = ++rodada; E.busy = true; Bt.t = 1; SH.t = 1; dizer('think', 'Guardando'); envia.setAttribute('aria-label', 'Parar'); campo.value = ''; ajusta();
+    const minha = ++rodada; E.busy = true; Bt.t = 1; SH.t = 1; dizer('think', 'Guardando'); envia.setAttribute('aria-label', 'Parar'); etxt.textContent = 'Parar'; campo.value = ''; ajusta();
     const { data, error } = await sb.from('central_ideias').insert({ texto, autor_id: user.id }).select().single();
     if (minha !== rodada) return;
     if (error || !data) { campo.value = texto; ajusta(); return fecha('erro', 'Não consegui guardar'); }
@@ -134,7 +145,38 @@ export async function montarCaixaIdeias(ctx) {
   envia.addEventListener('click', () => { if (E.busy) { rodada++; fecha('done', 'Parado'); } else enviar(); });
   campo.addEventListener('input', ajusta);
   campo.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); enviar(); } });
-  $('#id-ia').addEventListener('change', (ev) => { E.ia = ev.target.checked; try { localStorage.setItem('sandstride-ideias-ia', E.ia ? '1' : '0'); } catch { /* */ } });
+  const setIA = (v) => {
+    E.ia = v; try { localStorage.setItem('sandstride-ideias-ia', v ? '1' : '0'); } catch { /* */ }
+    $('#id-ia').setAttribute('aria-checked', String(v)); $('#id-ia').classList.toggle('on', v); $('#id-ia-chip').setAttribute('aria-pressed', String(v));
+  };
+  $('#id-ia').classList.toggle('on', E.ia);
+  $('#id-ia').addEventListener('click', () => setIA(!E.ia));
+  $('#id-ia-chip').addEventListener('click', () => setIA(!E.ia));
+  // menu ⋮
+  const menu = $('#id-menu'), mbt = $('#id-mbt');
+  const menuAbre = (v) => { menu.hidden = !v; mbt.setAttribute('aria-expanded', String(v)); };
+  mbt.addEventListener('click', (ev) => { ev.stopPropagation(); menuAbre(menu.hidden); });
+  document.addEventListener('pointerdown', (ev) => { if (!menu.hidden && !ev.target.closest('.id-mwrap')) menuAbre(false); });
+  el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !menu.hidden) { menuAbre(false); mbt.focus(); } });
+  // sugestões do estado vazio
+  stream.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-sug]'); if (!b) return;
+    campo.value = PREFIXO[b.dataset.sug] || ''; ajusta(); campo.focus(); campo.setSelectionRange(campo.value.length, campo.value.length);
+  });
+  // falar a ideia (reconhecimento de voz do navegador, quando existir)
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition, mic = $('#id-mic');
+  if (SR) {
+    mic.hidden = false; let rec = null, base0 = '';
+    const para_ = () => { try { rec?.stop(); } catch { /* */ } rec = null; mic.classList.remove('on'); mic.setAttribute('aria-pressed', 'false'); };
+    mic.addEventListener('click', () => {
+      if (rec) return para_();
+      try {
+        rec = new SR(); rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = true; base0 = campo.value ? campo.value.replace(/\s*$/, ' ') : '';
+        rec.onresult = (e) => { let t = ''; for (let k = 0; k < e.results.length; k++) t += e.results[k][0].transcript; campo.value = (base0 + t).slice(0, 2000); ajusta(); };
+        rec.onend = para_; rec.onerror = para_; rec.start(); mic.classList.add('on'); mic.setAttribute('aria-pressed', 'true');
+      } catch { para_(); }
+    });
+  }
   ajusta();
 
   // ---------------------------------------------------------------- resposta da IA no chat (Goo thinking + Streaming reply + Tool approval)

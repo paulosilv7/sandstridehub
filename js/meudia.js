@@ -180,9 +180,10 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     const foco = document.activeElement?.id;
     const pA = `<div class="pg-cab${e}"${o()}><h1>${saudacao()}, ${esc(prim(eu.nome))}.</h1><p class="sub md-data">${esc(fDia.format(dataDe(hoje)))}</p></div>` +
       (E.erro ? `<p class="erro" role="alert">${svg(IC.alerta)}<span>${esc(E.erro)}</span></p>` : '') +
-      `<div class="${e.trim()}"${o()}>${palco()}</div><div class="md-g2${e}"${o()}>${qRotina()}${qTarefas()}</div>`;
+      `<div class="${e.trim()}"${o()}>${palco()}</div>`;
+    const pE = `<div class="${e.trim()}"${o()}>${qRotina()}</div><div class="${e.trim()}"${o()}>${qTarefas()}</div>`;
     const pB = `<div class="${e.trim()}"${o()}>${qMetas()}</div>` + (admin ? `<div class="${e.trim()}"${o()}>${qEquipe()}</div>` : '');
-    el.querySelector('#md-a').innerHTML = pA; el.querySelector('#md-b').innerHTML = pB;
+    el.querySelector('#md-a').innerHTML = pA; el.querySelector('#md-e').innerHTML = pE; el.querySelector('#md-b').innerHTML = pB;
     if (foco && el.querySelector('#' + foco)) el.querySelector('#' + foco).focus();
     E.primeira = false; acordar();
   }
@@ -302,7 +303,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     });
   }
 
-  el.innerHTML = '<div id="md-a"></div><div id="md-ideias"></div><div id="md-b"></div>';
+  el.innerHTML = '<div id="md-a"></div><div class="md-cols"><div class="md-esq" id="md-e"></div><div id="md-ideias"></div></div><div id="md-b"></div>';
   await carregar();
   desenhar();
   if (caixa) caixa({ sb, user, eu, el: el.querySelector('#md-ideias'), aoCriarTarefa: async () => { await carregar(); desenhar(); } });
