@@ -362,6 +362,7 @@ body{background:var(--bg);color:var(--ink);font-size:14px}
 .nv .cA{flex:1 1 160px;min-width:0;display:flex;align-items:center;gap:12px;font-weight:500}
 .nv .cA>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nv .cN{flex:1 1 80px;text-align:right;min-width:0}
+.nv .th .cN{display:block;text-align:right}
 .nv .cB{flex:0 0 140px}
 .nv .stk{display:flex;gap:2px;height:8px;border-radius:999px;overflow:hidden;background:var(--soft)}
 .nv .stk b{display:block;border-radius:999px;min-width:6px}
@@ -795,13 +796,12 @@ function tabSec(){
   var tabs='<div class="tabs" id="lojaTabs">'+[['all','Todas'],['ml','Mercado Livre'],['sp','Shopee'],['tt','TikTok Shop']].map(function(t){return '<button type="button" class="tab" data-lf="'+t[0]+'" aria-pressed="'+(F===t[0])+'">'+t[1]+'</button>'}).join('')+'</div>';
   L.forEach(function(l){if(F!=='all'&&l.mk!==F)return;rows.push(l.erro?{mk:l.mk,nome:l.nome,erro:1}:{mk:l.mk,nome:l.nome,pago:l.pago_7d||0,arec:l.a_receber==null?null:l.a_receber,disp:l.disputa?l.disputa.valor:0,n:l.disputa?l.disputa.qtd:0})});
   var ord={ml:0,sp:1,tt:2};rows.sort(function(a,b){return ord[a.mk]-ord[b.mk]});
-  var mx=Math.max.apply(null,rows.map(function(r){return (r.pago||0)+(r.arec||0)}).concat([1])),h='<section class="card s12">'+chead('list','Por loja',tabs,'')+'<div class="scroll"><div class="tb"><div class="th"><span class="cA">Loja</span><span class="cN">Pago em 7 dias</span><span class="cN">A receber</span><span class="cN">Em disputa</span><span class="cB">Pago e a receber</span></div>';
+  var mx=Math.max.apply(null,rows.map(function(r){return (r.pago||0)+(r.arec||0)}).concat([1])),h='<section class="card s12">'+chead('list','Por loja',tabs,'')+'<div class="scroll"><div class="tb"><div class="th"><span class="cA">Loja</span><span class="cN">Pago em 7 dias</span><span class="cN">A receber</span><span class="cN">Em disputa</span></div>';
   rows.forEach(function(r){
     if(r.erro){h+='<div class="tr"><div class="cA">'+mpi(r.mk,32)+'<span>'+esc(r.nome)+'</span></div><div class="cN" style="flex:3 1 330px;text-align:left"><span class="tag dis">'+nic('alert',12)+'Conexão precisa ser refeita</span></div></div>';return}
-    var wp=r.pago/mx*100,wa=(r.arec||0)/mx*100;
-    h+='<div class="tr"><div class="cA">'+mpi(r.mk,32)+'<span>'+esc(r.nome)+'<span class="mut" style="display:block;font-size:13px;font-weight:400">'+MKN[r.mk]+'</span></span></div><div class="cN">R$ '+r0(r.pago)+'</div><div class="cN">'+(r.arec==null?'não informado':'R$ '+r0(r.arec))+'</div><div class="cN">'+(r.n?'R$ '+r0(r.disp):'—')+'</div><div class="cB"><div class="stk"><b style="width:'+wp.toFixed(1)+'%;background:var(--f-pos)"></b><b class="pe" style="width:'+wa.toFixed(1)+'%"></b></div></div></div>'});
+    h+='<div class="tr"><div class="cA">'+mpi(r.mk,32)+'<span>'+esc(r.nome)+'<span class="mut" style="display:block;font-size:13px;font-weight:400">'+MKN[r.mk]+'</span></span></div><div class="cN">R$ '+r0(r.pago)+'</div><div class="cN">'+(r.arec==null?'não informado':'R$ '+r0(r.arec))+'</div><div class="cN">'+(r.n?'R$ '+r0(r.disp):'—')+'</div></div>'});
   [['sp','shopee'],['tt','tiktok']].forEach(function(p){if((F==='all'||F===p[0])&&!((S.d&&S.d[p[1]])||[]).length)h+='<div class="tr"><div class="cA">'+mpi(p[0],36)+'<span>'+MKN[p[0]]+'</span></div><div class="cN" style="flex:3 1 330px;text-align:left"><span class="tag ex">'+nic('clock',12)+'Ainda não lido</span></div></div>'});
-  return h+'</div></div><div class="leg"><span><i style="background:var(--f-pos)"></i>Pago</span><span><i style="background:repeating-linear-gradient(135deg,var(--f-rec) 0 2px,transparent 2px 4px)"></i>A receber</span></div></section>';
+  return h+'</div></div></section>';
 }
 
 // ---------- Mês selecionado ----------
