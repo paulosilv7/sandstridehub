@@ -20,8 +20,19 @@ const ORCAMENTO_MS = 95_000;
 const INICIO_MS = Date.parse("2026-10-25T03:00:00Z");
 const ESPERA_MAX_MS = 60 * 60 * 1000;
 
-// Reserva: tabela de taxas da Shopee (aba TAXAS, variante CNPJ), por unidade
-const FAIXA = (p: number) => p < 80 ? { pct: 0.20, fixo: 4.5 } : p < 100 ? { pct: 0.14, fixo: 16 } : p < 200 ? { pct: 0.14, fixo: 20 } : { pct: 0.14, fixo: 26 };
+// Reserva: tabela de taxas da Shopee, lida da Precificação (tabela prec_taxas, variante padrão do canal).
+// Se o banco não responder, usa a cópia abaixo (mesmos valores de 15/11/2026).
+type Faixa = { min: number; pct: number; fixo: number };
+let FAIXAS: Faixa[] = [{ min: 0, pct: 0.20, fixo: 4.5 }, { min: 80, pct: 0.14, fixo: 16 }, { min: 100, pct: 0.14, fixo: 20 }, { min: 200, pct: 0.14, fixo: 26 }];
+const FAIXA = (p: number) => { let f = FAIXAS[0]; for (const x of FAIXAS) if (p >= x.min) f = x; return f; };
+async function carregarTaxas() {
+  try {
+    const { data: c } = await supabase.from("prec_canais").select("variante_padrao").eq("id_canal", "SHOPEE").maybeSingle();
+    const { data } = await supabase.from("prec_taxas").select("preco_min, comissao_pct, taxa_fixa").eq("id_canal", "SHOPEE").eq("variante", c?.variante_padrao ?? "CNPJ").order("preco_min");
+    const fx = (data ?? []).map((t: any) => ({ min: num(t.preco_min), pct: num(t.comissao_pct), fixo: num(t.taxa_fixa) }));
+    if (fx.length) FAIXAS = fx;
+  } catch (_e) { /* mantém a cópia */ }
+}
 
 async function hmac(chave: string, msg: string) {
   const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(chave), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -194,6 +205,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "POST") return resp({ ok: false, erro: "Método não permitido." }, 405);
   if (!(await autorizado(req))) return resp({ ok: false, erro: "Sem acesso ao Lucro Ao Vivo." }, 403);
+  await carregarTaxas();
   try {
     const inicio = Date.now();
     const corpo: any = await req.json().catch(() => ({}));

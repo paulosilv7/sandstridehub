@@ -19,11 +19,24 @@ const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 const resp = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
 const INICIO_MS = Date.parse("2026-10-25T03:00:00Z");
 
-// Reserva: tabela de taxas do TikTok Shop (aba TAXAS) e programa de frete (aba CANAIS)
-const FAIXA = (preco: number) => (preco < 50 ? { pct: 0.10, fixo: 4 } : { pct: 0.06, fixo: 6 });
-const PROGRAMA_FRETE_PCT = 0.06, PROGRAMA_FRETE_TETO = 50;
+// Reserva: tabela de taxas e programa de frete do TikTok Shop, lidos da Precificação (prec_taxas e prec_canais).
+// Se o banco não responder, usa a cópia abaixo (mesmos valores de 15/11/2026).
+type Faixa = { min: number; pct: number; fixo: number };
+let FAIXAS: Faixa[] = [{ min: 0, pct: 0.10, fixo: 4 }, { min: 50, pct: 0.06, fixo: 6 }];
+let PROGRAMA_FRETE_PCT = 0.06;
+const PROGRAMA_FRETE_TETO = 50; // teto por produto, definido pelo TikTok (fica em observações do canal)
+const FAIXA = (preco: number) => { let f = FAIXAS[0]; for (const x of FAIXAS) if (preco >= x.min) f = x; return f; };
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const num = (v: any) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+async function carregarTaxas() {
+  try {
+    const { data: c } = await supabase.from("prec_canais").select("variante_padrao, programa_frete_pct").eq("id_canal", "TIKTOK").maybeSingle();
+    if (c && Number.isFinite(Number(c.programa_frete_pct))) PROGRAMA_FRETE_PCT = Number(c.programa_frete_pct);
+    const { data } = await supabase.from("prec_taxas").select("preco_min, comissao_pct, taxa_fixa").eq("id_canal", "TIKTOK").eq("variante", c?.variante_padrao ?? "Padrão").order("preco_min");
+    const fx = (data ?? []).map((t: any) => ({ min: num(t.preco_min), pct: num(t.comissao_pct), fixo: num(t.taxa_fixa) }));
+    if (fx.length) FAIXAS = fx;
+  } catch (_e) { /* mantém a cópia */ }
+}
 
 // Comparação de JSON sem depender da ordem das chaves (o banco reordena as chaves do jsonb).
 function igualJson(a: any, b: any): boolean {
@@ -260,6 +273,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "POST") return resp({ ok: false, erro: "Método não permitido." }, 405);
   if (!(await autorizado(req))) return resp({ ok: false, erro: "Sem acesso ao Lucro Ao Vivo." }, 403);
+  await carregarTaxas();
   try {
     const corpo: any = await req.json().catch(() => ({}));
     const dias = Math.min(Math.max(Number(corpo.dias ?? 2), 1), 60);
