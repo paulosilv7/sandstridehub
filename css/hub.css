@@ -270,8 +270,8 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 @media (max-width:699px){.md-pendentes{padding-left:0}}
 
 /* ideias: prompt box, goo thinking, streaming reply, tool approval */
-.id-caixa{gap:var(--e4)}
-.id-pb{background:var(--elevado);border-radius:24px;padding:10px 10px 10px 18px;max-width:640px;width:100%}
+.id-inbox{gap:var(--e4)}
+.id-pb{background:var(--elevado);border-radius:24px;padding:10px 10px 10px 18px;width:100%}
 .id-status{display:flex;align-items:center;gap:8px;height:0;overflow:hidden;font-size:13px;font-weight:500;color:var(--suave)}
 .id-status .mark{width:8px;height:8px;border-radius:50%;background:var(--texto);flex:none;transition:background .25s ease}
 .id-status.think .mark{animation:id-pulso 1s ease-in-out infinite}
@@ -296,7 +296,6 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .id-ia input:focus-visible+.tr{outline:2px solid var(--foco);outline-offset:2px}
 .id-acoes{display:flex;gap:var(--e2);flex-wrap:wrap;margin-left:auto}
 .id-acoes .btn{height:34px;padding:0 var(--e4);background:var(--elevado);color:var(--texto)}.id-acoes .btn.pri{background:var(--texto);color:var(--cartao)}
-.id-fio .qcab h2{flex:0 1 auto}
 .id-chat{display:flex;flex-direction:column;gap:10px;font-size:15px;line-height:22px}
 .id-msg{border-radius:20px;will-change:transform,opacity}
 .id-me{align-self:flex-end;max-width:85%;padding:9px 16px;background:var(--texto);color:var(--cartao);font-weight:500;overflow-wrap:anywhere;opacity:0}
@@ -345,3 +344,33 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 @media (max-width:520px){.id-qd{display:none}}
 @media (prefers-reduced-motion:reduce){.id-status.think .mark,.id-status.think .label,.id-tr-lin .girando{animation:none}.id-ia .tr::after,.id-tr-lin .dir{transition:none}}
 @media (max-width:640px){.id-fio .qcab{flex-wrap:wrap}.id-fio .qcab h2{flex:1}.id-acoes{order:3;flex-basis:100%;margin-left:0}}
+
+/* ideias dentro do Meu dia: chat */
+#md-a,#md-b,#md-ideias{display:contents}
+.id-inbox .qcab{flex-wrap:wrap}
+.id-inbox .qcab .md-filtros{margin-left:auto}
+.id-stream{display:flex;flex-direction:column;gap:var(--e5);max-height:min(540px,65vh);overflow-y:auto;overscroll-behavior:contain;padding:2px 4px 2px 0}
+.id-it{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+.id-it.meu{align-items:flex-end}
+.id-bolha{max-width:min(85%,640px);padding:9px 16px;border-radius:20px;background:var(--elevado);color:var(--texto);font-size:15px;line-height:22px;font-weight:500;overflow-wrap:anywhere;white-space:pre-wrap}
+.id-it.meu .id-bolha{background:var(--texto);color:var(--cartao)}
+.id-meta{display:flex;align-items:center;gap:8px;padding:0 4px}
+.id-it.meu .id-meta,.id-it.meu .id-ac{justify-content:flex-end}
+.id-ac{display:flex;flex-wrap:wrap;gap:4px}
+.id-ac:empty{display:none}
+.id-ac button{height:28px;padding:0 11px;border:0;border-radius:var(--r-pilula);background:none;color:var(--suave);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:background var(--t-rapido),color var(--t-rapido)}
+.id-ac button:hover{background:var(--elevado);color:var(--texto)}
+.id-ac button.pri{background:var(--texto);color:var(--cartao)}.id-ac button.pri:hover{opacity:.85;background:var(--texto);color:var(--cartao)}
+.id-ac button:focus-visible{outline:2px solid var(--foco);outline-offset:2px}
+.id-slot{width:100%;min-width:0}.id-slot:empty{display:none}
+.id-slot .id-aprov{margin-top:var(--e2)}
+.id-form{display:flex;flex-direction:column;gap:var(--e4);background:var(--elevado);border-radius:18px;padding:var(--e5);max-width:520px;width:100%}
+.id-it.meu .id-form{margin-left:auto}
+.id-form-t{margin:0;font-size:13px;font-weight:600}
+.id-form .campo>span{font-size:12px;font-weight:500;color:var(--suave)}
+.id-form .md-in{height:44px;width:100%;background:var(--cartao)}
+.id-form .md-imp{background:var(--cartao)}
+.id-form .md-acoes{justify-content:flex-end}
+.id-form .md-acoes .btn{height:36px}
+.id-form .md-acoes .btn:not(.pri){background:none;color:var(--suave)}
+@media (max-width:640px){.id-bolha{max-width:92%}}

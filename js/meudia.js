@@ -31,7 +31,7 @@ function saudacao() {
   return h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
 }
 
-export async function montarMeuDia({ sb, user, eu, el }) {
+export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   const admin = eu.papel === 'admin';
   const E = { equipe: [], rotinas: [], feitos: new Set(), tarefas: [], metas: [], filtro: 'hoje', primeira: true, erro: '', pop: false, aberta: new Set(), rasc: { titulo: '', resp: user.id, prazo: '', imp: 'normal' } };
   const hoje = hojeISO(), dsem = dataDe(hoje).getUTCDay(), mes = hoje.slice(0, 8) + '01';
@@ -157,9 +157,11 @@ export async function montarMeuDia({ sb, user, eu, el }) {
   function desenhar() {
     const e = E.primeira ? ' entra' : ''; let n = 0; const o = () => (E.primeira ? ` style="--o:${n++}"` : '');
     const foco = document.activeElement?.id;
-    el.innerHTML = `<div class="pg-cab${e}"${o()}><h1>${saudacao()}, ${esc(prim(eu.nome))}.</h1><p class="sub md-data">${esc(fDia.format(dataDe(hoje)))}</p></div>` +
+    const pA = `<div class="pg-cab${e}"${o()}><h1>${saudacao()}, ${esc(prim(eu.nome))}.</h1><p class="sub md-data">${esc(fDia.format(dataDe(hoje)))}</p></div>` +
       (E.erro ? `<p class="erro" role="alert">${svg(IC.alerta)}<span>${esc(E.erro)}</span></p>` : '') +
-      `<div class="${e.trim()}"${o()}>${palco()}</div><div class="md-g2${e}"${o()}>${qRotina()}${qTarefas()}</div><div class="${e.trim()}"${o()}>${qMetas()}</div>` + (admin ? `<div class="${e.trim()}"${o()}>${qEquipe()}</div>` : '');
+      `<div class="${e.trim()}"${o()}>${palco()}</div><div class="md-g2${e}"${o()}>${qRotina()}${qTarefas()}</div>`;
+    const pB = `<div class="${e.trim()}"${o()}>${qMetas()}</div>` + (admin ? `<div class="${e.trim()}"${o()}>${qEquipe()}</div>` : '');
+    el.querySelector('#md-a').innerHTML = pA; el.querySelector('#md-b').innerHTML = pB;
     if (foco && el.querySelector('#' + foco)) el.querySelector('#' + foco).focus();
     E.primeira = false; acordar();
   }
@@ -279,6 +281,8 @@ export async function montarMeuDia({ sb, user, eu, el }) {
     });
   }
 
+  el.innerHTML = '<div id="md-a"></div><div id="md-ideias"></div><div id="md-b"></div>';
   await carregar();
   desenhar();
+  if (caixa) caixa({ sb, user, eu, el: el.querySelector('#md-ideias'), aoCriarTarefa: async () => { await carregar(); desenhar(); } });
 }

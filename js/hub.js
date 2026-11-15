@@ -4,7 +4,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { montarShell } from './shell.js';
 import { montarMeuDia } from './meudia.js';
 import { montarPlacar, montarPrioridades, montarRevisao, ICONES_CENTRAL } from './gestao.js';
-import { montarIdeias } from './ideias.js';
+import { montarCaixaIdeias } from './ideias.js';
 
 const sb = window.SB = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 const $ = (id) => document.getElementById(id);
@@ -94,13 +94,13 @@ const visiveis = () => APPS.filter((a) => a.breve || podeAbrir(a.id));
 const porId = (id) => APPS.find((a) => a.id === id);
 
 // A Central tem quatro telas, trocadas pelo endereço (#placar, #prioridades, #revisao)
-const TELAS = { '': montarMeuDia, '#placar': montarPlacar, '#prioridades': montarPrioridades, '#revisao': montarRevisao, '#ideias': montarIdeias };
+const TELAS = { '': montarMeuDia, '#placar': montarPlacar, '#prioridades': montarPrioridades, '#revisao': montarRevisao };
 let shellPronto = false;
 async function tela() {
   const monta = TELAS[location.hash] || montarMeuDia;
   $('raiz').innerHTML = '<main class="wrap"><div class="md"></div></main>';
   const el = $('raiz').querySelector('.md');
-  const p = monta({ sb, user, eu, el });
+  const p = monta({ sb, user, eu, el, caixa: montarCaixaIdeias });
   if (!shellPronto) {
     shellPronto = true;
     const vai = (h) => () => { if (location.hash === h || (!h && !location.hash)) return; location.hash = h; };
@@ -110,7 +110,6 @@ async function tela() {
       { rotulo: 'Placar', d: ICONES_CENTRAL.placar, ao: vai('#placar'), ativo: em('#placar') },
       { rotulo: 'Prioridades', d: ICONES_CENTRAL.prioridades, ao: vai('#prioridades'), ativo: em('#prioridades') },
       { rotulo: 'Revisão semanal', d: ICONES_CENTRAL.revisao, ao: vai('#revisao'), ativo: em('#revisao') },
-      { rotulo: 'Ideias', d: ICONES_CENTRAL.ideias, ao: vai('#ideias'), ativo: em('#ideias') },
     ] });
     window.addEventListener('hashchange', () => { if (user && eu && !/type=(invite|recovery)/.test(location.hash)) tela(); });
   }

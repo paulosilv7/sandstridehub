@@ -1,4 +1,5 @@
-// Central: caixa de ideias. Anota do jeito que vier; a IA propõe meta, tarefas e prioridade; a pessoa aprova item por item.
+// Meu dia: caixa de ideias em formato de chat (inbox). Anota do jeito que vier; cada ideia pode virar tarefa direto ou ir para a IA,
+// que propõe meta, tarefas e prioridade; a pessoa aprova item por item.
 // Componentes (biblioteca de motions): Prompt box, Goo thinking, Streaming reply (designbookmark.com, molas iguais)
 // e Tool approval (Kokonut UI, MIT) refeitos em JavaScript puro com as cores do sistema.
 import { S, ajustar, passo, parada, limitar, registrar, acordar, depois, cancelar } from './molas.js';
@@ -22,30 +23,30 @@ const ROT_TIPO = { tarefa: 'Criar uma tarefa', meta: 'Criar uma meta do mês', p
 const ICO_TIPO = { tarefa: IC.tarefa, meta: IC.meta, prioridade: ID.bandeira };
 const PAD_X = 16, PAD_Y = 10;
 
-export async function montarIdeias(ctx) {
+export async function montarCaixaIdeias(ctx) {
   const { el } = ctx, B = base(ctx), { sb, user } = B, admin = B.admin;
-  const [eq, lista] = await Promise.all([B.equipe(), sb.from('central_ideias').select('*').order('criado_em', { ascending: false })]);
+  const [eq, lista] = await Promise.all([B.equipe(), sb.from('central_ideias').select('*').order('criado_em', { ascending: true })]);
   const E = { equipe: eq, ideias: lista.data || [], aberta: null, ia: (() => { try { return localStorage.getItem('sandstride-ideias-ia') !== '0'; } catch { return true; } })(), busy: false, ficha: 'abertas', fio: null, erro: lista.error ? 'Não consegui carregar as ideias.' : '' };
   const pessoa = (id) => E.equipe.find((p) => p.usuario_id === id);
-  const nome = (id) => (id === user.id ? 'Você' : prim(pessoa(id)?.nome) || '—');
   const ideiaDe = (id) => E.ideias.find((i) => i.id === id);
-  const salvarProposta = (i) => sb.from('central_ideias').update({ proposta: i.proposta, atualizado_em: new Date().toISOString() }).eq('id', i.id);
+  const salvarProposta = (i) => sb.from('central_ideias').update({ proposta: i.proposta, estado: i.estado, atualizado_em: new Date().toISOString() }).eq('id', i.id);
+  const podeMexer = (i) => i.autor_id === user.id || admin;
 
   // ---------------------------------------------------------------- esqueleto
   el.innerHTML =
-    `<div class="pg-cab"><h1>Ideias</h1><p class="sub">Anote do jeito que vier. A IA propõe o que fazer e você aprova.</p></div>` +
     `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="id-goo" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="b"/><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 20 -8"/></filter></svg>` +
-    `<section class="card id-caixa" aria-label="Nova ideia"><div class="qcab"><span class="ico">${svg(ID.ideia)}</span><h2>Caixa de ideias</h2></div>` +
+    `<section class="card id-inbox" aria-label="Caixa de ideias"><div class="qcab"><span class="ico">${svg(ID.ideia)}</span><h2>Caixa de ideias</h2><div class="md-filtros" id="id-filtros" role="group" aria-label="Filtro"></div></div>` +
+    (E.erro ? `<p class="erro" role="alert">${svg(IC.alerta)}<span>${esc(E.erro)}</span></p>` : '') +
+    `<div class="id-stream" id="id-stream" aria-live="polite"></div>` +
     `<div class="id-pb"><div class="id-status" id="id-status" aria-live="polite"><span class="mark"></span><span class="label" id="id-status-t">Pensando</span></div>` +
-    `<div class="id-row"><textarea id="id-campo" rows="1" maxlength="2000" placeholder="Qual é a ideia?" aria-label="Nova ideia"></textarea>` +
+    `<div class="id-row"><textarea id="id-campo" rows="1" maxlength="2000" placeholder="Anote uma ideia…" aria-label="Nova ideia"></textarea>` +
     `<button class="id-envia" id="id-envia" type="button" aria-label="Enviar ideia"><i class="seta">${svg(ID.seta, 16)}</i><i class="para"></i></button></div></div>` +
-    `<label class="id-ia"><input type="checkbox" id="id-ia"${E.ia ? ' checked' : ''}><span class="tr" aria-hidden="true"></span><span>A IA organiza ao enviar</span></label></section>` +
-    `<section class="card id-fio" id="id-fio" hidden aria-label="Conversa da ideia"></section>` +
-    `<section class="card" aria-label="Todas as ideias"><div class="qcab"><span class="ico">${svg(IC.rotina)}</span><h2>Todas as ideias</h2></div>` +
-    `<div class="md-filtros" id="id-filtros" role="group" aria-label="Filtro"></div><div id="id-lista"></div></section>`;
+    `<label class="id-ia"><input type="checkbox" id="id-ia"${E.ia ? ' checked' : ''}><span class="tr" aria-hidden="true"></span><span>A IA organiza ao enviar</span></label></section>`;
   const $ = (s) => el.querySelector(s);
+  const stream = $('#id-stream');
 
-  // ---------------------------------------------------------------- lista de ideias
+  // ---------------------------------------------------------------- chat de ideias
+  const nos = new Map(); // id da ideia -> bloco no chat
   const pend = (i) => (i.proposta?.itens || []).filter((x) => x.estado === 'pendente' || x.estado === 'criando').length;
   const situacao = (i) => {
     if (i.estado === 'descartada') return 'descartada';
@@ -54,20 +55,43 @@ export async function montarIdeias(ctx) {
     if (n) return 'aprovar';
     return i.estado === 'guardada' ? 'guardada' : 'nova';
   };
-  function pintaLista() {
-    const sit = E.ideias.map((i) => [i, situacao(i)]);
-    const ab = sit.filter(([, s]) => s === 'nova' || s === 'aprovar' || s === 'guardada'), re = sit.filter(([, s]) => s === 'resolvida'), de = sit.filter(([, s]) => s === 'descartada');
-    const bt = (v, r, n) => `<button type="button" data-ficha="${v}" class="${E.ficha === v ? 'on' : ''}" aria-pressed="${E.ficha === v}">${r}${n ? `<i>${n}</i>` : ''}</button>`;
-    $('#id-filtros').innerHTML = bt('abertas', 'Abertas', ab.length) + bt('resolvidas', 'Resolvidas', 0) + bt('descartadas', 'Descartadas', 0);
-    const l = { abertas: ab, resolvidas: re, descartadas: de }[E.ficha];
-    const TAG = { nova: '<span class="tag listrado">Nova</span>', guardada: '<span class="tag">Guardada</span>', resolvida: `<span class="tag rec">${svg(IC.check)}Resolvida</span>`, descartada: '<span class="tag">Descartada</span>' };
-    $('#id-lista').innerHTML = l.length
-      ? `<ul class="md-lista id-lista">${l.map(([i, s]) => { const p = pessoa(i.autor_id); return `<li><button type="button" class="id-item${E.aberta === i.id ? ' on' : ''}" data-abre="${i.id}"><span class="tx">${esc(i.texto)}</span></button>` +
-        `${s === 'aprovar' ? `<span class="tag ate">${pend(i)} para aprovar</span>` : TAG[s]}<span class="id-qd">${esc(i.criado_em ? fData.format(new Date(i.criado_em)).replace('.', '') : 'agora')}</span>${i.autor_id !== user.id && p ? `<span class="md-quem" title="${esc(p.nome)}">${B.av(p, 'p')}</span>` : ''}` +
-        `${i.autor_id === user.id || admin ? `<button class="md-x" type="button" data-apaga="${i.id}" aria-label="Apagar ideia">${svg(IC.x, 14)}</button>` : ''}</li>`; }).join('')}</ul>`
-      : `<div class="md-vazio${E.ficha === 'abertas' ? ' listrado' : ''}"><p>${{ abertas: 'Nenhuma ideia aberta. Anote a primeira acima.', resolvidas: 'Nada resolvido ainda.', descartadas: 'Nada descartado.' }[E.ficha]}</p></div>`;
+  const naFicha = (s) => (E.ficha === 'abertas' ? ['nova', 'aprovar', 'guardada'].includes(s) : E.ficha === 'resolvidas' ? s === 'resolvida' : s === 'descartada');
+
+  function filtros() {
+    const n = E.ideias.filter((i) => ['nova', 'aprovar', 'guardada'].includes(situacao(i))).length;
+    const bt = (v, r, c) => `<button type="button" data-ficha="${v}" class="${E.ficha === v ? 'on' : ''}" aria-pressed="${E.ficha === v}">${r}${c ? `<i>${c}</i>` : ''}</button>`;
+    $('#id-filtros').innerHTML = bt('abertas', 'Abertas', n) + bt('resolvidas', 'Resolvidas', 0) + bt('descartadas', 'Descartadas', 0);
   }
-  pintaLista();
+  function pintaItem(i) {
+    const no = nos.get(i.id); if (!no) return;
+    const s = situacao(i), p = pessoa(i.autor_id), meu = i.autor_id === user.id, pode = podeMexer(i), aberto = E.aberta === i.id;
+    const TAG = { nova: '<span class="tag listrado">Nova</span>', guardada: '<span class="tag">Guardada</span>', resolvida: `<span class="tag rec">${svg(IC.check)}Resolvida</span>`, descartada: '<span class="tag">Descartada</span>' };
+    no.querySelector('.id-meta').innerHTML = (s === 'aprovar' ? `<span class="tag ate">${pend(i)} para aprovar</span>` : TAG[s]) +
+      `<span class="id-qd">${meu ? '' : esc(prim(p?.nome)) + ' · '}${esc(i.criado_em ? fData.format(new Date(i.criado_em)).replace('.', '') : 'agora')}</span>`;
+    const A = (a, t, pri) => `<button type="button" data-ac="${a}"${pri ? ' class="pri"' : ''}>${t}</button>`;
+    no.querySelector('.id-ac').innerHTML = !pode ? '' : s === 'descartada' ? A('reabrir', 'Reabrir') :
+      (i.proposta?.resumo ? A('proposta', aberto ? 'Fechar proposta' : 'Ver proposta', s === 'aprovar') + A('organizar', 'Organizar de novo') : A('organizar', 'Organizar com IA', s === 'nova')) +
+      (s === 'resolvida' ? '' : A('tarefa', 'Virar tarefa')) + (s === 'resolvida' || s === 'guardada' ? '' : A('guardar', 'Guardar')) + A('descartar', 'Descartar');
+  }
+  function sincroniza() {
+    filtros();
+    const vis = E.ideias.filter((i) => naFicha(situacao(i)));
+    for (const [id, no] of nos) if (!vis.some((i) => i.id === id)) { if (E.aberta === id) { limpaFio(); E.aberta = null; } no.remove(); nos.delete(id); }
+    vis.forEach((i) => {
+      if (!nos.has(i.id)) {
+        const no = document.createElement('div'); no.className = 'id-it' + (i.autor_id === user.id ? ' meu' : ''); no.dataset.id = i.id;
+        no.innerHTML = '<div class="id-bolha"></div><div class="id-meta"></div><div class="id-ac"></div><div class="id-slot"></div>';
+        no.querySelector('.id-bolha').textContent = i.texto; nos.set(i.id, no);
+      }
+      pintaItem(i);
+    });
+    // ordem do chat: mais antigas em cima
+    vis.forEach((i) => { const no = nos.get(i.id); if (stream.lastElementChild !== no) stream.appendChild(no); });
+    stream.querySelector('.md-vazio')?.remove();
+    if (!vis.length) stream.innerHTML = `<div class="md-vazio${E.ficha === 'abertas' ? ' listrado' : ''}"><p>${{ abertas: 'Nenhuma ideia aberta. Anote a primeira aqui embaixo.', resolvidas: 'Nada resolvido ainda.', descartadas: 'Nada descartado.' }[E.ficha]}</p></div>`;
+  }
+  const rola = () => { stream.scrollTo({ top: stream.scrollHeight, behavior: reduz() ? 'auto' : 'smooth' }); };
+  sincroniza(); stream.scrollTop = stream.scrollHeight;
 
   // ---------------------------------------------------------------- Prompt box
   const campo = $('#id-campo'), envia = $('#id-envia'), status = $('#id-status'), statusT = $('#id-status-t');
@@ -102,54 +126,44 @@ export async function montarIdeias(ctx) {
     const { data, error } = await sb.from('central_ideias').insert({ texto, autor_id: user.id }).select().single();
     if (minha !== rodada) return;
     if (error || !data) { campo.value = texto; ajusta(); return fecha('erro', 'Não consegui guardar'); }
-    E.ideias.unshift(data); E.ficha = 'abertas'; pintaLista();
+    E.ideias.push(data); E.ficha = 'abertas'; sincroniza(); rola();
     if (!E.ia) return fecha('done', 'Ideia guardada');
     dizer('think', 'Pensando');
     abrir(data.id, { organizar: true, aoFim: (ok) => { if (minha === rodada && E.busy) fecha(ok ? 'done' : 'erro', ok ? 'Proposta pronta' : 'Não consegui organizar'); } });
   }
-  envia.addEventListener('click', () => {
-    if (E.busy) { rodada++; fecha('done', 'Parado'); } else enviar();
-  });
+  envia.addEventListener('click', () => { if (E.busy) { rodada++; fecha('done', 'Parado'); } else enviar(); });
   campo.addEventListener('input', ajusta);
   campo.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); enviar(); } });
   $('#id-ia').addEventListener('change', (ev) => { E.ia = ev.target.checked; try { localStorage.setItem('sandstride-ideias-ia', E.ia ? '1' : '0'); } catch { /* */ } });
   ajusta();
 
-  // ---------------------------------------------------------------- conversa da ideia (Goo thinking + Streaming reply + Tool approval)
+  // ---------------------------------------------------------------- resposta da IA no chat (Goo thinking + Streaming reply + Tool approval)
   let timers = [];
   const later = (s, f) => { const t = depois(s, () => { timers = timers.filter((x) => x !== t); f(); }); timers.push(t); return t; };
   const limpaFio = () => { timers.forEach(cancelar); timers = []; E.fio = null; };
+  const fechaSlot = (id) => { const sl = nos.get(id)?.querySelector('.id-slot'); if (sl) sl.innerHTML = ''; };
 
   function abrir(id, { organizar = false, aoFim = null } = {}) {
-    const i = ideiaDe(id); if (!i) return;
-    limpaFio(); E.aberta = id; pintaLista();
-    const sec = $('#id-fio'); sec.hidden = false;
-    const pode = i.autor_id === user.id || admin, autor = pessoa(i.autor_id);
-    const temProposta = !!i.proposta?.resumo;
-    sec.innerHTML = `<div class="qcab"><span class="ico">${svg(ID.ideia)}</span><h2>${i.autor_id === user.id ? 'Sua ideia' : `Ideia de ${esc(prim(autor?.nome))}`}</h2>` +
-      (pode ? `<div class="id-acoes">` +
-        (i.estado === 'descartada' ? `<button class="btn" type="button" data-acao="reabrir">Reabrir</button>` : `<button class="btn${temProposta ? '' : ' pri'}" type="button" data-acao="organizar">${temProposta ? 'Organizar de novo' : 'Organizar com IA'}</button>` +
-          (i.estado === 'guardada' ? '' : `<button class="btn" type="button" data-acao="guardar">Guardar</button>`) + `<button class="btn" type="button" data-acao="descartar">Descartar</button>`) + `</div>` : '') + `<button class="ibtn p" type="button" data-acao="fechar" aria-label="Fechar conversa">${svg(IC.x, 16)}</button></div>` +
-      `<div class="id-chat" id="id-chat"><div class="id-msg id-me" id="id-me"></div>` +
-      `<div class="id-msg id-ai" id="id-ai" hidden><div class="id-goo" id="id-gooc"><i></i><i></i><i></i></div><p class="id-resp" id="id-resp"></p></div></div>` +
-      `<div class="id-aprov" id="id-aprov"></div>`;
-    $('#id-me').textContent = i.texto;
-    const chat = $('#id-chat'), me = $('#id-me'), ai = $('#id-ai'), goo = $('#id-gooc'), resp = $('#id-resp'), aprov = $('#id-aprov');
+    const i = ideiaDe(id), no = nos.get(id); if (!i || !no) return;
+    limpaFio(); if (E.aberta && E.aberta !== id) { const ant = ideiaDe(E.aberta); fechaSlot(E.aberta); E.aberta = null; if (ant) pintaItem(ant); }
+    E.aberta = id; pintaItem(i);
+    const slot = no.querySelector('.id-slot'), pode = podeMexer(i), temProposta = !!i.proposta?.resumo;
+    slot.innerHTML = `<div class="id-chat"><div class="id-msg id-ai" hidden><div class="id-goo"><i></i><i></i><i></i></div><p class="id-resp"></p></div></div><div class="id-aprov"></div>`;
+    const chat = slot.querySelector('.id-chat'), ai = slot.querySelector('.id-ai'), goo = slot.querySelector('.id-goo'), resp = slot.querySelector('.id-resp'), aprov = slot.querySelector('.id-aprov');
     const dots = [...goo.querySelectorAll('i')].map((e, k) => ({ e, x: M(19 + k * 13, 300, 22), y: M(0, 420, 14), k }));
-    const meS = M(0, 300, 22), aiS = M(0, 300, 22), W = M(64, 240, 24), Hh = M(40, 240, 24), drop = M(1, 300, 26), big = M(1, 300, 24);
+    const aiS = M(0, 300, 22), W = M(64, 240, 24), Hh = M(40, 240, 24), drop = M(1, 300, 26), big = M(1, 300, 24);
     let palavras = [], fase = 'pensa', hop = 0.3, kk = 0;
     const cheio = () => Math.min(chat.offsetWidth * 0.9, 560);
-    const ap = montaAprov({ ideia: i, pode, aprov, E, B, sb, user, salvar: () => salvarProposta(i), aoMudar: pintaLista, nome, pessoa });
+    const ap = montaAprov({ ideia: i, pode, aprov, E, B, sb, user, salvar: () => salvarProposta(i), aoMudar: () => { pintaItem(i); filtros(); }, pessoa });
     const fio = { id, ap };
     E.fio = fio;
 
     registrar({
       quadro(dt) {
         if (fase === 'pensa' && (hop -= dt) <= 0) { dots[kk % 3].y.v = -95; kk++; hop = kk % 3 ? 0.16 : 0.46; }
-        [meS, aiS, W, Hh, drop, big].forEach((s) => passo(s, dt)); dots.forEach((d) => { passo(d.x, dt); passo(d.y, dt); }); palavras.forEach((w) => passo(w.s, dt));
+        [aiS, W, Hh, drop, big].forEach((s) => passo(s, dt)); dots.forEach((d) => { passo(d.x, dt); passo(d.y, dt); }); palavras.forEach((w) => passo(w.s, dt));
       },
       desenhar() {
-        me.style.opacity = limitar(meS.x, 0, 1).toFixed(3); me.style.transform = `translateY(${((1 - meS.x) * 14).toFixed(2)}px) scale(${(0.92 + 0.08 * meS.x).toFixed(4)})`;
         ai.style.opacity = limitar(aiS.x, 0, 1).toFixed(3); ai.style.transform = `translateY(${((1 - aiS.x) * 14).toFixed(2)}px)`;
         ai.style.width = W.x.toFixed(2) + 'px'; ai.style.height = Hh.x.toFixed(2) + 'px';
         const s = limitar(drop.x, 0, 1.2) * big.x;
@@ -159,7 +173,7 @@ export async function montarIdeias(ctx) {
           w.e.style.opacity = limitar(v, 0, 1).toFixed(3); w.e.style.transform = `translateY(${((1 - w.s.x) * 6).toFixed(2)}px)`; w.e.style.filter = v < 0.98 ? `blur(${((1 - limitar(v, 0, 1)) * 4).toFixed(2)}px)` : 'none';
         });
       },
-      ativo() { return fase === 'pensa' || ![meS, aiS, W, Hh, drop, big].every((s) => parada(s, 0.01)) || dots.some((d) => !parada(d.x, 0.01) || !parada(d.y, 0.01)) || palavras.some((w) => !parada(w.s, 0.005)); },
+      ativo() { return fase === 'pensa' || ![aiS, W, Hh, drop, big].every((s) => parada(s, 0.01)) || dots.some((d) => !parada(d.x, 0.01) || !parada(d.y, 0.01)) || palavras.some((w) => !parada(w.s, 0.005)); },
       fim() { return !chat.isConnected; },
     });
 
@@ -171,11 +185,11 @@ export async function montarIdeias(ctx) {
       goo.style.display = 'none'; W.t = cheio();
       const medir = (w) => resp.offsetTop + w.e.offsetTop + w.e.offsetHeight + PAD_Y;
       if (direto) {
-        W.x = W.t = cheio(); palavras.forEach((w) => { w.on = true; w.s.x = w.s.t = 1; }); aiS.x = aiS.t = 1; meS.x = meS.t = 1;
+        W.x = W.t = cheio(); palavras.forEach((w) => { w.on = true; w.s.x = w.s.t = 1; }); aiS.x = aiS.t = 1;
         Hh.x = Hh.t = palavras.length ? medir(palavras[palavras.length - 1]) : 40; acordar(); return Promise.resolve();
       }
       return new Promise((ok) => {
-        palavras.forEach((w, k) => later(k * 0.07, () => { w.on = true; w.s.t = 1; Hh.t = medir(w); acordar(); }));
+        palavras.forEach((w, k) => later(k * 0.07, () => { w.on = true; w.s.t = 1; Hh.t = medir(w); acordar(); if (k % 6 === 0) rola(); }));
         later(palavras.length * 0.07 + 0.25, ok);
       });
     }
@@ -183,8 +197,8 @@ export async function montarIdeias(ctx) {
     async function organiza() {
       fase = 'pensa'; ai.hidden = false; goo.style.display = ''; resp.innerHTML = ''; palavras = [];
       W.x = W.t = 64; Hh.x = Hh.t = 40; drop.x = drop.t = 1; big.x = big.t = 1; dots.forEach((d, k) => { d.x.t = 19 + k * 13; d.x.x = d.x.t; });
-      ai.setAttribute('aria-label', 'Pensando'); aiS.t = 0; aiS.x = 0; ai.setAttribute('role', 'status');
-      const t0 = performance.now(); later(0.5, () => { aiS.t = 1; acordar(); }); acordar();
+      ai.setAttribute('aria-label', 'Pensando'); ai.setAttribute('role', 'status'); aiS.t = 0; aiS.x = 0;
+      const t0 = performance.now(); later(0.2, () => { aiS.t = 1; acordar(); rola(); }); acordar();
       let r; try { r = await sb.functions.invoke('central-ideia-organizar', { body: { ideia_id: i.id } }); } catch (e) { r = { error: e }; }
       if (E.fio !== fio) return;
       await new Promise((ok) => later(Math.max(0.1, 2 - (performance.now() - t0) / 1000), ok));
@@ -193,50 +207,76 @@ export async function montarIdeias(ctx) {
       fase = 'junta'; dots.forEach((d) => { d.x.t = 27.5; d.y.t = 0; }); big.t = 1.45; later(0.45, () => { drop.t = 0; acordar(); }); acordar();
       await new Promise((ok) => later(0.6, ok)); if (E.fio !== fio) return;
       fase = 'resposta';
-      if (p) { i.proposta = p; i.estado = 'organizada'; const bo = sec.querySelector('[data-acao=organizar]'); if (bo) { bo.textContent = 'Organizar de novo'; bo.classList.remove('pri'); } await escreve(p.resumo); if (E.fio !== fio) return; ap.troca(i.proposta); pintaLista(); }
+      if (p) { i.proposta = p; i.estado = 'organizada'; pintaItem(i); filtros(); await escreve(p.resumo); if (E.fio !== fio) return; ap.troca(i.proposta); rola(); }
       else { await escreve(r?.data?.erro || 'Não consegui organizar essa ideia agora. Tente de novo em instantes.', { erro: true }); }
       aoFim && aoFim(!!p);
     }
 
-    if (organizar) { meS.t = 1; later(0.15, () => { acordar(); }); organiza(); }
+    if (organizar) organiza();
     else if (temProposta) { escreve(i.proposta.resumo, { direto: true }); ap.troca(i.proposta, true); }
-    else { meS.x = meS.t = 1; acordar(); }
-    if (!organizar && temProposta) acordar();
-    sec.scrollIntoView({ block: 'nearest', behavior: reduz() ? 'auto' : 'smooth' });
-
-    sec.onclick = async (ev) => {
-      const b = ev.target.closest('[data-acao]'); if (!b) return;
-      const a = b.dataset.acao;
-      if (a === 'fechar') { limpaFio(); E.aberta = null; sec.hidden = true; sec.innerHTML = ''; pintaLista(); return; }
-      if (a === 'organizar') { i.proposta = null; abrir(id, { organizar: true }); return; }
-      const novo = { guardar: 'guardada', descartar: 'descartada', reabrir: 'nova' }[a];
-      if (!novo) return;
-      const antes = i.estado; i.estado = novo;
-      const { error } = await sb.from('central_ideias').update({ estado: novo, atualizado_em: new Date().toISOString() }).eq('id', id);
-      if (error) { i.estado = antes; E.erro = 'Não consegui salvar. Tente de novo.'; } else { E.erro = ''; }
-      if (a === 'descartar' && !error) { limpaFio(); E.aberta = null; sec.hidden = true; sec.innerHTML = ''; } else abrir(id);
-      pintaLista();
-    };
+    no.scrollIntoView({ block: 'nearest', behavior: reduz() ? 'auto' : 'smooth' });
   }
 
-  // ---------------------------------------------------------------- ações da página
+  // ---------------------------------------------------------------- virar tarefa direto (mudar de quadro)
+  function formTarefa(i) {
+    limpaFio(); if (E.aberta && E.aberta !== i.id) { const ant = ideiaDe(E.aberta); fechaSlot(E.aberta); E.aberta = null; if (ant) pintaItem(ant); }
+    E.aberta = i.id; pintaItem(i);
+    const slot = nos.get(i.id).querySelector('.id-slot');
+    const R = { titulo: String(i.texto).split('\n')[0].slice(0, 160), resp: user.id, prazo: '', imp: 'normal' };
+    const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+    const pinta = () => {
+      const imp = (v, r) => `<button type="button" data-iimp="${v}" class="${R.imp === v ? 'on' : ''}" aria-pressed="${R.imp === v}">${r}</button>`;
+      slot.innerHTML = `<form class="id-form"><p class="id-form-t">Virar tarefa</p><label class="campo"><span>Nome da tarefa</span><input class="md-in" name="titulo" maxlength="160" autocomplete="off" value="${esc(R.titulo)}"></label>` +
+        `<div class="md-duo"><label class="campo"><span>Responsável</span><select class="md-in" name="resp">${E.equipe.map((p) => `<option value="${p.usuario_id}"${p.usuario_id === R.resp ? ' selected' : ''}>${esc(p.usuario_id === user.id ? 'Para mim' : prim(p.nome))}</option>`).join('')}</select></label>` +
+        `<label class="campo"><span>Data</span><input class="md-in" name="prazo" type="date" min="${hoje}" value="${esc(R.prazo)}"></label></div>` +
+        `<div class="campo"><span>Importância</span><div class="md-imp" role="group" aria-label="Importância">${imp('baixa', 'Baixa')}${imp('normal', 'Normal')}${imp('alta', 'Alta')}</div></div>` +
+        `<p class="erro" role="alert" hidden></p><div class="md-acoes"><button class="btn" type="button" data-ci="cancela">Cancelar</button><button class="btn pri" type="submit">Criar tarefa</button></div></form>`;
+    };
+    pinta();
+    const f = () => slot.querySelector('form');
+    slot.oninput = (ev) => { const k = { titulo: 'titulo', resp: 'resp', prazo: 'prazo' }[ev.target.name]; if (k) R[k] = ev.target.value; };
+    slot.onclick = (ev) => {
+      const b = ev.target.closest('button'); if (!b) return;
+      if (b.dataset.iimp) { R.imp = b.dataset.iimp; pinta(); }
+      else if (b.dataset.ci === 'cancela') { slot.innerHTML = ''; slot.oninput = slot.onclick = null; E.aberta = null; pintaItem(i); }
+    };
+    slot.onsubmit = async (ev) => {
+      ev.preventDefault(); const titulo = R.titulo.trim(), erro = slot.querySelector('.erro');
+      if (!titulo) { f().elements.titulo.focus(); return; }
+      const nova = { titulo, responsavel_id: R.resp, prazo: R.prazo || null, importancia: R.imp, criado_por: user.id };
+      const { error } = await sb.from('central_tarefas').insert(nova);
+      if (error) { erro.hidden = false; erro.textContent = 'Não consegui criar a tarefa. Tente de novo.'; return; }
+      i.proposta = { resumo: 'Virou tarefa.', itens: [{ id: crypto.randomUUID(), tipo: 'tarefa', titulo, detalhe: '', responsavel_id: R.resp, prazo: nova.prazo, importancia: R.imp, estado: 'criado' }], criado_em: new Date().toISOString() };
+      i.estado = 'organizada'; await salvarProposta(i);
+      slot.innerHTML = ''; slot.oninput = slot.onclick = slot.onsubmit = null; E.aberta = null;
+      sincroniza(); ctx.aoCriarTarefa && ctx.aoCriarTarefa();
+    };
+    f().elements.titulo.focus(); f().elements.titulo.select();
+    nos.get(i.id).scrollIntoView({ block: 'nearest', behavior: reduz() ? 'auto' : 'smooth' });
+  }
+
+  // ---------------------------------------------------------------- ações
   el.addEventListener('click', async (ev) => {
     const b = ev.target.closest('button'); if (!b) return;
-    if (b.dataset.ficha) { E.ficha = b.dataset.ficha; pintaLista(); }
-    else if (b.dataset.abre) abrir(b.dataset.abre);
-    else if (b.dataset.apaga) {
-      const k = E.ideias.findIndex((x) => x.id === b.dataset.apaga); if (k < 0) return;
-      const [x] = E.ideias.splice(k, 1); if (E.aberta === x.id) { limpaFio(); E.aberta = null; const s = $('#id-fio'); s.hidden = true; s.innerHTML = ''; }
-      pintaLista();
-      const { error } = await sb.from('central_ideias').delete().eq('id', x.id);
-      if (error) { E.ideias.splice(k, 0, x); pintaLista(); }
+    if (b.dataset.ficha) { E.ficha = b.dataset.ficha; sincroniza(); return; }
+    const no = b.closest('.id-it'), a = b.dataset.ac; if (!no || !a) return;
+    const i = ideiaDe(no.dataset.id); if (!i || !podeMexer(i)) return;
+    if (a === 'proposta') { if (E.aberta === i.id) { limpaFio(); fechaSlot(i.id); E.aberta = null; pintaItem(i); } else abrir(i.id); }
+    else if (a === 'organizar') { i.proposta = null; abrir(i.id, { organizar: true }); }
+    else if (a === 'tarefa') formTarefa(i);
+    else {
+      const novo = { guardar: 'guardada', descartar: 'descartada', reabrir: 'nova' }[a]; if (!novo) return;
+      const antes = i.estado; i.estado = novo;
+      const { error } = await sb.from('central_ideias').update({ estado: novo, atualizado_em: new Date().toISOString() }).eq('id', i.id);
+      if (error) i.estado = antes;
+      if (a === 'descartar' && !error && E.aberta === i.id) { limpaFio(); fechaSlot(i.id); E.aberta = null; }
+      sincroniza();
     }
   });
-  if (E.erro) $('#id-lista').insertAdjacentHTML('beforebegin', `<p class="erro" role="alert">${svg(IC.alerta)}<span>${esc(E.erro)}</span></p>`);
 }
 
 // ------------------------------------------------------------------ Tool approval (Kokonut UI, MIT): cartão que pede, linha que dobra
-function montaAprov({ ideia, pode, aprov, E, B, sb, user, salvar, aoMudar, nome, pessoa }) {
+function montaAprov({ ideia, pode, aprov, E, B, sb, user, salvar, aoMudar, pessoa }) {
   const nos = new Map(); // id do item -> linha dobrada
   let cartao = null;
   const itens = () => ideia.proposta?.itens || [];
