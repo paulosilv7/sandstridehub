@@ -4,8 +4,11 @@
 <link rel="icon" type="image/png" href="../favicon-64.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
+<meta name="theme-color" content="#f1f1f5">
+<script>try{var t=localStorage.getItem("sandstride-tema");if(t!=="dark"&&t!=="light")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<link rel="stylesheet" href="../css/shell.css">
 <style>:root{
-  --bg:#f1f1f5;--card:#FFFFFF;--ink:#11141b;--ink2:#3d424d;--mut:#6b7280;--line:#ececf1;--soft:#f4f4f8;--hover:#f7f7fb;--n-pos:#1f9d64;--n-pos-bg:#e1f5ea;--n-rec:#6e9bff;--n-rec-bg:#e8efff;--n-att:#e0a020;--n-att-bg:#fdf1d6;--n-neg:#e5544b;--n-neg-bg:#fde6e3;--n-acc:#bccbf5;--n-acc2:#6f8de6;--n-dark:#11141b;--n-hat1:#d6d9e1;--n-hat2:#f2f3f7;
+  --bg:#f1f1f5;--card:#FFFFFF;--ink:#11141b;--ink2:#3d424d;--mut:#6b7280;--line:#ececf1;--soft:#f4f4f8;--hover:#f7f7fb;--n-pos:#1f9d64;--n-pos-bg:#e1f5ea;--n-rec:#6e9bff;--n-rec-bg:#e8efff;--n-att:#e0a020;--n-att-bg:#fdf1d6;--n-neg:#e5544b;--n-neg-bg:#fde6e3;--n-acc:#A9C4FF;--n-acc2:#6f8de6;--n-dark:#11141b;--n-hat1:#d6d9e1;--n-hat2:#f2f3f7;
   --palco:#0F1013;--palco2:#1A1C21;--on-p:#FFFFFF;--on-p2:#A7ABB4;
   --pago:#17803F;--pago-bg:#DFF3E6;
   --rec:#3556D8;--rec-bg:#E5EBFE;
@@ -216,8 +219,8 @@ button.kpi:hover{background:var(--hover)}
 .dock{position:absolute;z-index:20;left:16px;bottom:16px;display:flex;align-items:center;gap:6px;padding:6px;border-radius:999px;background:#0a0a0a;box-shadow:0 8px 24px rgba(0,0,0,.28);max-width:calc(100vw - 24px)}
 .dock button,.dock .av{position:relative;width:40px;height:40px;border-radius:50%;background:#222;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
 .dock button:hover{background:#3a3a3a}
-.dock button[aria-current="page"]{background:#bccbf5;color:#1a1a1a}
-.dock .av{background:#bccbf5;color:#1a1a1a;font-weight:600;font-size:15px;border:2px solid #2a2a2a}
+.dock button[aria-current="page"]{background:#A9C4FF;color:#1a1a1a}
+.dock .av{background:#A9C4FF;color:#1a1a1a;font-weight:600;font-size:15px;border:2px solid #2a2a2a}
 .dock .s1{width:1px;height:22px;background:#333;flex:none;margin:0 2px}
 .dock .bd{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--n-neg);color:#fff;font-size:10.5px;font-weight:600;line-height:18px;text-align:center;border:2px solid #0a0a0a;padding:0 4px;box-sizing:content-box}
 .dock .tipd{position:absolute;bottom:52px;left:50%;translate:-50% 0;background:#0a0a0a;color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:10px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s}
@@ -225,7 +228,7 @@ button.kpi:hover{background:var(--hover)}
 @media (max-width:640px){.dock{left:8px;right:8px;bottom:8px;justify-content:space-between;max-width:none}.dock .s1{display:none}.dock button,.dock .av{width:36px;height:36px}}
 .nv .cbtn{width:44px;height:44px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--ink2);position:relative}
 .nv .cbtn i{position:absolute;top:11px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--n-neg);border:2px solid #fff}
-.nv .avt{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(160deg,#5f7fe0,#bccbf5);color:#fff;font-size:17px;font-weight:600;border:2px solid #fff;flex:none}
+.nv .avt{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(160deg,#5f7fe0,#A9C4FF);color:#fff;font-size:17px;font-weight:600;border:2px solid #fff;flex:none}
 .nv .mpill{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:999px;background:#fff;font-size:14px;font-weight:500;color:var(--ink)}
 .nv .mpill.s{background:var(--soft);height:36px;padding:0 14px;font-size:14px}
 .nv .mpill em{font-style:normal;font-size:12px;font-weight:500;color:var(--mut)}
@@ -279,7 +282,7 @@ button.kpi:hover{background:var(--hover)}
 .nv .pin i{display:block;width:1px;height:16px;background:var(--n-dark)}
 .nv .pin s{display:block;width:7px;height:7px;border-radius:50%;background:var(--n-dark)}
 .nv .scale{display:flex;justify-content:space-between;font-size:13px;color:var(--mut);margin-top:8px}
-.nv .g-acc{background:linear-gradient(90deg,#5f7fe0,#bccbf5)}
+.nv .g-acc{background:linear-gradient(90deg,#5f7fe0,#A9C4FF)}
 .nv .g-pos{background:linear-gradient(90deg,#1f9d64,#8fdcb4)}
 .nv .g-neg{background:linear-gradient(90deg,#e5544b,#f5aaa4)}
 .nv .hat{background:repeating-linear-gradient(135deg,var(--n-hat1) 0 2px,var(--n-hat2) 2px 6px);border:1px solid #dcdfe6}
@@ -304,7 +307,7 @@ button.kpi:hover{background:var(--hover)}
 .nv .zero{position:absolute;left:0;right:0;border-top:1px dashed #d4d7df}
 .nv .thin{display:flex;align-items:flex-end;gap:5px;height:var(--H)}
 .nv .thin b{flex:1;border-radius:999px;background:#e7e8ee;min-height:6px}
-.nv .thin b.on{background:linear-gradient(180deg,#5f7fe0,#bccbf5)}
+.nv .thin b.on{background:linear-gradient(180deg,#5f7fe0,#A9C4FF)}
 .nv .thin b.h{background:linear-gradient(180deg,#1f9d64,#a8e3c4)}
 .nv .dots{display:grid;grid-template-columns:repeat(11,1fr);gap:8px}
 .nv .dots i{aspect-ratio:1;border-radius:50%;background:#e6e7ed;display:block}
@@ -386,7 +389,7 @@ button.kpi:hover{background:var(--hover)}
 .nv .mm{display:flex;flex-direction:column;gap:12px}
 .nv .mm .rw{display:grid;grid-template-columns:88px minmax(0,1fr) auto;gap:12px;align-items:center;font-size:14px}
 .nv .mm .rw .t{height:10px;border-radius:999px;background:var(--soft);overflow:hidden}
-.nv .mm .rw .t b{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#6f8de6,#bccbf5)}
+.nv .mm .rw .t b{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#6f8de6,#A9C4FF)}
 .nv .mm .rw span:last-child{font-weight:500;text-align:right;white-space:nowrap}
 .nv .anc-sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .nv .anc-sum>div{background:var(--soft);border-radius:20px;padding:16px 20px;display:flex;flex-direction:column;gap:4px}
@@ -438,12 +441,71 @@ button.kpi:hover{background:var(--hover)}
 .nv .tabs{max-width:100%}
 .nv .go svg{display:block}
 
+/* ===== menu lateral compartilhado + tema escuro (briefing v2) ===== */
+.dock{display:none!important}
+.sh-com .nv .top .logo,.sh-com .nv .top .hsep{display:none}
+body.sh-com{padding:0}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0A0A0A;--card:#161616;--ink:#FFFFFF;--ink2:#D4D4D4;--mut:#9A9A9A;--line:#2F2F2F;--soft:#1F1F1F;--hover:#242424;
+  --palco:#000000;--palco2:#161616;--n-dark:#000000;--n-hat1:#2F2F2F;--n-hat2:#1F1F1F;
+  --pago:#5CD08A;--pago-bg:#12301F;--rec:#6E9BFF;--rec-bg:#17223F;--disp:#F2B544;--disp-bg:#3A2D0E;--sai:#F0605A;--sai-bg:#3A1816;
+  --n-pos:#5CD08A;--n-pos-bg:#12301F;--n-rec:#6E9BFF;--n-rec-bg:#17223F;--n-att:#F2B544;--n-att-bg:#3A2D0E;--n-neg:#F0605A;--n-neg-bg:#3A1816}
+:root[data-theme="dark"] .btn,:root[data-theme="dark"] .seg button[aria-pressed="true"],:root[data-theme="dark"] .er.tot,:root[data-theme="dark"] .nv .btnd,:root[data-theme="dark"] .nv .tab[aria-pressed="true"]{background:#fff;color:#0A0A0A}
+:root[data-theme="dark"] .ext,:root[data-theme="dark"] .mdl-c,:root[data-theme="dark"] .nv .cbtn,:root[data-theme="dark"] .nv .mpill,:root[data-theme="dark"] .nv .btnw{background:#1F1F1F;color:#fff}
+:root[data-theme="dark"] .nv .col .mini{background:#242424;color:#fff;box-shadow:inset 0 0 0 1px #3A3A3A}
+:root[data-theme="dark"] .nv .trk{background:#2F2F2F}
+:root[data-theme="dark"] .nv .thin b{background:#2F2F2F}
+:root[data-theme="dark"] .nv .rw:hover,:root[data-theme="dark"] .nv .tb .tr:hover,:root[data-theme="dark"] .nv .tab:hover{background:#242424}
+:root[data-theme="dark"] .nv .tag.neu{background:#2A2A2A}
+:root[data-theme="dark"] .nv .cbtn i{border-color:#1F1F1F}
+:root[data-theme="dark"] .tog::after{background:#fff}
+:root[data-theme="dark"] .dbar em{color:#9A9A9A}
+:root[data-theme="dark"] .pill.neu{color:#9A9A9A}
+:root[data-theme="dark"] .nv .bl{color:#8FA6F0}
+:root[data-theme="dark"] .nv .am{color:#F2B544}
+:root[data-theme="dark"] .nv .cic.att{color:#F2B544}
+:root[data-theme="dark"] .nv .dq.hoje{color:#F2B544}
+:root[data-theme="dark"] .nv .dq.hoje small{color:#F2B544}
+:root[data-theme="dark"] .nv .tag.late{color:#F0605A}
+:root[data-theme="dark"] .nv .tag.hoje{color:#F2B544}
+:root[data-theme="dark"] .nv .tag.ok{color:#5CD08A}
+:root[data-theme="dark"] .nv .tag.rec{color:#8FA6F0}
+:root[data-theme="dark"] .nv .tag.neu{color:#B8BCC6}
+:root[data-theme="dark"] .nv .xr .amb{color:#F2B544}
+:root[data-theme="dark"] .nv .cic.pos{color:#5CD08A}
+:root[data-theme="dark"] .nv .tag.dis{color:#F2B544}
+:root[data-theme="dark"] .nv .xr .rw2.amb{color:#F2B544}
+:root[data-theme="dark"] body{background:var(--bg)}
+:root[data-theme="dark"] .nv .card{background:#161616;border-color:#2F2F2F}
+:root[data-theme="dark"] .nv .card.dk{background:#000}
+:root[data-theme="dark"] .nv .avt{border-color:#161616}
+:root[data-theme="dark"] .nv .hat-r{background:repeating-linear-gradient(135deg,#7a3a36 0 2px,#3A1816 2px 6px);border-color:#5a2b28}
 </style></head><body>
 <div id="app"></div><div id="ctip" hidden></div><div id="toast" role="status" hidden></div>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
 window.SB = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+import { montarShell } from '../js/shell.js';
+const rotaShell = () => { const h = location.hash.slice(1); if (h === 'resultado') return 'visao'; if (h === 'contas') return 'despesas'; return ['visao','recebimentos','vendas','despesas','historico','config'].includes(h) ? h : 'visao'; };
+const ic = {
+  visao: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+  recebimentos: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  vendas: '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+  despesas: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',
+  historico: '<path d="M3 17l5-5 4 4 8-9M15 7h5v5"/>',
+  atualizar: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>',
+  config: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>'
+};
+const irPara = (id) => () => { if (location.hash.slice(1) !== id) location.hash = id; };
+montarShell({ ativo: 'financeiro', raiz: '/', subs: [
+  { rotulo: 'Visão geral', d: ic.visao, ao: irPara('visao'), ativo: () => rotaShell() === 'visao' },
+  { rotulo: 'Recebimentos', d: ic.recebimentos, ao: irPara('recebimentos'), ativo: () => rotaShell() === 'recebimentos' },
+  { rotulo: 'Vendas', d: ic.vendas, ao: irPara('vendas'), ativo: () => rotaShell() === 'vendas' },
+  { rotulo: 'Despesas', d: ic.despesas, ao: irPara('despesas'), ativo: () => rotaShell() === 'despesas' },
+  { rotulo: 'Resultados', d: ic.historico, ao: irPara('historico'), ativo: () => rotaShell() === 'historico' },
+  { rotulo: 'Atualizar dados', d: ic.atualizar, ao: () => { const b = document.querySelector('[data-atu]'); if (b) b.click(); }, ativo: () => false },
+  { rotulo: 'Configurações', d: ic.config, ao: irPara('config'), ativo: () => rotaShell() === 'config' },
+] }).catch((e) => console.error('menu lateral', e));
 window.dispatchEvent(new Event('sb-pronto'));
 </script>
 <script>
@@ -643,7 +705,7 @@ function calSec(){
     b+='<div class="col'+(on?' sel':'')+'" data-l="'+ddmm(k)+'" data-v="R$ '+r0(v)+'" data-c="'+(v?'hat-b':'hat')+'" title="'+esc(brk)+'"><div class="b '+c+'" style="height:'+hh.toFixed(1)+'px;max-width:30px"></div><span class="tip" style="bottom:'+(hh+14).toFixed(1)+'px">R$ '+r0(v)+'</span>'+mini+'</div>';
     lb+='<span class="'+(on?'on':'')+'" style="font-size:12px">'+d+'</span>';
   }
-  return '<section class="card s8">'+chead('cal','Liberações do Mercado Livre',nav,'')+'<div class="hd"><div class="val" style="font-size:44px">R$ '+r0(tot)+'<span class="un">em '+MESES[m-1].toLowerCase()+'</span></div><div class="leg"><span><i style="background:linear-gradient(180deg,#5f7fe0,#bccbf5)"></i>Hoje</span><span><i style="background:#9fb8f5"></i>Dia com liberação</span></div></div>'+b+'</div><div class="ml" style="gap:6px">'+lb+'</div><div class="lab">Toque num dia para ver o valor; passe o mouse para ver por loja.</div></section>';
+  return '<section class="card s8">'+chead('cal','Liberações do Mercado Livre',nav,'')+'<div class="hd"><div class="val" style="font-size:44px">R$ '+r0(tot)+'<span class="un">em '+MESES[m-1].toLowerCase()+'</span></div><div class="leg"><span><i style="background:linear-gradient(180deg,#5f7fe0,#A9C4FF)"></i>Hoje</span><span><i style="background:#9fb8f5"></i>Dia com liberação</span></div></div>'+b+'</div><div class="ml" style="gap:6px">'+lb+'</div><div class="lab">Toque num dia para ver o valor; passe o mouse para ver por loja.</div></section>';
 }
 function tabSec(){
   var L=todas(),F=S.lf||'all',rows=[];
@@ -733,7 +795,7 @@ function cardAds(c,A){
 function adsPainel(c,A){
   if(!A.tot)return '<p class="sub">Ainda não li o gasto com anúncios deste mês.</p>';
   var fat=c.fat||0,mx=A.lj[0].v;
-  return '<div class="anc-sum"><div><span class="k">Gasto no mês</span><b>R$ '+d2(A.tot)+'</b></div><div><span class="k">Por pedido (todos)</span><b>R$ '+d2(A.pedAll?A.tot/A.pedAll:0)+'</b></div><div><span class="k">Do que vendi</span><b>'+(fat?pc1(A.tot/fat*100):'—')+'</b></div><div><span class="k">Lojas com anúncio</span><b>'+A.lj.length+'</b></div></div><div class="anc-grid">'+A.lj.map(function(x){return '<div class="anc-tile"><div class="anc-tile-h">'+mpi(x.k,36)+'<div><b>'+esc(x.nome)+'</b><small>'+MKN[x.k]+'</small></div></div><div class="anc-tile-v">R$ '+r0(x.v)+'</div><div class="trk" style="height:8px"><b style="width:'+(x.v/mx*100).toFixed(1)+'%;background:linear-gradient(90deg,#6f8de6,#bccbf5)"></b></div><div class="anc-tile-f"><span>'+pc1(x.v/A.tot*100)+' do total</span><span>'+(x.ped?'R$ '+d2(x.v/x.ped)+' por pedido · '+n0(x.ped)+' pedidos':'sem pedidos')+'</span></div></div>'}).join('')+'</div>';
+  return '<div class="anc-sum"><div><span class="k">Gasto no mês</span><b>R$ '+d2(A.tot)+'</b></div><div><span class="k">Por pedido (todos)</span><b>R$ '+d2(A.pedAll?A.tot/A.pedAll:0)+'</b></div><div><span class="k">Do que vendi</span><b>'+(fat?pc1(A.tot/fat*100):'—')+'</b></div><div><span class="k">Lojas com anúncio</span><b>'+A.lj.length+'</b></div></div><div class="anc-grid">'+A.lj.map(function(x){return '<div class="anc-tile"><div class="anc-tile-h">'+mpi(x.k,36)+'<div><b>'+esc(x.nome)+'</b><small>'+MKN[x.k]+'</small></div></div><div class="anc-tile-v">R$ '+r0(x.v)+'</div><div class="trk" style="height:8px"><b style="width:'+(x.v/mx*100).toFixed(1)+'%;background:linear-gradient(90deg,#6f8de6,#A9C4FF)"></b></div><div class="anc-tile-f"><span>'+pc1(x.v/A.tot*100)+' do total</span><span>'+(x.ped?'R$ '+d2(x.v/x.ped)+' por pedido · '+n0(x.ped)+' pedidos':'sem pedidos')+'</span></div></div>'}).join('')+'</div>';
 }
 // ---------- Detalhe do mês ----------
 function xrow(nm,v,base,icn,cls,color,neg,extra){
@@ -802,7 +864,7 @@ function telaPainel(){
   var L=S.hist?listaRes():[];
   if(L.length){
     var sel=mselYm(L),x=L.filter(function(q){return q.ym===sel})[0];
-    h+='<section class="card s8">'+chead('chart','Resultado por mês','','historico')+'<div class="hd"><div class="val" style="font-size:44px">R$ '+mil(x.res)+'<span class="un">em '+MESES[+sel.slice(5,7)-1].toLowerCase()+'</span></div><div class="leg"><span><i style="background:linear-gradient(180deg,#5f7fe0,#bccbf5)"></i>Mês em foco</span><span><i style="background:#d6d9e1"></i>Outros meses</span><span><i style="background:#f0a29c"></i>Saiu mais que entrou</span></div></div>'+mchart(L,250,sel)+'</section>';
+    h+='<section class="card s8">'+chead('chart','Resultado por mês','','historico')+'<div class="hd"><div class="val" style="font-size:44px">R$ '+mil(x.res)+'<span class="un">em '+MESES[+sel.slice(5,7)-1].toLowerCase()+'</span></div><div class="leg"><span><i style="background:linear-gradient(180deg,#5f7fe0,#A9C4FF)"></i>Mês em foco</span><span><i style="background:#d6d9e1"></i>Outros meses</span><span><i style="background:#f0a29c"></i>Saiu mais que entrou</span></div></div>'+mchart(L,250,sel)+'</section>';
   }else h+='<section class="card s8">'+chead('chart','Resultado por mês','','historico')+'<p class="sub">'+(S.herro?'Não consegui ler o histórico agora.':'Carregando o histórico…')+'</p></section>';
   // Pago em 7 dias / entra em 7 dias
   var d7=[];for(i=0;i<7;i++)d7.push(addDias(hj,i));

@@ -91,10 +91,14 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
       const x = subs[+b.dataset.sub], on = !!(x.ativo && x.ativo());
       if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
+    const ba = document.querySelector('.sh-barra [aria-current]'); if (ba && ba.scrollIntoView) ba.scrollIntoView({ inline: 'center', block: 'nearest' });
   };
   document.querySelectorAll('[data-sub]').forEach((b) => b.addEventListener('click', () => { const x = subs[+b.dataset.sub]; x.ao(); setTimeout(marca, 0); }));
   new MutationObserver(marca).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['aria-expanded', 'hidden'] });
+  const pai = document.querySelector('.sh-lat nav [data-pai]'), navEl = document.querySelector('.sh-lat nav');
+  if (pai && navEl) navEl.scrollTop = Math.max(0, pai.offsetTop - 90);
   marca();
+  window.addEventListener('hashchange', () => setTimeout(marca, 0));
 
   // tema e menu recolhido
   const seg = document.getElementById('shTema'), polegar = seg.querySelector('.sh-polegar'), bs = [...seg.querySelectorAll('button')];
