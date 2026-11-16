@@ -268,7 +268,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
       <div class="sp"></div>
       <div class="acoes">
         <div class="perw"><div class="seg" id="per" role="group" aria-label="Período"><span class="polegar"></span>
-          <button type="button" data-v="7">7 dias</button><button type="button" data-v="14">14 dias</button><button type="button" data-v="30">30 dias</button><button type="button" data-v="mes">Este mês</button><button type="button" data-v="custom" id="bCus">Datas</button>
+          <button type="button" data-v="1">Hoje</button><button type="button" data-v="7">7 dias</button><button type="button" data-v="mes">Este mês</button><button type="button" data-v="custom" id="bCus" aria-label="Escolher datas" title="Escolher datas"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg></button>
         </div>
         <div class="cal" id="cus" hidden role="dialog" aria-label="Escolher período"></div></div>
         <div class="loja" id="loja">
@@ -288,7 +288,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
     <li><span id="j2"></span><span><b>ROAS dos anúncios:</b> só as vendas atribuídas ao anúncio. No Mercado Livre vem direto do marketplace; pedidos são as unidades vendidas em anúncio.</span></li>
     <li><span id="j3"></span><span><b>Shopee (listrado):</b> estimativa. Vendas de anúncio multiplicadas por pedidos pagos ÷ pedidos criados no período, porque a Shopee conta pedido cancelado ou não pago.</span></li>
     <li><span id="j4"></span><span><b>Janela de atribuição:</b> é a de cada marketplace. As APIs não deixam escolher.</span></li>
-    <li><span id="j5"></span><span><b>Período fecha ontem.</b> O dia de hoje ainda está acontecendo e aparece listrado no gráfico.</span></li>
+    <li><span id="j5"></span><span><b>Hoje entra.</b> Os números do dia mudam ao longo do dia (a tela se atualiza sozinha) e o dia de hoje aparece listrado no gráfico, porque ainda está fechando.</span></li>
     <li><span id="j7"></span><span><b>Dois custos por pedido.</b> “Do ads” divide o gasto pelos pedidos que vieram de anúncio. “De ads por pedido” divide o gasto por todos os pedidos válidos das lojas Mercado Livre, Shopee e TikTok Shop, com ou sem anúncio, e serve de base para precificar. Pedido válido é o que não foi cancelado; no Mercado Livre, um carrinho com vários itens conta uma vez. O TikTok Shop entra nos pedidos e nas vendas; Magalu e Shein ainda não estão no sistema.</span></li>
     <li><span id="j6"></span><span><b>Só observa.</b> Esta tela não muda lance, orçamento nem campanha.</span></li>
   </ul>
@@ -358,10 +358,9 @@ function dmy(iso){return iso.slice(8,10)+'/'+iso.slice(5,7)+'/'+iso.slice(0,4)}
 function hojeSP(){return new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo'}).format(new Date())}
 function soma(iso,n){var d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
 function periodo(k,hoje){
-  var ate=soma(hoje,-1),de;
+  var ate=hoje,de;
   if(k==='custom'&&S.cde&&S.cate){de=S.cde;ate=S.cate}
-  else if(k==='mes'){var ini=hoje.slice(0,8)+'01';
-    if(hoje.slice(8,10)==='01'){var pm=soma(hoje,-1);de=pm.slice(0,8)+'01'}else de=ini}
+  else if(k==='mes')de=hoje.slice(0,8)+'01';
   else de=soma(ate,-(Number(k==='custom'?7:k)-1));
   var dias=Math.round((new Date(ate+'T12:00:00Z')-new Date(de+'T12:00:00Z'))/864e5)+1;
   var pAte=soma(de,-1),pDe=soma(pAte,-(dias-1));
@@ -480,10 +479,10 @@ function telaHtml(){
   if(!rs.length||A.gasto<=0)return vazioHtml(rs.length&&rs.every(function(r){return r.marketplace==='tiktok_shop'}));
   var est=A.temShopee&&A.temReal;
   var mks=porMk(rs,P).filter(function(m){return m.gasto>0});
-  var rotP=S.per==='mes'?'este mês':S.per==='custom'?'período escolhido':'últimos '+S.per+' dias';
+  var rotP=S.per==='1'?'hoje':S.per==='mes'?'este mês':S.per==='custom'?'período escolhido':'últimos '+S.per+' dias';
 
   /* palco: ROAS e ACOS sobre as vendas totais */
-  var h='<section class="card escuro" id="palco"><div class="qcab"><span class="ico">'+svg('alvo')+'</span><h3>ROAS e ACOS · '+rotP+'</h3><span class="tag" style="background:var(--palco-2);color:var(--palco-suave)">'+dm(P.de)+' a '+dm(P.ate)+'</span></div>'+
+  var h='<section class="card escuro" id="palco"><div class="qcab"><span class="ico">'+svg('alvo')+'</span><h3>ROAS e ACOS · '+rotP+'</h3><span class="tag" style="background:var(--palco-2);color:var(--palco-suave)">'+(P.de===P.ate?dm(P.de):dm(P.de)+' a '+dm(P.ate))+'</span></div>'+
     '<div class="palco-in">'+
       '<div class="pal-e"><span class="pal-k">ROAS</span>'+valorN('roas',A.roasT,'v-palco')+'<div class="suave">em vendas totais para cada R$ 1,00 em anúncio</div></div>'+
       '<div class="pal-e"><span class="pal-k">ACOS</span>'+valorN('pct',A.acosT,'v-palco')+'<div class="suave">da venda total vai para anúncio</div></div>'+
@@ -497,7 +496,7 @@ function telaHtml(){
   var gAnt=somaGasto(P.pDe,P.pAte,rs),varG=gAnt>0?(A.gasto-gAnt)/gAnt:null;
   h+='<div class="g3">'+
    '<section class="card"><div class="qcab"><span class="ico">'+svg('carteira')+'</span><h3>Gasto com anúncios</h3></div>'+
-     '<div>'+valorN('brl',A.gasto,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">em '+P.dias+' dias</span>'+(varG!=null?'<span class="var">'+svg(varG>=0?'seta':'desce')+nf(Math.abs(varG)*100,1)+'%</span>':'')+'</div></div>'+
+     '<div>'+valorN('brl',A.gasto,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">'+(P.dias===1?'hoje':'em '+P.dias+' dias')+'</span>'+(varG!=null?'<span class="var">'+svg(varG>=0?'seta':'desce')+nf(Math.abs(varG)*100,1)+'%</span>':'')+'</div></div>'+
      linhaSvg(dias)+'</section>'+
    '<section class="card"><div class="qcab"><span class="ico">'+svg('etiqueta')+'</span><h3>Custo por pedido do ads</h3></div>'+
      '<div>'+valorN('brl',A.cac,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">gasto ÷ pedidos de anúncio</span>'+(est?tagEst('Estimativa'):'')+'</div></div>'+rodMk(mks,'cac',txtBrl)+'</section>'+
@@ -588,13 +587,12 @@ function linhaSvg(dias){
 /* gráfico de barras com dica */
 function montaGrafico(){
   var g=$('#graf');if(!g)return;
-  var P=periodo(S.per,S.hoje),rs=filtra(S.rows),dias=diasDe(P,rs);
-  // hoje (parcial)
-  var ids={};rs.forEach(function(r){ids[r.loja_id]=1});var hj=0;
-  S.diario.forEach(function(d){if(ids[d.loja_id]&&d.dia===S.hoje)hj+=Number(d.gasto)||0});
-  dias=dias.concat([[S.hoje,hj,1]]);
+  var P=periodo(S.per,S.hoje),rs=filtra(S.rows);
+  if(P.dias<7)P={de:soma(P.ate,-6),ate:P.ate};
+  var dias=diasDe(P,rs);
+  if(dias.length&&dias[dias.length-1][0]===S.hoje)dias[dias.length-1][2]=1;
   var mx=Math.max.apply(null,dias.map(function(d){return d[1]}))||1,dica=$('#dica'),w=g.clientWidth||600,passo=Math.max(1,Math.ceil(dias.length*28/w));
-  var foco=dias.length-2>=0?dias.length-2:0,bs=[];
+  var foco=dias.length-1,bs=[];if(dias[foco]&&dias[foco][2]&&foco>0)foco--;
   dias.forEach(function(d,i){
     var b=document.createElement('button');b.type='button';if(d[2])b.className='fut';
     b.setAttribute('aria-label','Dia '+dmy(d[0])+': '+txtBrl(d[1])+(d[2]?' até agora':''));
@@ -680,7 +678,7 @@ async function carregar(quieto){
   try{
     var rs=await Promise.all([
       SB.rpc('ads_resumo',{p_de:P.de,p_ate:P.ate}),
-      SB.from('ads_loja_dia').select('loja_id,dia,gasto').gte('dia',P.pDe).lte('dia',S.hoje).limit(2000),
+      SB.from('ads_loja_dia').select('loja_id,dia,gasto').gte('dia',P.pDe<soma(S.hoje,-6)?P.pDe:soma(S.hoje,-6)).lte('dia',S.hoje).limit(2000),
       SB.from('ads_loja_dia').select('atualizado_em').order('atualizado_em',{ascending:false}).limit(1),
       SB.rpc('ads_pedidos_desde'),
       SB.rpc('ads_vendas_total',{p_de:P.de,p_ate:P.ate})
@@ -706,7 +704,7 @@ var MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto
 function fechaCus(){if(cusEl.hidden)return;cusEl.hidden=true;setPer(S.per)}
 function diasEntre(a,b){return Math.round((new Date(b+'T12:00:00Z')-new Date(a+'T12:00:00Z'))/864e5)+1}
 function desenhaCal(){
-  var ont=soma(S.hoje,-1),y=+CAL.mes.slice(0,4),m=+CAL.mes.slice(5,7),
+  var ont=S.hoje,y=+CAL.mes.slice(0,4),m=+CAL.mes.slice(5,7),
       pri=new Date(Date.UTC(y,m-1,1,12)),off=pri.getUTCDay(),n=new Date(Date.UTC(y,m,0,12)).getUTCDate(),
       prox=m===12?(y+1)+'-01':y+'-'+('0'+(m+1)).slice(-2);
   var h='<div class="cal-top"><button type="button" data-cm="-1" aria-label="Mês anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><b>'+MESES[m-1].charAt(0).toUpperCase()+MESES[m-1].slice(1)+' de '+y+'</b><button type="button" data-cm="1" aria-label="Próximo mês"'+(prox+'-01'>ont?' disabled':'')+'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div><div class="cal-g">';
@@ -727,7 +725,7 @@ function desenhaCal(){
 }
 var setPer=seg($('#per'),S.per,function(v){
   if(v==='custom'){
-    var P=periodo(S.per==='custom'?'7':S.per,S.hoje);
+    var P=periodo(S.per==='custom'||S.per==='1'?'7':S.per,S.hoje);
     CAL.a=S.cde||P.de;CAL.b=S.cate||P.ate;CAL.mes=CAL.b.slice(0,7);
     desenhaCal();cusEl.hidden=false;return;
   }
