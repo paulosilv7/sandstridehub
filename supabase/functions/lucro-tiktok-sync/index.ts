@@ -1,6 +1,6 @@
 // Lucro Ao Vivo: traz os pedidos pagos do TikTok Shop para o banco e recalcula os dias afetados.
 // Tarifas: valores reais do financeiro do TikTok (pedidos ainda não liquidados); se o pedido não vier de lá,
-// estima pela tabela da planilha de precificação.
+// estima pela tabela de taxas da Precificação (banco).
 // Quando o financeiro traz a receita do pedido, o preço dos itens é ajustado para ela (evita contar desconto da plataforma em dobro).
 // Pedidos pagos antes de 25/10/2026 (00h de São Paulo) são ignorados de propósito (corte pedido pelo Paulo).
 // Pedido que já está gravado idêntico (situação, taxas, frete, dados e itens) NÃO é regravado nem recalcula o dia:

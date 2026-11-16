@@ -1,5 +1,5 @@
 // Lucro Ao Vivo: traz os pedidos pagos da Shopee para o banco e recalcula os dias afetados.
-// Tarifas reais pelo extrato de repasse de cada pedido (get_escrow_detail); se faltar, estima pela tabela da planilha.
+// Tarifas reais pelo extrato de repasse de cada pedido (get_escrow_detail); se faltar, estima pela tabela de taxas da Precificação (banco).
 // Pedido sem taxa real fica FORA dos totais (aguardando_dados = true) até o extrato chegar (no máximo 60 min; depois entra com a estimativa).
 // Itens que a Shopee manda com preço 0 (combos e promoções) recebem o valor do extrato (receita) dividido entre eles.
 // Pedidos que já têm taxa real e a mesma situação são pulados (a rodada fica rápida); há limite de tempo por chamada.
