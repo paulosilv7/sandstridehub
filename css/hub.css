@@ -559,3 +559,7 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .id-ctx button.pri{font-weight:600}
 .id-ctx button.perigo{color:var(--atencao,#e5484d)}
 .id-ctx hr{border:0;border-top:1px solid var(--borda);margin:4px 2px}
+
+.id-dia{align-self:stretch;display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:500;color:var(--suave);margin-top:var(--e2)}
+.id-dia::before,.id-dia::after{content:"";flex:1;height:1px;background:var(--borda)}
+.id-dia:first-child{margin-top:0}

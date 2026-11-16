@@ -82,7 +82,7 @@ export async function montarCaixaIdeias(ctx) {
     const A = (a, t, pri) => `<button type="button" data-ac="${a}" aria-label="${t}"${pri ? ' class="pri"' : ''}>${t}</button>`;
     no.querySelector('.id-ac').innerHTML = !pode ? '' : s === 'descartada' ? A('reabrir', 'Reabrir') :
       (i.proposta?.resumo ? A('proposta', aberto ? 'Fechar proposta' : 'Ver proposta', s === 'aprovar') + A('organizar', 'Organizar de novo') : A('organizar', 'Organizar com IA', s === 'nova')) +
-      (s === 'resolvida' ? '' : A('tarefa', 'Virar tarefa')) + (s === 'resolvida' || s === 'guardada' ? '' : A('guardar', 'Guardar')) + A('descartar', 'Descartar');
+      (s === 'resolvida' ? '' : A('tarefa', 'Virar tarefa'))  + A('descartar', 'Descartar');
   }
   function sincroniza() {
     filtros();
@@ -98,6 +98,17 @@ export async function montarCaixaIdeias(ctx) {
     });
     // ordem do chat: mais antigas em cima
     vis.forEach((i) => { const no = nos.get(i.id); if (stream.lastElementChild !== no) stream.appendChild(no); });
+    // separadores por dia (Hoje, Ontem, 13 de nov)
+    stream.querySelectorAll('.id-dia').forEach((d) => d.remove());
+    const dia = (i) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(i.criado_em ? new Date(i.criado_em) : new Date());
+    const hojeD = dia({}), ontemD = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() - 864e5));
+    let ant = '';
+    vis.forEach((i) => {
+      const d = dia(i); if (d === ant) return; ant = d;
+      const r = document.createElement('div'); r.className = 'id-dia'; r.setAttribute('role', 'separator');
+      r.textContent = d === hojeD ? 'Hoje' : d === ontemD ? 'Ontem' : fData.format(new Date(d + 'T12:00:00-03:00')).replace('.', '');
+      stream.insertBefore(r, nos.get(i.id));
+    });
     stream.querySelector('.md-vazio, .id-vazio')?.remove();
     const dica = $('#id-dica'); if (dica) dica.hidden = !vis.length;
     if (!vis.length) stream.innerHTML = E.ficha === 'abertas'
@@ -272,7 +283,7 @@ export async function montarCaixaIdeias(ctx) {
     const pinta = () => {
       const imp = (v, r) => `<button type="button" data-iimp="${v}" class="${R.imp === v ? 'on' : ''}" aria-pressed="${R.imp === v}">${r}</button>`;
       slot.innerHTML = `<form class="id-form"><p class="id-form-t">Virar tarefa</p><label class="campo"><span>Nome da tarefa</span><input class="md-in" name="titulo" maxlength="160" autocomplete="off" value="${esc(R.titulo)}"></label>` +
-        `<div class="md-duo"><label class="campo"><span>Responsável</span><select class="md-in" name="resp">${E.equipe.map((p) => `<option value="${p.usuario_id}"${p.usuario_id === R.resp ? ' selected' : ''}>${esc(p.usuario_id === user.id ? 'Para mim' : prim(p.nome))}</option>`).join('')}</select></label>` +
+        `<div class="md-duo"><label class="campo"><span>Responsável</span><select class="md-in" name="resp">${E.equipe.map((p) => `<option value="${p.usuario_id}"${p.usuario_id === R.resp ? ' selected' : ''}>${esc(p.usuario_id === user.id ? 'Para mim' : prim(p.nome))}</option>`).join('')}<option value="todos"${R.resp === 'todos' ? ' selected' : ''}>Todos</option></select></label>` +
         `<label class="campo"><span>Data</span><input class="md-in" name="prazo" type="date" min="${hoje}" value="${esc(R.prazo)}"></label></div>` +
         `<div class="campo"><span>Importância</span><div class="md-imp" role="group" aria-label="Importância">${imp('baixa', 'Baixa')}${imp('normal', 'Normal')}${imp('alta', 'Alta')}</div></div>` +
         `<p class="erro" role="alert" hidden></p><div class="md-acoes"><button class="btn" type="button" data-ci="cancela">Cancelar</button><button class="btn pri" type="submit">Criar tarefa</button></div></form>`;
@@ -280,20 +291,22 @@ export async function montarCaixaIdeias(ctx) {
     pinta();
     const f = () => slot.querySelector('form');
     slot.oninput = (ev) => { const k = { titulo: 'titulo', resp: 'resp', prazo: 'prazo' }[ev.target.name]; if (k) R[k] = ev.target.value; };
+    slot.ondblclick = (ev) => { const d = ev.target.closest('input[type=date]'); if (d && !d.value) { d.value = hoje; R.prazo = hoje; } };
     slot.onclick = (ev) => {
       const b = ev.target.closest('button'); if (!b) return;
       if (b.dataset.iimp) { R.imp = b.dataset.iimp; pinta(); }
-      else if (b.dataset.ci === 'cancela') { slot.innerHTML = ''; slot.oninput = slot.onclick = null; E.aberta = null; pintaItem(i); }
+      else if (b.dataset.ci === 'cancela') { slot.innerHTML = ''; slot.oninput = slot.onclick = slot.ondblclick = null; E.aberta = null; pintaItem(i); }
     };
     slot.onsubmit = async (ev) => {
       ev.preventDefault(); const titulo = R.titulo.trim(), erro = slot.querySelector('.erro');
       if (!titulo) { f().elements.titulo.focus(); return; }
-      const nova = { titulo, responsavel_id: R.resp, prazo: R.prazo || null, importancia: R.imp, criado_por: user.id };
-      const { error } = await sb.from('central_tarefas').insert(nova);
+      const donos = R.resp === 'todos' ? E.equipe.map((p) => p.usuario_id) : [R.resp];
+      const nova = { titulo, responsavel_id: donos[0], prazo: R.prazo || null, importancia: R.imp, criado_por: user.id };
+      const { error } = await sb.from('central_tarefas').insert(donos.map((d) => ({ ...nova, responsavel_id: d })));
       if (error) { erro.hidden = false; erro.textContent = 'Não consegui criar a tarefa. Tente de novo.'; return; }
-      i.proposta = { resumo: 'Virou tarefa.', itens: [{ id: crypto.randomUUID(), tipo: 'tarefa', titulo, detalhe: '', responsavel_id: R.resp, prazo: nova.prazo, importancia: R.imp, estado: 'criado' }], criado_em: new Date().toISOString() };
+      i.proposta = { resumo: 'Virou tarefa.', itens: [{ id: crypto.randomUUID(), tipo: 'tarefa', titulo, detalhe: '', responsavel_id: R.resp === 'todos' ? null : R.resp, prazo: nova.prazo, importancia: R.imp, estado: 'criado' }], criado_em: new Date().toISOString() };
       i.estado = 'organizada'; await salvarProposta(i);
-      slot.innerHTML = ''; slot.oninput = slot.onclick = slot.onsubmit = null; E.aberta = null;
+      slot.innerHTML = ''; slot.oninput = slot.onclick = slot.onsubmit = slot.ondblclick = null; E.aberta = null;
       sincroniza(); ctx.aoCriarTarefa && ctx.aoCriarTarefa();
     };
     f().elements.titulo.focus(); f().elements.titulo.select();

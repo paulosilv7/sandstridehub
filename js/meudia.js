@@ -165,7 +165,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   const tagImp = (v) => { const k = v === 'alta' ? ['alta', 'Alta'] : v === 'baixa' ? ['baixa', 'Baixa'] : ['normal', 'Normal']; return `<span class="tag imp ${k[0]}">${k[1]}</span>`; };
   const padraoRasc = () => ({ titulo: '', resp: user.id, prazo: '', imp: 'normal' });
   const fimMesISO = () => new Date(Date.UTC(+hoje.slice(0, 4), +hoje.slice(5, 7), 0)).toISOString().slice(0, 10);
-  const filtroDe = (t) => (t.responsavel_id !== user.id ? 'equipe' : t.prazo && t.prazo > hoje && t.prazo <= fimMesISO() ? 'mes' : 'hoje');
+  const filtroDe = (t) => (t.responsavel_id !== user.id ? 'hoje' : t.prazo && t.prazo > hoje && t.prazo <= fimMesISO() ? 'mes' : 'hoje');
   const fechaPop = () => { E.pop = false; if (E.editId) { E.editId = null; E.rasc = padraoRasc(); } };
   function listaTarefas() {
     const fimMes = fimMesISO();
@@ -191,7 +191,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     const ed = !!E.editId;
     return `<div class="md-pop" role="dialog" aria-label="${ed ? 'Editar tarefa' : 'Nova tarefa'}"><form id="md-nova">` +
       `<label class="campo"><span>Nome da tarefa</span><input class="md-in" id="md-titulo" maxlength="160" autocomplete="off" value="${esc(R.titulo)}"></label>` +
-      `<div class="md-duo"><label class="campo"><span>Responsável</span><select class="md-in" id="md-resp">${E.equipe.map((p) => `<option value="${p.usuario_id}"${p.usuario_id === R.resp ? ' selected' : ''}>${esc(p.usuario_id === user.id ? 'Para mim' : prim(p.nome))}</option>`).join('')}</select></label>` +
+      `<div class="md-duo"><label class="campo"><span>Responsável</span><select class="md-in" id="md-resp">${E.equipe.map((p) => `<option value="${p.usuario_id}"${p.usuario_id === R.resp ? ' selected' : ''}>${esc(p.usuario_id === user.id ? 'Para mim' : prim(p.nome))}</option>`).join('')}${ed ? '' : `<option value="todos"${R.resp === 'todos' ? ' selected' : ''}>Todos</option>`}</select></label>` +
       `<label class="campo"><span>Data</span><input class="md-in" id="md-prazo" type="date"${ed && R.prazo && R.prazo < hoje ? '' : ` min="${hoje}"`} value="${esc(R.prazo)}"></label></div>` +
       `<div class="campo"><span>Importância</span><div class="md-imp" role="group" aria-label="Importância">${imp('baixa', 'Baixa')}${imp('normal', 'Normal')}${imp('alta', 'Alta')}</div></div>` +
       `<div class="md-acoes"><button class="btn" type="button" data-pop="fecha">Cancelar</button><button class="btn pri" type="submit">${ed ? 'Salvar' : 'Criar tarefa'}</button></div></form></div>`;
@@ -202,7 +202,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     return `<section class="card md-tarefas" aria-label="Tarefas"><div class="qcab"><span class="ico">${svg(IC.tarefa)}</span><h2>Tarefas</h2>` +
       `<button class="btn pri md-mais${E.pop ? ' on' : ''}" type="button" data-pop="abre" aria-label="Nova tarefa" aria-expanded="${E.pop}">${svg(IC.mais)}</button></div>` +
       (E.pop ? popNova() : '') +
-      `<div class="md-filtros" role="group" aria-label="Filtro">${bt('hoje', 'Hoje')}${bt('atrasadas', 'Atrasadas')}${bt('mes', 'Mês')}${bt('equipe', 'Equipe')}</div>` +
+      `<div class="md-filtros" role="group" aria-label="Filtro">${bt('hoje', 'Hoje')}${bt('atrasadas', 'Atrasadas')}${bt('mes', 'Mês')}</div>` +
       `<div id="md-tarefas">${listaTarefas()}</div></section>`;
   }
   function qMetas() {
@@ -307,6 +307,11 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   el.addEventListener('input', (ev) => {
     const k = { 'md-titulo': 'titulo', 'md-resp': 'resp', 'md-prazo': 'prazo' }[ev.target.id]; if (k) E.rasc[k] = ev.target.value;
   });
+  // dois cliques no campo de data preenchem a data de hoje
+  el.addEventListener('dblclick', (ev) => {
+    const d = ev.target.closest('input[type=date]'); if (!d || d.value) return;
+    d.value = hoje; d.dispatchEvent(new Event('input', { bubbles: true })); d.dispatchEvent(new Event('change', { bubbles: true }));
+  });
   el.addEventListener('change', (ev) => { const k = { 'md-resp': 'resp', 'md-prazo': 'prazo' }[ev.target.id]; if (k) E.rasc[k] = ev.target.value; });
   el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && E.pop) { fechaPop(); desenhar(); el.querySelector('.md-mais')?.focus(); } });
   el.addEventListener('pointerdown', (ev) => { if (E.pop && !ev.target.closest('.md-pop, .md-mais, [data-edit]')) { fechaPop(); desenhar(); } });
@@ -321,10 +326,12 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       if (t) Object.assign(t, data);
       E.filtro = filtroDe(data); E.editId = null; E.rasc = padraoRasc(); E.pop = false; E.erro = ''; desenhar(); return;
     }
-    const nova = { titulo, responsavel_id: R.resp, prazo: R.prazo || null, importancia: R.imp, criado_por: user.id };
-    const { data, error } = await sb.from('central_tarefas').insert(nova).select().single();
-    if (error || !data) return falhou('Não consegui criar a tarefa. Tente de novo.');
-    E.tarefas.push(data); E.filtro = filtroDe(data);
+    // "Todos": uma tarefa para cada pessoa da equipe, cada um conclui a sua
+    const donos = R.resp === 'todos' ? E.equipe.map((p) => p.usuario_id) : [R.resp];
+    const linhas = donos.map((d) => ({ titulo, responsavel_id: d, prazo: R.prazo || null, importancia: R.imp, criado_por: user.id }));
+    const { data: criadas, error } = await sb.from('central_tarefas').insert(linhas).select();
+    if (error || !criadas?.length) return falhou('Não consegui criar a tarefa. Tente de novo.');
+    E.tarefas.push(...criadas); E.filtro = filtroDe(criadas.find((t) => t.responsavel_id === user.id) || criadas[0]);
     E.rasc = padraoRasc(); E.pop = false; E.erro = ''; desenhar();
   });
 
