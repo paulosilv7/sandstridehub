@@ -97,12 +97,33 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
 .mkic{width:20px;height:20px;border-radius:6px;object-fit:cover;display:block;flex:none}
 .logo{width:28px;height:28px;border-radius:8px;background:var(--texto);color:var(--cartao);display:grid;place-items:center;font-size:11px;font-weight:600;flex:none}
 
-/* datas personalizadas */
-.cus{position:relative;display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--e3);padding:var(--e4);margin-bottom:var(--e4);background:var(--cartao);border:1px solid var(--borda);border-radius:var(--r-g)}
-.cus label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:500;color:var(--suave)}
-.cus input{height:40px;padding:0 12px;border:1px solid var(--borda);border-radius:var(--r-m);background:var(--fundo);color:var(--texto);font:inherit;font-size:14px}
-.cus-e{font-size:12px;color:var(--suave);flex:1 1 100%;min-height:0}
-.cus-e:empty{display:none}
+/* calendário de período */
+.perw{position:relative;display:inline-block;max-width:100%}
+.cal{position:absolute;top:calc(100% + 8px);right:0;z-index:40;width:312px;padding:var(--e4);background:var(--cartao);border:1px solid var(--borda);border-radius:var(--r-g);box-shadow:0 12px 32px rgba(0,0,0,.18);transform-origin:top right;animation:calEntra var(--t-medio) var(--ease) both}
+@keyframes calEntra{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:none}}
+.cal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--e3)}
+.cal-top b{font-size:14px;font-weight:600}
+.cal-top button{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--texto)}
+.cal-top button:hover:not(:disabled){background:var(--elevado)}
+.cal-top button:disabled{opacity:.3;cursor:default}
+.cal-top svg{width:16px;height:16px}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
+.cal-g .sem{font-size:11px;font-weight:500;color:var(--suave);text-align:center;padding:4px 0}
+.cal-g .d{position:relative;height:36px;font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;display:grid;place-items:center;color:var(--texto)}
+.cal-g .d:disabled{color:var(--suave);opacity:.4;cursor:default}
+.cal-g .d.no{visibility:hidden}
+.cal-g .d.in{background:var(--elevado)}
+.cal-g .d.ini{border-radius:var(--r-pilula) 0 0 var(--r-pilula)}
+.cal-g .d.fim{border-radius:0 var(--r-pilula) var(--r-pilula) 0}
+.cal-g .d.ini.fim{border-radius:var(--r-pilula)}
+.cal-g .d.ini,.cal-g .d.fim{background:var(--destaque);color:var(--no-destaque)}
+.cal-g .d:hover:not(:disabled):not(.ini):not(.fim){background:var(--ativo);border-radius:var(--r-pilula)}
+.cal-g .d.hoje::after{content:"";position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.6}
+.cal-rod{display:flex;align-items:center;justify-content:space-between;gap:var(--e3);margin-top:var(--e3);padding-top:var(--e3);border-top:1px solid var(--borda)}
+.cal-rod span{font-size:12px;color:var(--suave)}
+.cal-rod .btn{height:36px;padding:0 18px}
+.cal-rod .btn:disabled{opacity:.4;cursor:default}
+@media (max-width:640px){.cal{left:0;right:auto;transform-origin:top left}}
 /* ordenar colunas */
 .th .ord{display:inline-flex;align-items:flex-end;gap:4px;font:inherit;color:inherit;text-align:inherit;cursor:pointer;justify-content:inherit}
 .th .ord:hover,.th .ord.on{color:var(--texto)}
@@ -246,9 +267,10 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
       <span class="tag" id="atu" hidden></span>
       <div class="sp"></div>
       <div class="acoes">
-        <div class="seg" id="per" role="group" aria-label="Período"><span class="polegar"></span>
+        <div class="perw"><div class="seg" id="per" role="group" aria-label="Período"><span class="polegar"></span>
           <button type="button" data-v="7">7 dias</button><button type="button" data-v="14">14 dias</button><button type="button" data-v="30">30 dias</button><button type="button" data-v="mes">Este mês</button><button type="button" data-v="custom" id="bCus">Datas</button>
         </div>
+        <div class="cal" id="cus" hidden role="dialog" aria-label="Escolher período"></div></div>
         <div class="loja" id="loja">
           <button type="button" aria-haspopup="true" aria-expanded="false" id="lojaBt"><span class="logo">T</span><span id="lojaNome">Todas as lojas</span><span id="i-baixo"></span></button>
           <ul id="lojaLista" role="menu"></ul>
@@ -256,7 +278,6 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
         <button type="button" class="ibtn" id="info" aria-label="Como lemos os números"><span id="i-info"></span></button>
       </div>
     </header>
-    <div class="cus" id="cus" hidden><label>De<input type="date" id="cDe"></label><label>Até<input type="date" id="cAte"></label><span class="cus-e" id="cErro"></span><button type="button" class="btn pri" id="cOk">Aplicar</button></div>
     <div id="conteudo" class="wrap-c" style="display:flex;flex-direction:column;gap:var(--e4)"></div>
   </main>
 
@@ -674,25 +695,51 @@ async function carregar(){
   }
 }
 
-var cusEl=$('#cus');
+var cusEl=$('#cus'),CAL={mes:'',a:null,b:null};
+var MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 function fechaCus(){if(cusEl.hidden)return;cusEl.hidden=true;setPer(S.per)}
+function diasEntre(a,b){return Math.round((new Date(b+'T12:00:00Z')-new Date(a+'T12:00:00Z'))/864e5)+1}
+function desenhaCal(){
+  var ont=soma(S.hoje,-1),y=+CAL.mes.slice(0,4),m=+CAL.mes.slice(5,7),
+      pri=new Date(Date.UTC(y,m-1,1,12)),off=pri.getUTCDay(),n=new Date(Date.UTC(y,m,0,12)).getUTCDate(),
+      prox=m===12?(y+1)+'-01':y+'-'+('0'+(m+1)).slice(-2);
+  var h='<div class="cal-top"><button type="button" data-cm="-1" aria-label="Mês anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><b>'+MESES[m-1].charAt(0).toUpperCase()+MESES[m-1].slice(1)+' de '+y+'</b><button type="button" data-cm="1" aria-label="Próximo mês"'+(prox+'-01'>ont?' disabled':'')+'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div><div class="cal-g">';
+  ['D','S','T','Q','Q','S','S'].forEach(function(d){h+='<span class="sem">'+d+'</span>'});
+  for(var i=0;i<off;i++)h+='<span class="d no"></span>';
+  for(var d=1;d<=n;d++){
+    var iso=CAL.mes+'-'+('0'+d).slice(-2),cl='d',lo=CAL.a,hi=CAL.b||CAL.a;
+    if(lo&&iso>=lo&&iso<=hi)cl+=' in';
+    if(iso===lo)cl+=' ini';
+    if(iso===hi&&lo)cl+=' fim';
+    if(iso===S.hoje)cl+=' hoje';
+    h+='<button type="button" class="'+cl+'" data-d="'+iso+'"'+(iso>ont?' disabled':'')+'>'+d+'</button>';
+  }
+  var pronto=CAL.a&&CAL.b,txt=!CAL.a?'Escolha o primeiro dia':!CAL.b?'Agora escolha o último dia':dm(CAL.a)+' a '+dm(CAL.b)+' · '+diasEntre(CAL.a,CAL.b)+' dias';
+  if(pronto&&diasEntre(CAL.a,CAL.b)>120){pronto=false;txt='Máximo de 120 dias'}
+  h+='</div><div class="cal-rod"><span>'+txt+'</span><button type="button" class="btn pri" id="cOk"'+(pronto?'':' disabled')+'>Aplicar</button></div>';
+  cusEl.innerHTML=h;
+}
 var setPer=seg($('#per'),S.per,function(v){
   if(v==='custom'){
-    var P=periodo(S.per==='custom'?'7':S.per,S.hoje),ont=soma(S.hoje,-1);
-    $('#cDe').max=ont;$('#cAte').max=ont;
-    $('#cDe').value=S.cde||P.de;$('#cAte').value=S.cate||P.ate;$('#cErro').textContent='';
-    cusEl.hidden=false;return;
+    var P=periodo(S.per==='custom'?'7':S.per,S.hoje);
+    CAL.a=S.cde||P.de;CAL.b=S.cate||P.ate;CAL.mes=CAL.b.slice(0,7);
+    desenhaCal();cusEl.hidden=false;return;
   }
   cusEl.hidden=true;S.per=v;carregar();
 });
-$('#cOk').addEventListener('click',function(){
-  var d=$('#cDe').value,a=$('#cAte').value,ont=soma(S.hoje,-1),er=$('#cErro');
-  if(!d||!a){er.textContent='Escolha as duas datas.';return}
-  if(d>a){er.textContent='A data inicial precisa ser antes da final.';return}
-  if(a>ont){er.textContent='O período termina no máximo ontem.';return}
-  if((new Date(a+'T12:00:00Z')-new Date(d+'T12:00:00Z'))/864e5>=120){er.textContent='Escolha no máximo 120 dias.';return}
-  S.cde=d;S.cate=a;S.per='custom';cusEl.hidden=true;setPer('custom');carregar();
+cusEl.addEventListener('click',function(e){
+  var nv=e.target.closest('[data-cm]'),dia=e.target.closest('[data-d]'),ok=e.target.closest('#cOk');
+  if(nv){var y=+CAL.mes.slice(0,4),m=+CAL.mes.slice(5,7)+Number(nv.dataset.cm);if(m<1){m=12;y--}if(m>12){m=1;y++}CAL.mes=y+'-'+('0'+m).slice(-2);desenhaCal();return}
+  if(dia&&!dia.disabled){
+    var d=dia.dataset.d;
+    if(!CAL.a||CAL.b){CAL.a=d;CAL.b=null}
+    else if(d<CAL.a){CAL.b=CAL.a;CAL.a=d}
+    else CAL.b=d;
+    desenhaCal();return;
+  }
+  if(ok&&!ok.disabled){S.cde=CAL.a;S.cate=CAL.b;S.per='custom';cusEl.hidden=true;setPer('custom');carregar()}
 });
+document.addEventListener('click',function(e){if(!cusEl.hidden&&e.composedPath().indexOf($('.perw'))<0)fechaCus()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')fechaCus()});
 
 async function iniciar(){
