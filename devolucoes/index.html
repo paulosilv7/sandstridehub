@@ -1416,7 +1416,7 @@ async function aprovar(id){
   var preIds=PRE[catSandy]||[];var preId=(lista.filter(function(m){return preIds.indexOf(String(m.id))>-1;})[0]||{}).id;
   var opts=(preId?'':'<option value="">Escolha o motivo certo…</option>')+lista.map(function(m){return '<option value="'+esc(m.id)+'"'+(String(m.id)===String(preId)?' selected':'')+'>'+esc(m.rotulo)+'</option>';}).join('');
   var pede={};lista.forEach(function(m){pede[m.id]=m.pede||'';});
-  var est='border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;background:#fff';
+  var est='border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;background:var(--soft);color:var(--ink)';
   var emailLoja=String(S.cfg['email_loja:'+String(c.loja||'').toLowerCase()]||'').trim();
   var emailCampo=(c.mk==='sp'&&!emailLoja)?'<label style="display:flex;flex-direction:column;gap:8px;font-size:13px"><b>E-mail de contato da loja (a Shopee exige)</b><input type="email" class="ct-e" placeholder="contato@sualoja.com.br" style="'+est+'"></label>':'';
   var html='<h3>Enviar a contestação ao '+esc(nome)+'?</h3>'+resumoCaso(c)+custoHtml({tone:'info',lab:'Em disputa',val:c.vped>0?brl(c.vped):'Valor não informado',chip:nf+' foto'+(nf===1?'':'s')+' da conferência vão junto'})+'<p>'+(emailLoja?'Contato da loja: '+esc(emailLoja)+'. ':'')+'O texto abaixo é o da Sandy, já pronto: <b>você pode editar</b>.</p>'+
@@ -1469,7 +1469,7 @@ async function aposEnvio(){
 var PEND={};
 function pedirContestacao(id){
   if(PEND[id])return;
-  modalMk('<h3>Pedir contestação à Sandy</h3><p>Escreva o que aconteceu e o que a Sandy deve defender. Ela monta o texto com base nisso e nas fotos. Nada é enviado agora: você revisa o texto antes.</p><textarea class="ct-i" rows="5" maxlength="800" placeholder="Ex.: Enviamos o produto certo. O cliente quer a troca e disse que veio errado, mas o pedido foi enviado corretamente." style="width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:12px"></textarea><div class="row" style="gap:10px;margin-top:12px;flex-wrap:wrap"><button type="button" class="btn lg" data-r="1">Pedir o texto à Sandy</button><button type="button" class="btn ghost" data-r="0">Voltar</button></div>',function(b,m,fim){
+  modalMk('<h3>Pedir contestação à Sandy</h3><p>Escreva o que aconteceu e o que a Sandy deve defender. Ela monta o texto com base nisso e nas fotos. Nada é enviado agora: você revisa o texto antes.</p><textarea class="ct-i" rows="5" maxlength="800" placeholder="Ex.: Enviamos o produto certo. O cliente quer a troca e disse que veio errado, mas o pedido foi enviado corretamente." style="width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--soft);color:var(--ink)"></textarea><div class="row" style="gap:10px;margin-top:12px;flex-wrap:wrap"><button type="button" class="btn lg" data-r="1">Pedir o texto à Sandy</button><button type="button" class="btn ghost" data-r="0">Voltar</button></div>',function(b,m,fim){
     var t=(m.querySelector('.ct-i').value||'').trim();
     if(t.length<15){toast('Conte em uma ou duas frases o que a Sandy deve defender.');return;}
     fim();decidirCaso(id,'contestar_mesmo_assim',t);
