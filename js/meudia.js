@@ -268,6 +268,11 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
 
   // ---- ações
   el.addEventListener('click', async (ev) => {
+    // tarefa: clicar em qualquer ponto do cartão/linha abre os detalhes; só o círculo marca como concluída
+    const cartao = ev.target.closest('.kb-card.tar[data-tid], .md-lista li:has([data-tar])');
+    if (cartao && !ev.target.closest('.cx, .md-x, .md-quem') && !(ev.target.closest('button') && ev.target.closest('button').dataset.tar && ev.detail === 0)) {
+      const id = cartao.dataset.tid || cartao.querySelector('[data-tar]')?.dataset.tar; if (id) { janelaTarefa(id); return; }
+    }
     const b = ev.target.closest('button'); if (!b) return;
     if (b.dataset.rot) {
       const id = b.dataset.rot, dia = b.dataset.dia || hoje, on = !E.feitosSem.some((x) => x.rotina_id === id && x.dia === dia);
@@ -280,7 +285,6 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       if (error) { aplica(!on); falhou('Não consegui salvar a marcação. Tente de novo.'); } else setTimeout(desenhar, 700);
     } else if (b.dataset.tar) {
       const t = E.tarefas.find((x) => x.id === b.dataset.tar); if (!t) return;
-      if (ev.target.closest('.tx')) { janelaTarefa(t.id); return; }
       const antes = t.feita_em; t.feita_em = antes ? null : new Date().toISOString(); marcar(b, !!t.feita_em); atualizaPalco();
       const { error } = await sb.from('central_tarefas').update({ feita_em: t.feita_em }).eq('id', t.id);
       if (error) { t.feita_em = antes; atualizaPalco(); falhou('Não consegui salvar a tarefa. Tente de novo.'); } else setTimeout(desenhar, 700);
