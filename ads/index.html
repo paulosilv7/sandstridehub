@@ -97,6 +97,18 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
 .mkic{width:20px;height:20px;border-radius:6px;object-fit:cover;display:block;flex:none}
 .logo{width:28px;height:28px;border-radius:8px;background:var(--texto);color:var(--cartao);display:grid;place-items:center;font-size:11px;font-weight:600;flex:none}
 
+/* datas personalizadas */
+.cus{position:relative;display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--e3);padding:var(--e4);margin-bottom:var(--e4);background:var(--cartao);border:1px solid var(--borda);border-radius:var(--r-g)}
+.cus label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:500;color:var(--suave)}
+.cus input{height:40px;padding:0 12px;border:1px solid var(--borda);border-radius:var(--r-m);background:var(--fundo);color:var(--texto);font:inherit;font-size:14px}
+.cus-e{font-size:12px;color:var(--suave);flex:1 1 100%;min-height:0}
+.cus-e:empty{display:none}
+/* ordenar colunas */
+.th .ord{display:inline-flex;align-items:flex-end;gap:4px;font:inherit;color:inherit;text-align:inherit;cursor:pointer;justify-content:inherit}
+.th .ord:hover,.th .ord.on{color:var(--texto)}
+.th .ord svg{width:12px;height:12px;flex:none;opacity:.45;margin-bottom:2px}
+.th .ord.on svg{opacity:1}
+.th .ord.l{justify-content:flex-start}
 /* seletor de loja (cápsula) */
 .loja{position:relative;display:inline-block}
 .loja>button{display:inline-flex;align-items:center;gap:var(--e2);height:40px;padding:0 14px 0 6px;border-radius:var(--r-pilula);border:1px solid var(--borda);font-weight:500;font-size:13px;background:var(--cartao)}
@@ -235,7 +247,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
       <div class="sp"></div>
       <div class="acoes">
         <div class="seg" id="per" role="group" aria-label="Período"><span class="polegar"></span>
-          <button type="button" data-v="7">7 dias</button><button type="button" data-v="14">14 dias</button><button type="button" data-v="30">30 dias</button><button type="button" data-v="mes">Este mês</button>
+          <button type="button" data-v="7">7 dias</button><button type="button" data-v="14">14 dias</button><button type="button" data-v="30">30 dias</button><button type="button" data-v="mes">Este mês</button><button type="button" data-v="custom" id="bCus">Datas</button>
         </div>
         <div class="loja" id="loja">
           <button type="button" aria-haspopup="true" aria-expanded="false" id="lojaBt"><span class="logo">T</span><span id="lojaNome">Todas as lojas</span><span id="i-baixo"></span></button>
@@ -244,14 +256,15 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
         <button type="button" class="ibtn" id="info" aria-label="Como lemos os números"><span id="i-info"></span></button>
       </div>
     </header>
+    <div class="cus" id="cus" hidden><label>De<input type="date" id="cDe"></label><label>Até<input type="date" id="cAte"></label><span class="cus-e" id="cErro"></span><button type="button" class="btn pri" id="cOk">Aplicar</button></div>
     <div id="conteudo" class="wrap-c" style="display:flex;flex-direction:column;gap:var(--e4)"></div>
   </main>
 
 <div class="veu" id="veu"><div class="janela" role="dialog" aria-modal="true" aria-labelledby="jt">
   <div class="qcab"><span class="ico" id="jIco"></span><h3 id="jt">Como lemos os números</h3></div>
   <ul>
-    <li><span id="j1"></span><span><b>Só pedidos pagos.</b> O ROAS e o ACOS reais ignoram pedido cancelado ou não pago. Devolução e reembolso ficam de fora.</span></li>
-    <li><span id="j2"></span><span><b>Mercado Livre:</b> valores direto do marketplace, sem ajuste. Pedidos são as unidades vendidas em anúncio.</span></li>
+    <li><span id="j1"></span><span><b>ROAS e ACOS usam as vendas totais.</b> A conta é feita sobre todos os pedidos pagos da loja, com ou sem anúncio: ROAS = vendas totais ÷ gasto; ACOS = gasto ÷ vendas totais. Pedido cancelado ou não pago fica de fora, e devolução e reembolso também.</span></li>
+    <li><span id="j2"></span><span><b>ROAS dos anúncios:</b> só as vendas atribuídas ao anúncio. No Mercado Livre vem direto do marketplace; pedidos são as unidades vendidas em anúncio.</span></li>
     <li><span id="j3"></span><span><b>Shopee (listrado):</b> estimativa. Vendas de anúncio multiplicadas por pedidos pagos ÷ pedidos criados no período, porque a Shopee conta pedido cancelado ou não pago.</span></li>
     <li><span id="j4"></span><span><b>Janela de atribuição:</b> é a de cada marketplace. As APIs não deixam escolher.</span></li>
     <li><span id="j5"></span><span><b>Período fecha ontem.</b> O dia de hoje ainda está acontecendo e aparece listrado no gráfico.</span></li>
@@ -325,16 +338,17 @@ function hojeSP(){return new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_
 function soma(iso,n){var d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
 function periodo(k,hoje){
   var ate=soma(hoje,-1),de;
-  if(k==='mes'){var ini=hoje.slice(0,8)+'01';
+  if(k==='custom'&&S.cde&&S.cate){de=S.cde;ate=S.cate}
+  else if(k==='mes'){var ini=hoje.slice(0,8)+'01';
     if(hoje.slice(8,10)==='01'){var pm=soma(hoje,-1);de=pm.slice(0,8)+'01'}else de=ini}
-  else de=soma(ate,-(Number(k)-1));
+  else de=soma(ate,-(Number(k==='custom'?7:k)-1));
   var dias=Math.round((new Date(ate+'T12:00:00Z')-new Date(de+'T12:00:00Z'))/864e5)+1;
   var pAte=soma(de,-1),pDe=soma(pAte,-(dias-1));
   return {de:de,ate:ate,dias:dias,pDe:pDe,pAte:pAte};
 }
 
 /* ===== estado ===== */
-var S={per:'7',sel:'todas',rows:[],diario:[],atu:null,hoje:hojeSP(),carregando:true,erro:null,acesso:true,ano:0,primeira:true};
+var S={vendas:{},ord:{k:'roas',d:-1},per:'7',sel:'todas',rows:[],diario:[],atu:null,hoje:hojeSP(),carregando:true,erro:null,acesso:true,ano:0,primeira:true};
 
 /* ===== seletor em pílula ===== */
 function seg(el,valor,ao){
@@ -372,6 +386,11 @@ function agrega(rs,P){
   a.acos=a.rreal>0?a.gReal/a.rreal:null;
   a.cac=a.ped>0?a.gPed/a.ped:null;
   a.custoG=P&&a.pagos>0?gastoJanela(ids,P)/a.pagos:null;
+  /* vendas totais pagas (com ou sem anúncio) */
+  a.vTot=0;Object.keys(ids).forEach(function(k){a.vTot+=S.vendas[k]||0});
+  var gj=P?gastoJanela(ids,P):a.gasto;
+  a.roasT=gj>0&&a.vTot>0?a.vTot/gj:null;
+  a.acosT=gj>0&&a.vTot>0?gj/a.vTot:null;
   return a;
 }
 /* gasto só nos dias em que o banco tem pedidos pagos (S.desde), para o custo geral por pedido */
@@ -380,6 +399,10 @@ function gastoJanela(ids,P){
   if(de>P.ate)return 0;
   S.diario.forEach(function(d){if(ids[d.loja_id]&&d.dia>=de&&d.dia<=P.ate)t+=Number(d.gasto)||0});
   return t;
+}
+function lojaTot(r,P){
+  var id={};id[r.loja_id]=1;var v=S.vendas[r.loja_id]||0,g=gastoJanela(id,P);
+  return {v:v,roas:g>0&&v>0?v/g:null,acos:g>0&&v>0?g/v:null};
 }
 function porMk(rs,P){
   var o={};
@@ -435,18 +458,17 @@ function telaHtml(){
   if(!rs.length||A.gasto<=0)return vazioHtml();
   var est=A.temShopee&&A.temReal;
   var mks=porMk(rs,P).filter(function(m){return m.gasto>0});
-  var rotP=S.per==='mes'?'este mês':'últimos '+S.per+' dias';
+  var rotP=S.per==='mes'?'este mês':S.per==='custom'?'período escolhido':'últimos '+S.per+' dias';
 
-  /* palco: ROAS real e ACOS real */
-  var h='<section class="card escuro" id="palco"><div class="qcab"><span class="ico">'+svg('alvo')+'</span><h3>ROAS e ACOS reais · '+rotP+'</h3>'+(est?tagEst():'')+'<span class="tag" style="background:var(--palco-2);color:var(--palco-suave)">'+dm(P.de)+' a '+dm(P.ate)+'</span></div>'+
+  /* palco: ROAS e ACOS sobre as vendas totais */
+  var h='<section class="card escuro" id="palco"><div class="qcab"><span class="ico">'+svg('alvo')+'</span><h3>ROAS e ACOS · '+rotP+'</h3><span class="tag" style="background:var(--palco-2);color:var(--palco-suave)">'+dm(P.de)+' a '+dm(P.ate)+'</span></div>'+
     '<div class="palco-in">'+
-      '<div class="pal-e"><span class="pal-k">ROAS real</span>'+valorN('roas',A.roas,'v-palco')+'<div class="suave">em vendas pagas para cada R$ 1,00 em anúncio</div>'+rodMk(mks,'roas',txtRoas)+'</div>'+
-      '<div class="pal-e"><span class="pal-k">ACOS real</span>'+valorN('pct',A.acos,'v-palco')+'<div class="suave">da venda paga vai para anúncio</div>'+rodMk(mks,'acos',txtPct)+'</div>'+
+      '<div class="pal-e"><span class="pal-k">ROAS</span>'+valorN('roas',A.roasT,'v-palco')+'<div class="suave">em vendas totais para cada R$ 1,00 em anúncio</div></div>'+
+      '<div class="pal-e"><span class="pal-k">ACOS</span>'+valorN('pct',A.acosT,'v-palco')+'<div class="suave">da venda total vai para anúncio</div></div>'+
     '</div>'+
     '<div class="trio"><div><span>Gasto</span><b>'+(A.gasto?'<span data-n="'+A.gasto+'" data-f="brl">'+hBrl(A.gasto)+'</span>':'—')+'</b></div>'+
-    '<div><span>Vendas pagas de anúncio</span><b>'+(A.temReal?'<span data-n="'+A.rreal+'" data-f="brl">'+hBrl(A.rreal)+'</span>':'—')+'</b></div>'+
-    '<div><span>Pedidos de anúncio</span><b>'+(A.ped?nf(Math.round(A.ped),0):'—')+'</b></div>'+
-    '<div><span>Pedidos pagos no total</span><b>'+(A.pagos?nf(A.pagos,0):'—')+'</b></div></div></section>';
+    '<div><span>Vendas totais pagas</span><b>'+(A.vTot?'<span data-n="'+A.vTot+'" data-f="brl">'+hBrl(A.vTot)+'</span>':'—')+'</b></div>'+
+    '<div><span>Pedidos pagos</span><b>'+(A.pagos?nf(A.pagos,0):'—')+'</b></div></div></section>';
 
   /* métricas */
   var dias=diasDe(P,rs);
@@ -462,39 +484,64 @@ function telaHtml(){
   '</div>';
 
   /* gráfico + ranking */
-  var rk=rs.filter(function(r){return num(r.gasto)>0}).slice().sort(function(a,b){
-    var x=num(a.roas_real),y=num(b.roas_real);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return y-x});
+  var rk=rs.filter(function(r){return num(r.gasto)>0}).map(function(r){r._t=lojaTot(r,P);return r}).sort(function(a,b){
+    var x=a._t.roas,y=b._t.roas;if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return y-x});
   h+='<div class="g21"><section class="card"><div class="qcab"><span class="ico">'+svg('grafico')+'</span><h3>Gasto por dia</h3></div>'+
      '<div class="graf" id="graf"><span class="dica" id="dica"></span></div>'+
      '<div class="leg"><span><i style="background:var(--ativo)"></i>Gasto fechado</span><span><i class="hach" style="background-color:transparent"></i>Hoje, ainda fechando</span><span><i style="background:var(--destaque)"></i>Dia em foco</span></div></section>'+
-   '<section class="card"><div class="qcab"><span class="ico">'+svg('lista')+'</span><h3>ROAS real por loja</h3></div><ol class="rank">'+
+   '<section class="card"><div class="qcab"><span class="ico">'+svg('lista')+'</span><h3>ROAS por loja</h3></div><ol class="rank">'+
    rk.map(function(r,i){
-     var v=num(r.roas_real),e=r.marketplace==='shopee'&&v!=null;
-     return '<li'+(i===0&&v!=null?' class="um"':'')+'><i>'+(i+1)+'</i>'+mkImg(r.marketplace)+'<span>'+esc(r.loja)+'<small>'+MKC[r.marketplace]+'</small></span><b>'+(v==null?'—':(e?'<span class="est-v">'+txtRoas(v)+'</span>':txtRoas(v)))+'</b></li>';
+     var v=r._t.roas;
+     return '<li'+(i===0&&v!=null?' class="um"':'')+'><i>'+(i+1)+'</i>'+mkImg(r.marketplace)+'<span>'+esc(r.loja)+'<small>'+MKC[r.marketplace]+'</small></span><b>'+(v==null?'—':txtRoas(v))+'</b></li>';
    }).join('')+'</ol></section></div>';
 
   /* tabela */
-  var tot=A;
-  function cel(l,v,e){return '<div class="r" data-l="'+l+'">'+(v==null?'<span class="mut">—</span>':(e?'<span class="est-v">'+v+'</span>':v))+'</div>'}
-  h+='<section class="card"><div class="qcab"><span class="ico">'+svg('lista')+'</span><h3>Detalhe por loja</h3>'+(est?tagEst():'')+'</div><div class="tbl" style="--cols:minmax(0,1.7fr) repeat(6,minmax(0,1fr))">'+
-    '<div class="th"><span>Loja</span><span class="r">Gasto</span><span class="r">ROAS do marketplace</span><span class="r">ROAS real</span><span class="r">ACOS real</span><span class="r">Custo por pedido do ads</span><span class="r">Custo de ads por pedido</span></div>'+
-    rk.map(function(r){
-      var e=r.marketplace==='shopee',a=num(r.acos_real),c=num(r.cac),rr=num(r.roas_real),idl={};idl[r.loja_id]=1;var pg=num(r.pedidos_pagos)||0,cg=pg>0?gastoJanela(idl,P)/pg:null;
-      return '<div class="tr"><div class="nm">'+mkImg(r.marketplace)+'<span>'+esc(r.loja)+'<small>'+MKC[r.marketplace]+'</small></span></div>'+
-        cel('Gasto',txtBrl(num(r.gasto))) +
-        cel('ROAS do marketplace',num(r.roas_mkt)!=null?'<span class="mut">'+txtRoas(num(r.roas_mkt))+'</span>':null)+
-        cel('ROAS real',rr!=null?'<b>'+txtRoas(rr)+'</b>':null,e&&rr!=null)+
-        cel('ACOS real',a!=null?txtPct(a):null,e&&a!=null)+
-        cel('Custo por pedido do ads',c!=null?txtBrl(c):null,e&&c!=null)+
-        cel('Custo de ads por pedido',cg!=null?txtBrl(cg):null)+'</div>';
-    }).join('')+
-    '<div class="tr tot"><div class="nm"><span>Total da seleção</span></div>'+
-      cel('Gasto',txtBrl(tot.gasto))+cel('ROAS do marketplace',tot.roasMkt!=null?txtRoas(tot.roasMkt):null)+
-      cel('ROAS real',tot.roas!=null?txtRoas(tot.roas):null,est)+cel('ACOS real',tot.acos!=null?txtPct(tot.acos):null,est)+
-      cel('Custo por pedido do ads',tot.cac!=null?txtBrl(tot.cac):null,est)+cel('Custo de ads por pedido',tot.custoG!=null?txtBrl(tot.custoG):null)+'</div>'+
-  '</div></section>';
+  S.ctx={rk:rk,A:A,P:P,est:est};
+  h+='<section class="card"><div class="qcab"><span class="ico">'+svg('lista')+'</span><h3>Detalhe por loja</h3></div><div class="tbl" id="tabela" style="--cols:minmax(0,1.6fr) repeat(7,minmax(0,1fr))">'+tabelaHtml()+'</div></section>';
   return h;
 }
+
+/* ===== tabela ordenável ===== */
+var COLS=[
+ {k:'nome',t:'Loja',l:true},{k:'gasto',t:'Gasto'},{k:'vendas',t:'Vendas totais'},{k:'roas',t:'ROAS'},{k:'acos',t:'ACOS'},
+ {k:'roasAd',t:'ROAS dos anúncios'},{k:'cac',t:'Custo por pedido do ads'},{k:'custoG',t:'Custo de ads por pedido'}];
+function valLinha(r,P){
+  var t=r._t||lojaTot(r,P),id={};id[r.loja_id]=1;var pg=num(r.pedidos_pagos)||0;
+  return {nome:(r.loja||'').toLowerCase(),gasto:num(r.gasto),vendas:t.v||null,roas:t.roas,acos:t.acos,roasAd:num(r.roas_real),cac:num(r.cac),custoG:pg>0?gastoJanela(id,P)/pg:null};
+}
+function tabelaHtml(){
+  var C=S.ctx,rk=C.rk,A=C.A,P=C.P,est=C.est,o=S.ord;
+  function cel(l,v,e){return '<div class="r" data-l="'+l+'">'+(v==null?'<span class="mut">—</span>':(e?'<span class="est-v">'+v+'</span>':v))+'</div>'}
+  var linhas=rk.map(function(r){return {r:r,v:valLinha(r,P)}});
+  linhas.sort(function(a,b){
+    var x=a.v[o.k],y=b.v[o.k];
+    if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;
+    return (typeof x==='string'?x.localeCompare(y):x-y)*o.d;
+  });
+  var h='<div class="th">'+COLS.map(function(c){
+    var on=o.k===c.k,ic=on?(o.d===1?'M12 5v14M6 13l6 6 6-6':'M12 19V5M6 11l6-6 6 6'):'M8 9l4-4 4 4M8 15l4 4 4-4';
+    return '<span class="'+(c.l?'':'r')+'"><button type="button" class="ord'+(on?' on':'')+(c.l?' l':'')+'" data-k="'+c.k+'" aria-label="Ordenar por '+c.t+'">'+c.t+'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="'+ic+'"/></svg></button></span>'}).join('')+'</div>';
+  h+=linhas.map(function(x){
+    var r=x.r,v=x.v,e=r.marketplace==='shopee';
+    return '<div class="tr"><div class="nm">'+mkImg(r.marketplace)+'<span>'+esc(r.loja)+'<small>'+MKC[r.marketplace]+'</small></span></div>'+
+      cel('Gasto',txtBrl(v.gasto))+cel('Vendas totais',v.vendas!=null?txtBrl(v.vendas):null)+
+      cel('ROAS',v.roas!=null?'<b>'+txtRoas(v.roas)+'</b>':null)+cel('ACOS',v.acos!=null?txtPct(v.acos):null)+
+      cel('ROAS dos anúncios',v.roasAd!=null?'<span class="mut">'+txtRoas(v.roasAd)+'</span>':null,e&&v.roasAd!=null)+
+      cel('Custo por pedido do ads',v.cac!=null?txtBrl(v.cac):null,e&&v.cac!=null)+
+      cel('Custo de ads por pedido',v.custoG!=null?txtBrl(v.custoG):null)+'</div>';
+  }).join('');
+  h+='<div class="tr tot"><div class="nm"><span>Total da seleção</span></div>'+
+    cel('Gasto',txtBrl(A.gasto))+cel('Vendas totais',A.vTot?txtBrl(A.vTot):null)+cel('ROAS',A.roasT!=null?txtRoas(A.roasT):null)+cel('ACOS',A.acosT!=null?txtPct(A.acosT):null)+
+    cel('ROAS dos anúncios',A.roas!=null?'<span class="mut">'+txtRoas(A.roas)+'</span>':null,est)+
+    cel('Custo por pedido do ads',A.cac!=null?txtBrl(A.cac):null,est)+cel('Custo de ads por pedido',A.custoG!=null?txtBrl(A.custoG):null)+'</div>';
+  return h;
+}
+document.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('.ord');if(!b||!S.ctx)return;
+  var k=b.dataset.k;
+  if(S.ord.k===k)S.ord.d=-S.ord.d;else S.ord={k:k,d:k==='nome'?1:-1};
+  var t=$('#tabela');if(t){t.innerHTML=tabelaHtml();var n=$('.ord[data-k="'+k+'"]',t);if(n)n.focus()}
+});
 
 /* gasto diário somado (para a linha e para o gráfico) */
 function diasDe(P,rs){
@@ -608,11 +655,13 @@ async function carregar(){
       SB.rpc('ads_resumo',{p_de:P.de,p_ate:P.ate}),
       SB.from('ads_loja_dia').select('loja_id,dia,gasto').gte('dia',P.pDe).lte('dia',S.hoje).limit(2000),
       SB.from('ads_loja_dia').select('atualizado_em').order('atualizado_em',{ascending:false}).limit(1),
-      SB.rpc('ads_pedidos_desde')
+      SB.rpc('ads_pedidos_desde'),
+      SB.rpc('ads_vendas_total',{p_de:P.de,p_ate:P.ate})
     ]);
     if(seq!==S.ano)return;
     if(rs[0].error)throw rs[0].error;if(rs[1].error)throw rs[1].error;
     S.rows=rs[0].data||[];S.diario=rs[1].data||[];S.desde=(rs[3]&&!rs[3].error&&rs[3].data)||null;
+    S.vendas={};((rs[4]&&!rs[4].error&&rs[4].data)||[]).forEach(function(x){S.vendas[x.loja_id]=Number(x.vendas)||0});
     S.acesso=S.rows.length>0;
     var u=rs[2].data&&rs[2].data[0]&&rs[2].data[0].atualizado_em;
     if(u){var h=new Date(u).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});var t=$('#atu');t.innerHTML=svg('relogio')+'Atualizado às '+h;t.hidden=false}
@@ -625,7 +674,26 @@ async function carregar(){
   }
 }
 
-var setPer=seg($('#per'),S.per,function(v){S.per=v;carregar()});
+var cusEl=$('#cus');
+function fechaCus(){if(cusEl.hidden)return;cusEl.hidden=true;setPer(S.per)}
+var setPer=seg($('#per'),S.per,function(v){
+  if(v==='custom'){
+    var P=periodo(S.per==='custom'?'7':S.per,S.hoje),ont=soma(S.hoje,-1);
+    $('#cDe').max=ont;$('#cAte').max=ont;
+    $('#cDe').value=S.cde||P.de;$('#cAte').value=S.cate||P.ate;$('#cErro').textContent='';
+    cusEl.hidden=false;return;
+  }
+  cusEl.hidden=true;S.per=v;carregar();
+});
+$('#cOk').addEventListener('click',function(){
+  var d=$('#cDe').value,a=$('#cAte').value,ont=soma(S.hoje,-1),er=$('#cErro');
+  if(!d||!a){er.textContent='Escolha as duas datas.';return}
+  if(d>a){er.textContent='A data inicial precisa ser antes da final.';return}
+  if(a>ont){er.textContent='O período termina no máximo ontem.';return}
+  if((new Date(a+'T12:00:00Z')-new Date(d+'T12:00:00Z'))/864e5>=120){er.textContent='Escolha no máximo 120 dias.';return}
+  S.cde=d;S.cate=a;S.per='custom';cusEl.hidden=true;setPer('custom');carregar();
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')fechaCus()});
 
 async function iniciar(){
   try{
