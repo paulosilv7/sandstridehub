@@ -284,12 +284,12 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
 <div class="veu" id="veu"><div class="janela" role="dialog" aria-modal="true" aria-labelledby="jt">
   <div class="qcab"><span class="ico" id="jIco"></span><h3 id="jt">Como lemos os números</h3></div>
   <ul>
-    <li><span id="j1"></span><span><b>ROAS e ACOS usam as vendas totais.</b> A conta é feita sobre todos os pedidos válidos da loja, com ou sem anúncio: ROAS = vendas totais ÷ gasto; ACOS = gasto ÷ vendas totais. Pedido cancelado ou não pago fica de fora, e devolução e reembolso também.</span></li>
+    <li><span id="j1"></span><span><b>ROAS e ACOS usam as vendas totais.</b> A conta é feita sobre todos os pedidos válidos da loja, com ou sem anúncio: ROAS = vendas totais ÷ gasto; ACOS = gasto ÷ vendas totais. Pedido cancelado ou não pago fica de fora, e devolução e reembolso também. As vendas do TikTok Shop entram, mas o gasto de anúncio dele ainda não é lido; até conectar, o ROAS fica um pouco mais alto e o ACOS um pouco mais baixo.</span></li>
     <li><span id="j2"></span><span><b>ROAS dos anúncios:</b> só as vendas atribuídas ao anúncio. No Mercado Livre vem direto do marketplace; pedidos são as unidades vendidas em anúncio.</span></li>
     <li><span id="j3"></span><span><b>Shopee (listrado):</b> estimativa. Vendas de anúncio multiplicadas por pedidos pagos ÷ pedidos criados no período, porque a Shopee conta pedido cancelado ou não pago.</span></li>
     <li><span id="j4"></span><span><b>Janela de atribuição:</b> é a de cada marketplace. As APIs não deixam escolher.</span></li>
     <li><span id="j5"></span><span><b>Período fecha ontem.</b> O dia de hoje ainda está acontecendo e aparece listrado no gráfico.</span></li>
-    <li><span id="j7"></span><span><b>Dois custos por pedido.</b> “Do ads” divide o gasto pelos pedidos que vieram de anúncio. “De ads por pedido” divide o gasto por todos os pedidos válidos das lojas Mercado Livre e Shopee, com ou sem anúncio, e serve de base para precificar. Pedido válido é o que não foi cancelado; no Mercado Livre, um carrinho com vários itens conta uma vez. O TikTok Shop, o Magalu e a Shein ficam de fora, porque ainda não lemos o anúncio deles.</span></li>
+    <li><span id="j7"></span><span><b>Dois custos por pedido.</b> “Do ads” divide o gasto pelos pedidos que vieram de anúncio. “De ads por pedido” divide o gasto por todos os pedidos válidos das lojas Mercado Livre, Shopee e TikTok Shop, com ou sem anúncio, e serve de base para precificar. Pedido válido é o que não foi cancelado; no Mercado Livre, um carrinho com vários itens conta uma vez. O TikTok Shop entra nos pedidos e nas vendas; Magalu e Shein ainda não estão no sistema.</span></li>
     <li><span id="j6"></span><span><b>Só observa.</b> Esta tela não muda lance, orçamento nem campanha.</span></li>
   </ul>
   <button type="button" class="btn pri" id="jOk">Entendi</button>
@@ -341,8 +341,8 @@ function poeIcones(){
 poeIcones();
 
 /* ===== formatação ===== */
-var IC={mercado_livre:'../img/marketplaces/mercadolivre-icone.png',shopee:'../img/marketplaces/shopee-icone.jpg'};
-var MKN={mercado_livre:'Mercado Livre',shopee:'Shopee'},MKC={mercado_livre:'ML',shopee:'Shopee'};
+var IC={mercado_livre:'../img/marketplaces/mercadolivre-icone.png',shopee:'../img/marketplaces/shopee-icone.jpg',tiktok_shop:'../img/marketplaces/tiktokshop-icone.png'};
+var MKN={mercado_livre:'Mercado Livre',shopee:'Shopee',tiktok_shop:'TikTok Shop'},MKC={mercado_livre:'ML',shopee:'Shopee',tiktok_shop:'TikTok'};
 function nf(v,d){return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}).format(v)}
 function partes(v,d){var s=nf(Math.abs(v),d).split(',');return [s[0],s[1]||'']}
 function hRoas(v){var p=partes(v,2);return p[0]+'<span class="c">,'+p[1]+'</span>'}
@@ -389,7 +389,7 @@ function num(v){return v==null?null:Number(v)}
 function filtra(rows){
   return rows.filter(function(r){
     if(S.sel==='todas')return true;
-    if(S.sel==='mercado_livre'||S.sel==='shopee')return r.marketplace===S.sel;
+    if(S.sel==='mercado_livre'||S.sel==='shopee'||S.sel==='tiktok_shop')return r.marketplace===S.sel;
     return r.loja_id===S.sel;
   });
 }
@@ -470,13 +470,14 @@ function semAcesso(){
 function falha(){
   return '<section class="card vazio"><span class="ico">'+svg('alerta')+'</span><h3>Não consegui carregar</h3><p>'+esc(S.erro||'Tente de novo em instantes.')+'</p><button type="button" class="btn pri" id="de-novo">Tentar de novo</button></section>';
 }
-function vazioHtml(){
+function vazioHtml(tik){
+  if(tik)return '<section class="card vazio"><span class="ico">'+svg('relogio')+'</span><h3>Anúncios do TikTok ainda não são lidos</h3><p>Os pedidos e as vendas do TikTok Shop já entram nos totais das outras visões. O gasto de anúncio dele ainda não é lido, então não há ROAS nem custo para mostrar aqui.</p></section>';
   return '<section class="card vazio"><span class="ico">'+svg('relogio')+'</span><h3>Sem anúncios nesse período</h3><p>Não há gasto registrado para essa seleção. Troque o período ou a loja.</p></section>';
 }
 
 function telaHtml(){
   var P=periodo(S.per,S.hoje),rs=filtra(S.rows),A=agrega(rs,P);
-  if(!rs.length||A.gasto<=0)return vazioHtml();
+  if(!rs.length||A.gasto<=0)return vazioHtml(rs.length&&rs.every(function(r){return r.marketplace==='tiktok_shop'}));
   var est=A.temShopee&&A.temReal;
   var mks=porMk(rs,P).filter(function(m){return m.gasto>0});
   var rotP=S.per==='mes'?'este mês':S.per==='custom'?'período escolhido':'últimos '+S.per+' dias';
@@ -517,7 +518,8 @@ function telaHtml(){
    }).join('')+'</ol></section></div>';
 
   /* tabela */
-  S.ctx={rk:rk,A:A,P:P,est:est};
+  var lin=rs.filter(function(r){return num(r.gasto)>0||r.marketplace==='tiktok_shop'}).map(function(r){r._t=lojaTot(r,P);return r});
+  S.ctx={rk:lin,A:A,P:P,est:est};
   h+='<section class="card"><div class="qcab"><span class="ico">'+svg('lista')+'</span><h3>Detalhe por loja</h3></div><div class="tbl" id="tabela" style="--cols:minmax(0,1.6fr) repeat(7,minmax(0,1fr))">'+tabelaHtml()+'</div></section>';
   return h;
 }
@@ -528,7 +530,7 @@ var COLS=[
  {k:'roasAd',t:'ROAS dos anúncios'},{k:'cac',t:'Custo por pedido do ads'},{k:'custoG',t:'Custo de ads por pedido'}];
 function valLinha(r,P){
   var t=r._t||lojaTot(r,P),id={};id[r.loja_id]=1;var pg=num(r.pedidos_pagos)||0;
-  return {nome:(r.loja||'').toLowerCase(),gasto:num(r.gasto),vendas:t.v||null,roas:t.roas,acos:t.acos,roasAd:num(r.roas_real),cac:num(r.cac),custoG:pg>0?gastoJanela(id,P)/pg:null};
+  return {nome:(r.loja||'').toLowerCase(),gasto:num(r.gasto)>0?num(r.gasto):null,vendas:t.v||null,roas:t.roas,acos:t.acos,roasAd:num(r.roas_real),cac:num(r.cac),custoG:pg>0&&num(r.gasto)>0?gastoJanela(id,P)/pg:null};
 }
 function tabelaHtml(){
   var C=S.ctx,rk=C.rk,A=C.A,P=C.P,est=C.est,o=S.ord;
@@ -545,7 +547,7 @@ function tabelaHtml(){
   h+=linhas.map(function(x){
     var r=x.r,v=x.v,e=r.marketplace==='shopee';
     return '<div class="tr"><div class="nm">'+mkImg(r.marketplace)+'<span>'+esc(r.loja)+'<small>'+MKC[r.marketplace]+'</small></span></div>'+
-      cel('Gasto',txtBrl(v.gasto))+cel('Vendas totais',v.vendas!=null?txtBrl(v.vendas):null)+
+      cel('Gasto',v.gasto!=null?txtBrl(v.gasto):null)+cel('Vendas totais',v.vendas!=null?txtBrl(v.vendas):null)+
       cel('ROAS',v.roas!=null?'<b>'+txtRoas(v.roas)+'</b>':null)+cel('ACOS',v.acos!=null?txtPct(v.acos):null)+
       cel('ROAS dos anúncios',v.roasAd!=null?'<span class="mut">'+txtRoas(v.roasAd)+'</span>':null,e&&v.roasAd!=null)+
       cel('Custo por pedido do ads',v.cac!=null?txtBrl(v.cac):null,e&&v.cac!=null)+
@@ -634,6 +636,7 @@ function montaLojas(){
   h+=it('todas','<span class="logo">T</span>','Todas as lojas');
   h+=it('mercado_livre',mkImg('mercado_livre'),'Mercado Livre');
   h+=it('shopee',mkImg('shopee'),'Shopee');
+  h+=it('tiktok_shop',mkImg('tiktok_shop'),'TikTok Shop');
   h+='<li class="sep" role="separator"></li>';
   S.rows.slice().sort(function(a,b){return (a.marketplace+a.loja).localeCompare(b.marketplace+b.loja)}).forEach(function(r){
     h+=it(r.loja_id,mkImg(r.marketplace),r.loja+' · '+MKN[r.marketplace]);
@@ -642,7 +645,7 @@ function montaLojas(){
 }
 function nomeSel(){
   if(S.sel==='todas')return ['<span class="logo">T</span>','Todas as lojas'];
-  if(S.sel==='mercado_livre'||S.sel==='shopee')return [mkImg(S.sel),MKN[S.sel]];
+  if(S.sel==='mercado_livre'||S.sel==='shopee'||S.sel==='tiktok_shop')return [mkImg(S.sel),MKN[S.sel]];
   var r=S.rows.filter(function(x){return x.loja_id===S.sel})[0];
   return r?[mkImg(r.marketplace),r.loja+' · '+MKN[r.marketplace]]:['<span class="logo">T</span>','Todas as lojas'];
 }
