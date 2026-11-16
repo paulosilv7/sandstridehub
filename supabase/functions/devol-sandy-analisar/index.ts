@@ -1,6 +1,6 @@
 // Sandy das devoluções: lê os lotes de fotos recebidos, confere os arquivos, identifica o caso (número exato, depois rastreio, depois nome do comprador),
 // compara o que foi COMPRADO com o que VOLTOU (itens do pedido + fotos + conferência da equipe + o que o cliente disse), analisa o estado
-// e decide com liberdade: contestar, aceitar a devolução (não contestar) ou pedir informação.
+// e decide com liberdade: contestar ou aceitar a devolução (não contestar). Nunca pede mais informação: sempre uma das duas.
 // Grava duas coisas separadas: a indicação para a equipe (interna) e o texto que iria ao marketplace.
 // NUNCA envia nada a marketplace: o envio só acontece quando uma pessoa aprova na tela.
 // ECONOMIA DE TOKENS: se o número informado já acha o caso, não lê a etiqueta nas fotos; em nova análise do mesmo lote, reaproveita a etiqueta e a leitura do estado das fotos já feitas.
@@ -97,7 +97,7 @@ const S_RELATO = {
     type: "object", additionalProperties: false,
     required: ["recomendacao", "loja_enviou_errado", "ha_evidencia_forte", "risco_de_contestar", "comparacao_itens", "indicacao_equipe", "relato", "pedido_financeiro", "provas_sugeridas", "alertas"],
     properties: {
-      recomendacao: { type: "string", enum: ["contestar", "nao_contestar", "pedir_informacao"], description: "nao_contestar = aceitar a devolução para o cliente" },
+      recomendacao: { type: "string", enum: ["contestar", "nao_contestar"], description: "nao_contestar = aceitar a devolução para o cliente" },
       loja_enviou_errado: { type: "boolean", description: "true se o comprador reclamou de item/cor/modelo/tamanho errado E as fotos ou a equipe mostram que o que voltou (ou o que ele descreve ter recebido) difere do que foi comprado, mesmo que em uma só cor ou detalhe. Ou seja: o erro foi da loja." },
       ha_evidencia_forte: { type: "boolean", description: "true SOMENTE se há evidência concreta de que o comprador causou o problema: dano ou uso causado depois da entrega, par faltando, peça trocada por outra. false se o produto voltou íntegro, se só a caixa foi afetada, se o defeito alegado não aparece, ou se o erro foi da loja." },
       risco_de_contestar: { type: "string", enum: ["baixo", "medio", "alto"], description: "Risco de a contestação ser negada e gerar penalização para a loja. Alto se a base for fraca ou se o comprador provavelmente tem razão." },
@@ -122,17 +122,17 @@ const REGRAS_FIXAS = [
   "Produto íntegro com apenas a caixa/embalagem danificada não justifica contestação: recomende nao_contestar.",
   "Se o problema que a equipe encontrou é o mesmo que o comprador já informou na reclamação original (ex.: comprador disse que veio cor errada e voltou a cor errada que a loja enviou), o erro foi da loja: recomende nao_contestar.",
   "ERRO DE ENVIO DA LOJA (decida por isso antes de tudo): se o comprador reclama de item/cor/modelo/tamanho errado e as fotos ou a equipe mostram cores, modelo ou tamanho DIFERENTES do que foi comprado (variação do pedido) em QUALQUER par, mesmo que só em uma cor ou detalhe, ou o que o comprador descreve que recebeu coincide com o que voltou, o erro foi da loja. Nesse caso marque loja_enviou_errado=true, risco_de_contestar=alto, recomende nao_contestar (aceitar a devolução) e diga na indicacao_equipe, em linguagem simples, qual foi o erro (ex.: 'pedido era preto/branco e caramelo, mas voltou um par verde-água e um caramelo'). A loja sabe o que enviou; o cliente só devolve o que recebeu. Só contestar produto diferente se houver evidência de que a loja enviou o correto e o cliente devolveu outra coisa. ATENÇÃO: detalhes de outra cor que fazem parte do desenho do modelo (veja 'Detalhe do modelo' nas regras) NÃO são diferença de cor.",
-  "Confira cor por cor: para cada par, compare as cores vistas nas fotos com a variação comprada (ex.: 'Preto/Branco e Caramelo'). Nunca escreva que o retorno está 'conforme o pedido' sem ter conferido cada par. Se alguma cor das fotos não bate com a variação do pedido, diga isso na comparacao_itens. Se as fotos não permitem conferir as cores, use pedir_informacao.",
+  "Confira cor por cor: para cada par, compare as cores vistas nas fotos com a variação comprada (ex.: 'Preto/Branco e Caramelo'). Nunca escreva que o retorno está 'conforme o pedido' sem ter conferido cada par. Se alguma cor das fotos não bate com a variação do pedido, diga isso na comparacao_itens. Se as fotos não permitem conferir as cores, decida com o que há: sem base clara para contestar, recomende nao_contestar e registre a dúvida em alertas.",
   "Dê peso à alegação do comprador (campo 'Texto do comprador'): se o que ele descreve bate com as fotos, ele provavelmente tem razão.",
   "Só marque ha_evidencia_forte=true quando houver prova concreta de que o comprador causou o problema. Se o defeito alegado não aparece nas fotos, ou o produto voltou íntegro, marque false e recomende nao_contestar. Sua recomendação deve ser coerente com o risco: se o risco_de_contestar for alto, recomende nao_contestar.",
-  "Se a equipe disse que o retorno está completo mas as fotos mostram menos itens, as fotos podem estar incompletas: não conclua falta de item só por isso; recomende pedir_informacao pedindo foto de todos os itens.",
-  "Se faltar informação indispensável (por exemplo, a equipe não descreveu a condição e as fotos não permitem concluir), recomende pedir_informacao e diga o que falta. Não use pedir_informacao quando a conclusão já é clara.",
+  "Se a equipe disse que o retorno está completo mas as fotos mostram menos itens, as fotos podem estar incompletas: não conclua falta de item só por isso; sem prova clara, recomende nao_contestar e registre em alertas que as fotos podem estar incompletas.",
+  "Você só pode recomendar contestar ou nao_contestar (aceitar a devolução); não existe a opção de pedir mais informação ou fotos. Mesmo com informação incompleta, decida: sem base clara para contestar, recomende nao_contestar e liste em alertas o que faltou.",
   "A indicacao_equipe é conversa interna com a equipe; o relato é o texto formal para o marketplace. Nunca misture: o relato não fala de risco, penalidade nem da equipe interna.",
   "O relato deve estar PRONTO PARA ENVIAR como está: sem colchetes, sem campos a preencher, sem pedir para a equipe completar nada. A equipe só aprova e envia.",
   "Escreva em português do Brasil, texto objetivo e profissional, relato com até 8 frases.",
 ].join("\n");
 
-const FORCADO = "\n\nATENÇÃO: o dono já viu sua recomendação de NÃO contestar e decidiu contestar mesmo assim. Escreva o melhor relato possível usando SOMENTE fatos verdadeiros (fotos, descrição da equipe e dados do pedido), sem inventar nada para sustentar a contestação. Use recomendacao=contestar. Se não houver como escrever um relato honesto, use pedir_informacao e explique. Liste em alertas os riscos reais de contestar este caso.";
+const FORCADO = "\n\nATENÇÃO: o dono já viu sua recomendação de NÃO contestar e decidiu contestar. Use recomendacao=contestar e escreva o melhor relato possível. Se houver 'Instrução da equipe', ela é a versão dos fatos informada pelo dono da loja: use-a como base dos argumentos e do pedido, sem contradizê-la e sem acrescentar fatos que não estejam nela, nas fotos, na descrição da equipe ou nos dados do pedido. Não acuse o comprador. Peça que a solicitação seja resolvida sem penalização nem cobrança para a loja. Liste em alertas os riscos reais de contestar este caso.";
 
 const PROIBIDO = /https?:\/\/|www\.|\.com\b|@\w|whats|\b\d{10,}\b/i;
 
@@ -266,7 +266,7 @@ async function processar(rec: any) {
   const forcado = rec.forcar_contestacao === true;
   const rel = await perguntar("devolucao_relato", S_RELATO, [
     { role: "system", content: `Você é a Sandy, analista de devoluções da Sandstride. Analisa o caso por completo e decide o melhor para a loja; a equipe aprova antes de qualquer envio.\nREGRAS:\n${REGRAS_FIXAS}\n\nREGRAS DO MARKETPLACE (${mkt}):\n${txtRegras}\n\nAPRENDIZADOS DA CATEGORIA:\n${txtAprend}\n\nMODELO DA CATEGORIA (só para o relato; adapte, preencha todos os campos entre colchetes, nunca deixe colchete no texto):\n${modelo?.corpo ?? "(sem modelo)"}${forcado ? FORCADO : ""}` },
-    { role: "user", content: `${dadosCaso}\nDescrição da equipe (texto exato): ${equipe}\nItens visíveis nas fotos: ${est.itens_visiveis}\nVisível nas fotos: ${est.visivel_nas_fotos}\nNão comprovado pelas fotos: ${est.nao_comprovado_pelas_fotos}\nConfiança da leitura das fotos: ${est.confianca}\nCompare os itens, decida e prepare a indicação para a equipe e, se for contestar, o relato PRONTO PARA ENVIAR ao marketplace.` },
+    { role: "user", content: `${dadosCaso}\nDescrição da equipe (texto exato): ${equipe}\nItens visíveis nas fotos: ${est.itens_visiveis}\nVisível nas fotos: ${est.visivel_nas_fotos}\nNão comprovado pelas fotos: ${est.nao_comprovado_pelas_fotos}\nConfiança da leitura das fotos: ${est.confianca}${forcado && rec.instrucao_equipe ? `\nInstrução da equipe (dono da loja): ${String(rec.instrucao_equipe).slice(0, 800)}` : ""}\nCompare os itens, decida e prepare a indicação para a equipe e, se for contestar, o relato PRONTO PARA ENVIAR ao marketplace.` },
   ], 1100);
 
   const alertas: string[] = [...(rel.alertas ?? [])];
@@ -290,9 +290,9 @@ async function processar(rec: any) {
     indicacao = (est.categoria_id === "embalagem-isolada" ? "Só a embalagem foi afetada; o produto voltou íntegro. " : "O produto voltou conforme a venda. ") + "Contestar sem dano real no produto arrisca advertência da conta. " + indicacao;
   }
   if (sem && forcado) alertas.push("O produto voltou íntegro. Contestar sem dano real no produto pode gerar advertência (o Mercado Livre já advertiu a loja Sandstride I em 13/10).");
-  if (forcado && rec2 === "nao_contestar") rec2 = "pedir_informacao";
+  if (forcado && rec2 === "nao_contestar") rec2 = "contestar";
   if (rec2 === "contestar" && (PROIBIDO.test(texto) || /\[[^\]]+\]/.test(texto) || texto.length < 40)) {
-    rec2 = "pedir_informacao"; alertas.push("O texto gerado ficou incompleto ou com contato externo; revise antes de usar."); texto = "";
+    rec2 = "nao_contestar"; alertas.push("Não consegui montar um texto de contestação válido (ficou incompleto ou com contato externo). Peça de novo explicando melhor ou aceite a devolução."); texto = "";
   }
   if (rec2 !== "contestar") texto = "";
   if (est.confianca === "baixa" && rec2 === "contestar") alertas.push("A leitura das fotos teve confiança baixa: confira as fotos antes de aprovar.");
@@ -308,7 +308,7 @@ async function processar(rec: any) {
   if (er) throw new Error(`erro ao guardar o relato: ${er.message}`);
 
   const inicial = ["NOVO", "AGUARDANDO_ANALISE", "AGUARDANDO_PROVAS", "PREPARADO"].includes(caso.status);
-  const novoStatus = !inicial ? caso.status : rec2 === "contestar" ? "PREPARADO" : rec2 === "pedir_informacao" ? "AGUARDANDO_PROVAS" : "NOVO";
+  const novoStatus = !inicial ? caso.status : rec2 === "contestar" ? "PREPARADO" : "NOVO";
   await supabase.from("devol_casos").update({ categoria: est.categoria_id, status: novoStatus, ...(novoStatus === "PREPARADO" ? { proxima_verificacao: new Date().toISOString() } : {}) }).eq("id", caso.id);
   await supabase.from("devol_eventos").upsert({ caso_id: caso.id, tipo: "sandy_preparou", evento_chave: `sandy:${rec.id}:${forcado ? "forcado" : "inicial"}:${Date.now()}`, dados: { recomendacao: rec2, categoria: est.categoria_id, recebimento: rec.id, forcado } }, { onConflict: "evento_chave", ignoreDuplicates: true });
   resumo.recomendacao = rec2; resumo.status = novoStatus;
@@ -319,7 +319,7 @@ async function executar() {
   try {
     if ((await cfg("kill_switch")) === "true" || (await cfg("ia_ativa")) !== "true") return;
     const limite = new Date(Date.now() - 30_000).toISOString();
-    const { data: fila } = await supabase.from("devol_recebimentos").select("id, caso_id, fonte_identificacao, pedido_lido, rastreio, descricao_equipe, criado_em, forcar_contestacao, analise_resumo").eq("analise", "pendente").lt("criado_em", limite).order("criado_em").limit(3);
+    const { data: fila } = await supabase.from("devol_recebimentos").select("id, caso_id, fonte_identificacao, pedido_lido, rastreio, descricao_equipe, criado_em, forcar_contestacao, instrucao_equipe, analise_resumo").eq("analise", "pendente").lt("criado_em", limite).order("criado_em").limit(3);
     for (const r of fila ?? []) {
       const { data: reservado } = await supabase.from("devol_recebimentos").update({ analise: "processando" }).eq("id", r.id).eq("analise", "pendente").select("id");
       if (!reservado?.length) continue;
