@@ -111,21 +111,21 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
 .loja li button[aria-current="true"]{background:var(--ativo)}
 
 /* palco */
-.palco-in{display:flex;align-items:center;justify-content:space-between;gap:var(--e6);flex-wrap:wrap}
+.palco-in{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--e6)}
+.palco-in>.pal-e+.pal-e{border-left:1px solid var(--palco-borda);padding-left:var(--e6)}
+.pal-k{font-size:13px;font-weight:500;color:var(--palco-suave)}
+.pal-e .leg{margin-top:var(--e1)}
+.leg b{font-weight:600;color:var(--texto)}
+.escuro .leg{color:var(--palco-suave)}
+.escuro .leg b{color:#fff}
+.est-v{color:var(--texto)}
+.escuro .est-v{color:#fff;background:repeating-linear-gradient(135deg,rgba(255,255,255,.28) 0 2px,transparent 2px 6px)}
 .pal-e{display:flex;flex-direction:column;gap:var(--e3);min-width:0}
 .trio{display:flex;gap:var(--e8);flex-wrap:wrap;margin-top:var(--e2)}
 .trio>div{display:flex;flex-direction:column;gap:2px}
 .trio>div>span{font-size:12px;color:var(--palco-suave)}
 .trio b{font-size:19px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .trio b .c{color:var(--palco-suave);font-weight:400}
-.bolhas{display:flex;align-items:center}
-.bolha{border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--palco-3);font-size:12px;color:var(--palco-suave);margin-left:-10px;line-height:1.25;padding:0 var(--e2)}
-.bolha:first-child{margin-left:0}
-.bolha b{font-weight:600;color:#fff;font-size:17px;font-variant-numeric:tabular-nums}
-.bolha.est{background:repeating-linear-gradient(135deg,rgba(255,255,255,.14) 0 2px,transparent 2px 6px),var(--palco-3)}
-.bolha.d{background:radial-gradient(circle at 35% 30%,#5D84E6,var(--destaque) 62%);color:#DCE4FA;z-index:1}
-.bolha.d.est{background:repeating-linear-gradient(135deg,rgba(255,255,255,.22) 0 2px,transparent 2px 6px),radial-gradient(circle at 35% 30%,#5D84E6,var(--destaque) 62%)}
-.bolha.d b{font-size:22px}
 .assenta{animation:pulso 500ms var(--ease)}
 
 /* métrica */
@@ -207,6 +207,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
 @media (max-width:999px){
   .wrap{padding:var(--e5) var(--e4) 112px}
   .g3,.g21{grid-template-columns:minmax(0,1fr)}
+  .palco-in{grid-template-columns:minmax(0,1fr)}
+  .palco-in>.pal-e+.pal-e{border-left:0;padding-left:0;border-top:1px solid var(--palco-borda);padding-top:var(--e5)}
   .card{padding:var(--e5)}
   .topo h1{font-size:22px}
   .loja ul{right:auto;left:0;transform-origin:top left}
@@ -248,11 +250,12 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
 <div class="veu" id="veu"><div class="janela" role="dialog" aria-modal="true" aria-labelledby="jt">
   <div class="qcab"><span class="ico" id="jIco"></span><h3 id="jt">Como lemos os números</h3></div>
   <ul>
-    <li><span id="j1"></span><span><b>Só pedidos pagos.</b> O ROAS real ignora pedido cancelado ou não pago. Devolução e reembolso ficam de fora.</span></li>
+    <li><span id="j1"></span><span><b>Só pedidos pagos.</b> O ROAS e o ACOS reais ignoram pedido cancelado ou não pago. Devolução e reembolso ficam de fora.</span></li>
     <li><span id="j2"></span><span><b>Mercado Livre:</b> valores direto do marketplace, sem ajuste. Pedidos são as unidades vendidas em anúncio.</span></li>
     <li><span id="j3"></span><span><b>Shopee (listrado):</b> estimativa. Vendas de anúncio multiplicadas por pedidos pagos ÷ pedidos criados no período, porque a Shopee conta pedido cancelado ou não pago.</span></li>
     <li><span id="j4"></span><span><b>Janela de atribuição:</b> é a de cada marketplace. As APIs não deixam escolher.</span></li>
     <li><span id="j5"></span><span><b>Período fecha ontem.</b> O dia de hoje ainda está acontecendo e aparece listrado no gráfico.</span></li>
+    <li><span id="j7"></span><span><b>Dois custos por pedido.</b> “Do ads” divide o gasto pelos pedidos que vieram de anúncio. “De ads por pedido” divide o gasto por todos os pedidos pagos das lojas Mercado Livre e Shopee, com ou sem anúncio, e serve de base para precificar.</span></li>
     <li><span id="j6"></span><span><b>Só observa.</b> Esta tela não muda lance, orçamento nem campanha.</span></li>
   </ul>
   <button type="button" class="btn pri" id="jOk">Entendi</button>
@@ -299,7 +302,7 @@ function svg(n,s){return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"'
 function poeIcones(){
   ['baixo','info'].forEach(function(n){var e=$('#i-'+n);if(e)e.innerHTML=svg(n)});
   $('#jIco').innerHTML=svg('info');
-  ['check','check','alerta','relogio','relogio','olho'].forEach(function(n,i){$('#j'+(i+1)).innerHTML=svg(n)});
+  ['check','check','alerta','relogio','relogio','olho','caixa'].forEach(function(n,i){$('#j'+(i+1)).innerHTML=svg(n)});
 }
 poeIcones();
 
@@ -355,11 +358,11 @@ function filtra(rows){
     return r.loja_id===S.sel;
   });
 }
-function agrega(rs){
-  var a={gasto:0,rmkt:0,rreal:0,gReal:0,ped:0,gPed:0,temShopee:false,temReal:false};
+function agrega(rs,P){
+  var a={gasto:0,rmkt:0,rreal:0,gReal:0,ped:0,gPed:0,pagos:0,temShopee:false,temReal:false},ids={};
   rs.forEach(function(r){
     var g=num(r.gasto)||0,rm=num(r.receita_mkt)||0,rr=num(r.receita_real),pa=num(r.pedidos_atribuidos);
-    a.gasto+=g;a.rmkt+=rm;
+    a.gasto+=g;a.rmkt+=rm;a.pagos+=num(r.pedidos_pagos)||0;ids[r.loja_id]=1;
     if(r.marketplace==='shopee')a.temShopee=true;
     if(rr!=null){a.rreal+=rr;a.gReal+=g;a.temReal=true}
     if(pa!=null){a.ped+=pa;a.gPed+=g}
@@ -368,12 +371,20 @@ function agrega(rs){
   a.roasMkt=a.gasto>0?a.rmkt/a.gasto:null;
   a.acos=a.rreal>0?a.gReal/a.rreal:null;
   a.cac=a.ped>0?a.gPed/a.ped:null;
+  a.custoG=P&&a.pagos>0?gastoJanela(ids,P)/a.pagos:null;
   return a;
 }
-function porMk(rs){
+/* gasto só nos dias em que o banco tem pedidos pagos (S.desde), para o custo geral por pedido */
+function gastoJanela(ids,P){
+  var de=S.desde&&S.desde>P.de?S.desde:P.de,t=0;
+  if(de>P.ate)return 0;
+  S.diario.forEach(function(d){if(ids[d.loja_id]&&d.dia>=de&&d.dia<=P.ate)t+=Number(d.gasto)||0});
+  return t;
+}
+function porMk(rs,P){
   var o={};
   rs.forEach(function(r){(o[r.marketplace]=o[r.marketplace]||[]).push(r)});
-  return Object.keys(o).map(function(k){var a=agrega(o[k]);a.mk=k;return a});
+  return Object.keys(o).map(function(k){var a=agrega(o[k],P);a.mk=k;return a});
 }
 
 /* ===== contagem (revelar) ===== */
@@ -397,7 +408,7 @@ function rodMk(mks,campo,fmt){
   if(mks.length<2)return '';
   return '<div class="leg" style="margin-top:auto">'+mks.map(function(m){
     var v=m[campo],t=v==null?'—':fmt(v);
-    return '<span><i style="background:'+(m.mk==='shopee'?'transparent':'var(--suave)')+'"'+(m.mk==='shopee'?' class="hach"':'')+'></i>'+MKN[m.mk]+' '+(m.mk==='shopee'&&v!=null?'<span class="est-v">'+t+'</span>':'<b style="font-weight:600;color:var(--texto)">'+t+'</b>')+'</span>';
+    return '<span><i style="background:'+(m.mk==='shopee'?'transparent':'var(--suave)')+'"'+(m.mk==='shopee'?' class="hach"':'')+'></i>'+MKN[m.mk]+' '+(m.mk==='shopee'&&v!=null?'<span class="est-v">'+t+'</span>':'<b>'+t+'</b>')+'</span>';
   }).join('')+'</div>';
 }
 function mkImg(k){return '<img class="mkic" src="'+IC[k]+'" alt="'+(MKN[k]||'')+'" title="'+(MKN[k]||'')+'">'}
@@ -420,24 +431,22 @@ function vazioHtml(){
 }
 
 function telaHtml(){
-  var P=periodo(S.per,S.hoje),rs=filtra(S.rows),A=agrega(rs);
+  var P=periodo(S.per,S.hoje),rs=filtra(S.rows),A=agrega(rs,P);
   if(!rs.length||A.gasto<=0)return vazioHtml();
   var est=A.temShopee&&A.temReal;
-  var mks=porMk(rs).filter(function(m){return m.gasto>0});
-  var topMk=null;mks.forEach(function(m){if(m.roas!=null&&(!topMk||m.roas>topMk.roas))topMk=m});
+  var mks=porMk(rs,P).filter(function(m){return m.gasto>0});
   var rotP=S.per==='mes'?'este mês':'últimos '+S.per+' dias';
 
-  /* palco */
-  var bol=mks.length>1||S.sel==='todas'?mks.map(function(m){
-    var d=topMk&&m.mk===topMk.mk&&mks.length>1,tam=d?132:96;
-    return '<div class="bolha'+(d?' d':'')+(m.mk==='shopee'?' est':'')+'" style="width:'+tam+'px;height:'+tam+'px"><b>'+(m.roas!=null?txtRoas(m.roas):'—')+'</b>'+MKN[m.mk]+'</div>';
-  }).join(''):'';
-  var h='<section class="card escuro" id="palco"><div class="qcab"><span class="ico">'+svg('alvo')+'</span><h3>ROAS real · '+rotP+'</h3>'+(est?tagEst():'')+'<span class="tag" style="background:var(--palco-2);color:var(--palco-suave)">'+dm(P.de)+' a '+dm(P.ate)+'</span></div>'+
-    '<div class="palco-in"><div class="pal-e"><div>'+valorN('roas',A.roas,'v-palco')+'<div class="suave" style="margin-top:var(--e2)">em vendas pagas para cada R$ 1,00 gasto em anúncio</div></div>'+
+  /* palco: ROAS real e ACOS real */
+  var h='<section class="card escuro" id="palco"><div class="qcab"><span class="ico">'+svg('alvo')+'</span><h3>ROAS e ACOS reais · '+rotP+'</h3>'+(est?tagEst():'')+'<span class="tag" style="background:var(--palco-2);color:var(--palco-suave)">'+dm(P.de)+' a '+dm(P.ate)+'</span></div>'+
+    '<div class="palco-in">'+
+      '<div class="pal-e"><span class="pal-k">ROAS real</span>'+valorN('roas',A.roas,'v-palco')+'<div class="suave">em vendas pagas para cada R$ 1,00 em anúncio</div>'+rodMk(mks,'roas',txtRoas)+'</div>'+
+      '<div class="pal-e"><span class="pal-k">ACOS real</span>'+valorN('pct',A.acos,'v-palco')+'<div class="suave">da venda paga vai para anúncio</div>'+rodMk(mks,'acos',txtPct)+'</div>'+
+    '</div>'+
     '<div class="trio"><div><span>Gasto</span><b>'+(A.gasto?'<span data-n="'+A.gasto+'" data-f="brl">'+hBrl(A.gasto)+'</span>':'—')+'</b></div>'+
     '<div><span>Vendas pagas de anúncio</span><b>'+(A.temReal?'<span data-n="'+A.rreal+'" data-f="brl">'+hBrl(A.rreal)+'</span>':'—')+'</b></div>'+
-    '<div><span>Pedidos de anúncio</span><b>'+(A.ped?nf(Math.round(A.ped),0):'—')+'</b></div></div></div>'+
-    (bol?'<div class="bolhas" aria-label="ROAS real por marketplace">'+bol+'</div>':'')+'</div></section>';
+    '<div><span>Pedidos de anúncio</span><b>'+(A.ped?nf(Math.round(A.ped),0):'—')+'</b></div>'+
+    '<div><span>Pedidos pagos no total</span><b>'+(A.pagos?nf(A.pagos,0):'—')+'</b></div></div></section>';
 
   /* métricas */
   var dias=diasDe(P,rs);
@@ -446,10 +455,10 @@ function telaHtml(){
    '<section class="card"><div class="qcab"><span class="ico">'+svg('carteira')+'</span><h3>Gasto com anúncios</h3></div>'+
      '<div>'+valorN('brl',A.gasto,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">em '+P.dias+' dias</span>'+(varG!=null?'<span class="var">'+svg(varG>=0?'seta':'desce')+nf(Math.abs(varG)*100,1)+'%</span>':'')+'</div></div>'+
      linhaSvg(dias)+'</section>'+
-   '<section class="card"><div class="qcab"><span class="ico">'+svg('etiqueta')+'</span><h3>ACOS real</h3>'+(est?tagEst('Estimativa'):'')+'</div>'+
-     '<div>'+valorN('pct',A.acos,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">da venda paga vai para anúncio</span></div></div>'+rodMk(mks,'acos',txtPct)+'</section>'+
-   '<section class="card"><div class="qcab"><span class="ico">'+svg('caixa')+'</span><h3>CAC por pedido</h3>'+(est?tagEst('Estimativa'):'')+'</div>'+
-     '<div>'+valorN('brl',A.cac,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">gasto por pedido de anúncio</span></div></div>'+rodMk(mks,'cac',txtBrl)+'</section>'+
+   '<section class="card"><div class="qcab"><span class="ico">'+svg('etiqueta')+'</span><h3>Custo por pedido do ads</h3></div>'+
+     '<div>'+valorN('brl',A.cac,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">gasto ÷ pedidos de anúncio</span>'+(est?tagEst('Estimativa'):'')+'</div></div>'+rodMk(mks,'cac',txtBrl)+'</section>'+
+   '<section class="card"><div class="qcab"><span class="ico">'+svg('caixa')+'</span><h3>Custo de ads por pedido</h3></div>'+
+     '<div>'+valorN('brl',A.custoG,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">gasto ÷ todos os pedidos pagos</span></div></div>'+rodMk(mks,'custoG',txtBrl)+'</section>'+
   '</div>';
 
   /* gráfico + ranking */
@@ -468,21 +477,21 @@ function telaHtml(){
   var tot=A;
   function cel(l,v,e){return '<div class="r" data-l="'+l+'">'+(v==null?'<span class="mut">—</span>':(e?'<span class="est-v">'+v+'</span>':v))+'</div>'}
   h+='<section class="card"><div class="qcab"><span class="ico">'+svg('lista')+'</span><h3>Detalhe por loja</h3>'+(est?tagEst():'')+'</div><div class="tbl" style="--cols:minmax(0,1.7fr) repeat(6,minmax(0,1fr))">'+
-    '<div class="th"><span>Loja</span><span class="r">Gasto</span><span class="r">ROAS do marketplace</span><span class="r">ROAS real</span><span class="r">ACOS real</span><span class="r">Pedidos</span><span class="r">CAC</span></div>'+
+    '<div class="th"><span>Loja</span><span class="r">Gasto</span><span class="r">ROAS do marketplace</span><span class="r">ROAS real</span><span class="r">ACOS real</span><span class="r">Custo por pedido do ads</span><span class="r">Custo de ads por pedido</span></div>'+
     rk.map(function(r){
-      var e=r.marketplace==='shopee',a=num(r.acos_real),c=num(r.cac),pa=num(r.pedidos_atribuidos),rr=num(r.roas_real);
+      var e=r.marketplace==='shopee',a=num(r.acos_real),c=num(r.cac),rr=num(r.roas_real),idl={};idl[r.loja_id]=1;var pg=num(r.pedidos_pagos)||0,cg=pg>0?gastoJanela(idl,P)/pg:null;
       return '<div class="tr"><div class="nm">'+mkImg(r.marketplace)+'<span>'+esc(r.loja)+'<small>'+MKC[r.marketplace]+'</small></span></div>'+
         cel('Gasto',txtBrl(num(r.gasto))) +
         cel('ROAS do marketplace',num(r.roas_mkt)!=null?'<span class="mut">'+txtRoas(num(r.roas_mkt))+'</span>':null)+
         cel('ROAS real',rr!=null?'<b>'+txtRoas(rr)+'</b>':null,e&&rr!=null)+
         cel('ACOS real',a!=null?txtPct(a):null,e&&a!=null)+
-        cel('Pedidos',pa!=null?nf(Math.round(pa),0):null,e&&pa!=null)+
-        cel('CAC',c!=null?txtBrl(c):null,e&&c!=null)+'</div>';
+        cel('Custo por pedido do ads',c!=null?txtBrl(c):null,e&&c!=null)+
+        cel('Custo de ads por pedido',cg!=null?txtBrl(cg):null)+'</div>';
     }).join('')+
     '<div class="tr tot"><div class="nm"><span>Total da seleção</span></div>'+
       cel('Gasto',txtBrl(tot.gasto))+cel('ROAS do marketplace',tot.roasMkt!=null?txtRoas(tot.roasMkt):null)+
       cel('ROAS real',tot.roas!=null?txtRoas(tot.roas):null,est)+cel('ACOS real',tot.acos!=null?txtPct(tot.acos):null,est)+
-      cel('Pedidos',tot.ped?nf(Math.round(tot.ped),0):null,est)+cel('CAC',tot.cac!=null?txtBrl(tot.cac):null,est)+'</div>'+
+      cel('Custo por pedido do ads',tot.cac!=null?txtBrl(tot.cac):null,est)+cel('Custo de ads por pedido',tot.custoG!=null?txtBrl(tot.custoG):null)+'</div>'+
   '</div></section>';
   return h;
 }
@@ -598,11 +607,12 @@ async function carregar(){
     var rs=await Promise.all([
       SB.rpc('ads_resumo',{p_de:P.de,p_ate:P.ate}),
       SB.from('ads_loja_dia').select('loja_id,dia,gasto').gte('dia',P.pDe).lte('dia',S.hoje).limit(2000),
-      SB.from('ads_loja_dia').select('atualizado_em').order('atualizado_em',{ascending:false}).limit(1)
+      SB.from('ads_loja_dia').select('atualizado_em').order('atualizado_em',{ascending:false}).limit(1),
+      SB.rpc('ads_pedidos_desde')
     ]);
     if(seq!==S.ano)return;
     if(rs[0].error)throw rs[0].error;if(rs[1].error)throw rs[1].error;
-    S.rows=rs[0].data||[];S.diario=rs[1].data||[];
+    S.rows=rs[0].data||[];S.diario=rs[1].data||[];S.desde=(rs[3]&&!rs[3].error&&rs[3].data)||null;
     S.acesso=S.rows.length>0;
     var u=rs[2].data&&rs[2].data[0]&&rs[2].data[0].atualizado_em;
     if(u){var h=new Date(u).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});var t=$('#atu');t.innerHTML=svg('relogio')+'Atualizado às '+h;t.hidden=false}
