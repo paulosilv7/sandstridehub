@@ -605,6 +605,19 @@ async function carregarCaso(id){
     if(imgs.length){var cams=imgs.map(function(a){return a.caminho;});var su=await assinar(cams.concat(cams.map(function(c){return c+'.t.jpg';})));cams.forEach(function(c){urls[c]=su[c]||null;if(su[c+'.t.jpg'])turls[c]=su[c+'.t.jpg'];});garantirMiniaturas(cams.filter(function(c){return urls[c]&&!turls[c];}).map(function(c){return {caminho:c,url:urls[c]};}));}
     S.cx={id:id,carregando:false,itens:(r[4]&&r[4].data&&r[4].data.itens_pedido)||null,relato:(r[2].data||[])[0]||null,equipe:(r[3].data||[]),eventos:r[0].data||[],anexos:anexos.map(function(a){return {url:turls[a.caminho]||urls[a.caminho]||null,full:urls[a.caminho]||null,tipo:a.tipo,bytes:a.bytes};})};
   }catch(e){S.cx={id:id,carregando:false,eventos:[],anexos:[],erro:true};}
+  if(S.tela==='caso'&&S.casoId===id){render(true,false);verVivo(id);}
+}
+var VIVO={};
+async function verVivo(id){
+  /* Pergunta ao marketplace, ao vivo, se ainda dá para agir neste caso. Não envia nada. */
+  var c=caso(id);if(!c||c.mk==='tt'||VIVO[id]==='lendo'||(VIVO[id]&&VIVO[id].t&&Date.now()-VIVO[id].t<120000))return;
+  if(['NOVO','AGUARDANDO_ANALISE','AGUARDANDO_PROVAS','PREPARADO','RECURSO_DISPONIVEL','COMPLEMENTACAO','EM_ANALISE'].indexOf(c.status)<0)return;
+  VIVO[id]='lendo';
+  try{
+    var r=await SB.functions.invoke('devol-contestar',{body:{modo:'status',caso_id:id}});
+    var d=r.data||{};if(r.error&&!d.ok){VIVO[id]=null;return;}
+    d.t=Date.now();VIVO[id]=d;
+  }catch(e){VIVO[id]=null;return;}
   if(S.tela==='caso'&&S.casoId===id)render(true,false);
 }
 async function carregarLotes(){
@@ -1121,9 +1134,12 @@ function relatoHtml(r){
     var b=[];
     if(r.recomendacao==='contestar')b.push('<button type="button" class="btn lg" data-a="aprovar" data-v="'+S.casoId+'">'+ICO.enviar+'Aprovar e enviar ao '+esc(nm)+'</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+S.casoId+'">'+ICO.enviar+'Aceitar a devolução</button>');
     else if(r.recomendacao==='nao_contestar')b.push('<button type="button" class="btn lg" data-a="aceitarDev" data-v="'+S.casoId+'">'+ICO.enviar+'Aceitar a devolução no '+esc(nm)+'</button><button type="button" class="btn ghost dl" data-a="forcar" data-v="'+S.casoId+'">Pedir contestação à Sandy<small>Não envia nada</small></button>'+(cs.decidir?'<button type="button" class="btn ghost dl" data-a="concordar" data-v="'+S.casoId+'">Encerrar sem contestar<small>Não envia nada</small></button>':''));
+    var vv0=VIVO[S.casoId];if(vv0&&vv0.ok){b=b.filter(function(x){var a=(x.match(/data-a="(\w+)"/)||[])[1];if((a==='aprovar'||a==='forcar')&&vv0.pode_contestar===false)return false;if(a==='aceitarDev'&&vv0.pode_aceitar===false&&!vv0.ja_aceita)return false;return true;});}
     if(b.length)ac='<div class="row" style="gap:12px;flex-wrap:wrap">'+b.join('')+'</div><p class="sub" style="font-size:12px">Nada é enviado sem o seu toque e a sua confirmação. Depois de enviado, não dá para desfazer.</p>';
   }
-  return ind+mkt+ac;
+  var vv=VIVO[S.casoId];vv=(vv&&vv.ok)?vv:null;
+  var ban=(vv&&vv.aviso)?'<div class="mdl-av" style="background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;gap:10px;align-items:flex-start">'+ICO.alerta+'<span><b>Conferido agora no '+esc(nm)+':</b> '+esc(vv.aviso)+'</span></div>':'';
+  return ban+ind+mkt+ac;
 }
 function custos(){
   var e=ecoCalc(),admin=S.papelAdmin;
