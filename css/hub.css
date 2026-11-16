@@ -510,3 +510,11 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 /* cartões de várias linhas: o risco acompanha o texto em vez de cortar no meio */
 .kb-card .md-chk .tx::after{display:none}
 .kb-card .md-chk.on .tx{text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:var(--suave)}
+
+/* etiquetas de importância */
+.tag.imp.alta{background:var(--texto);color:var(--cartao);font-weight:600}
+.tag.imp.normal{background:color-mix(in srgb,var(--texto) 12%,transparent);color:var(--texto)}
+.tag.imp.baixa{background:transparent;box-shadow:inset 0 0 0 1px var(--borda-forte,var(--borda));color:var(--suave)}
+.md-ed{margin-left:auto}
+.md-ed+.md-x{margin-left:0}
+@media (max-width:699px){.md-tarefas .md-lista li{flex-wrap:wrap;row-gap:0;padding-top:4px;padding-bottom:4px}.md-tarefas .md-lista li>.md-chk{flex:1 1 100%;min-width:0}.md-tarefas .md-lista li>.md-chk+.tag{margin-left:calc(14px + var(--e3))}.md-tarefas .md-lista li>.tag{margin-bottom:6px}}
