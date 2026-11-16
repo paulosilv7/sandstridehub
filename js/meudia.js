@@ -131,20 +131,20 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       const dia = soma(segunda, i), eHoje = dia === hoje, passou = dia < hoje;
       const cards = [
         ...mine.filter((r) => (r.dias || []).includes(i + 1)).map((r) => ({ tipo: 'Rotina', on: feito(r.id, dia), attr: `data-rot="${r.id}" data-dia="${dia}"`, titulo: r.titulo })),
-        ...minhas.filter((t) => t.prazo === dia).sort((a, b) => (PESO[b.importancia] ?? 1) - (PESO[a.importancia] ?? 1)).map((t) => ({ tipo: 'Tarefa', on: !!t.feita_em, attr: `data-tar="${t.id}"`, titulo: t.titulo, imp: t.importancia || 'normal' })),
+        ...minhas.filter((t) => t.prazo === dia).sort((a, b) => (PESO[b.importancia] ?? 1) - (PESO[a.importancia] ?? 1)).map((t) => ({ tipo: 'Tarefa', on: !!t.feita_em, attr: `data-tar="${t.id}"`, tid: t.id, titulo: t.titulo, imp: t.importancia || 'normal' })),
       ].sort((a, b) => a.on - b.on);
       const feitas = cards.filter((c) => c.on).length;
       const lis = cards.map((c) => {
         const falta = passou && !c.on;
-        return `<li class="kb-card ${c.tipo === 'Rotina' ? 'rot' : 'tar'}${c.on ? ' feita' : ''}${falta ? ' falta' : ''}"><button type="button" class="md-chk${c.on ? ' on' : ''}" ${c.attr} aria-pressed="${c.on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(c.titulo)}</span></button>` +
+        return `<li class="kb-card ${c.tipo === 'Rotina' ? 'rot' : 'tar'}${c.on ? ' feita' : ''}${falta ? ' falta' : ''}"${c.tid ? ` data-tid="${c.tid}"` : ''}><button type="button" class="md-chk${c.on ? ' on' : ''}" ${c.attr} aria-pressed="${c.on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(c.titulo)}</span></button>` +
           `<span class="kb-meta"><span class="kb-tipo">${svg(c.tipo === 'Rotina' ? IC.repetir : IC.tarefa, 12)}${c.tipo === 'Rotina' ? 'Rotina' : 'Avulsa'}</span>${c.imp && !c.on ? tagImp(c.imp) : ''}${falta ? '<span class="kb-falta">Não feita</span>' : ''}</span></li>`;
       }).join('');
-      return `<li class="kb-col${eHoje ? ' hoje' : ''}${passou ? ' passou' : ''}" aria-label="${DIAS_N[i + 1]}, ${dataDe(dia).getUTCDate()}"><div class="kb-cab"><b>${ABR[i]}</b><span class="kb-dia">${dataDe(dia).getUTCDate()}</span>${cards.length ? `<em class="kb-n">${feitas}/${cards.length}</em>` : ''}</div>` +
+      return `<li class="kb-col${eHoje ? ' hoje' : ''}${passou ? ' passou' : ''}" data-dia="${dia}" aria-label="${DIAS_N[i + 1]}, ${dataDe(dia).getUTCDate()}"><div class="kb-cab"><b>${ABR[i]}</b><span class="kb-dia">${dataDe(dia).getUTCDate()}</span>${cards.length ? `<em class="kb-n">${feitas}/${cards.length}</em>` : ''}</div>` +
         (cards.length ? `<ul class="kb-cards">${lis}</ul>` : `<p class="kb-nada">Nada marcado</p>`) + `</li>`;
     }).join('');
     const faixa = `${fSem.format(dataDe(segunda)).replace('.', '')} a ${fSem.format(dataDe(sexta)).replace('.', '')}`;
     return `<section class="card md-rsem" aria-label="Minha semana"><div class="qcab"><span class="ico">${svg(IC.rotina)}</span><h2>Minha semana</h2><span class="rs-faixa">${esc(faixa)}</span><button class="ibtn p" type="button" data-editar="${user.id}" aria-label="Editar minha rotina" title="Editar minha rotina">${svg(IC.lapis, 18)}</button></div>` +
-      (mine.length || minhas.length ? `<ol class="kb">${cols}</ol><p class="rs-dica">Marque aqui ou na lista de Tarefas, também para adiantar. Tarefas com data entram no dia certo.</p>` : `<div class="md-vazio listrado"><p>Nada para esta semana ainda.</p><button class="btn sec" type="button" data-editar="${user.id}">Montar rotina</button></div>`) + '</section>';
+      (mine.length || minhas.length ? `<ol class="kb">${cols}</ol><p class="rs-dica">Marque aqui ou na lista de Tarefas, também para adiantar. Arraste uma tarefa avulsa para outro dia (no celular, segure e arraste).</p>` : `<div class="md-vazio listrado"><p>Nada para esta semana ainda.</p><button class="btn sec" type="button" data-editar="${user.id}">Montar rotina</button></div>`) + '</section>';
   }
   // Código de autorização do dia (Mercado Livre): chega por e-mail em cada loja e é gravado por ml-codigo-receber.
   // Sólido = código recebido; hachurado = ainda aguardando o e-mail. No fim de semana só aparece se algum código chegou.
@@ -307,6 +307,59 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   el.addEventListener('input', (ev) => {
     const k = { 'md-titulo': 'titulo', 'md-resp': 'resp', 'md-prazo': 'prazo' }[ev.target.id]; if (k) E.rasc[k] = ev.target.value;
   });
+  // ---- arrastar tarefa avulsa para outro dia do quadro (mouse: arrastar; toque: segurar e arrastar)
+  let dr = null, supr = false;
+  const colSob = (x, y) => document.elementsFromPoint(x, y).find((e) => e.classList?.contains('kb-col'));
+  function fimDrag(solta, x, y) {
+    if (!dr) return; const d = dr; dr = null; clearTimeout(d.timer); clearInterval(d.rolar);
+    document.body.classList.remove('kb-arrastando'); d.card.classList.remove('arrasta'); d.ghost?.remove();
+    el.querySelectorAll('.kb-col.alvo').forEach((c) => c.classList.remove('alvo'));
+    if (!d.ativo) return;
+    supr = true; setTimeout(() => { supr = false; }, 80);
+    const col = solta ? colSob(x, y) : null, t = E.tarefas.find((z) => z.id === d.id);
+    if (col && t && !col.classList.contains('passou') && col.dataset.dia && col.dataset.dia !== t.prazo) moverTarefa(t, col.dataset.dia);
+  }
+  async function moverTarefa(t, dia) {
+    const antes = t.prazo; t.prazo = dia; desenhar();
+    const { error } = await sb.from('central_tarefas').update({ prazo: dia }).eq('id', t.id);
+    if (error) { t.prazo = antes; desenhar(); falhou('Não consegui mudar o dia da tarefa. Tente de novo.'); }
+  }
+  function iniciaDrag(d) {
+    d.ativo = true; navigator.vibrate?.(8);
+    const r = d.card.getBoundingClientRect(); d.dx = d.x0 - r.left; d.dy = d.y0 - r.top;
+    d.ghost = d.card.cloneNode(true); d.ghost.classList.add('kb-ghost'); d.ghost.style.width = r.width + 'px'; document.body.appendChild(d.ghost);
+    d.card.classList.add('arrasta'); document.body.classList.add('kb-arrastando'); move(d.x0, d.y0);
+    const kb = el.querySelector('.kb');
+    d.rolar = setInterval(() => { if (!kb || !d.dir) return; kb.scrollLeft += d.dir * 14; }, 16);
+  }
+  function move(x, y) {
+    const d = dr; if (!d || !d.ativo) return;
+    d.ghost.style.left = x - d.dx + 'px'; d.ghost.style.top = y - d.dy + 'px';
+    const col = colSob(x, y);
+    el.querySelectorAll('.kb-col.alvo').forEach((c) => { if (c !== col) c.classList.remove('alvo'); });
+    if (col && !col.classList.contains('passou')) col.classList.add('alvo');
+    const kb = el.querySelector('.kb'), kr = kb?.getBoundingClientRect();
+    d.dir = kr && kb.scrollWidth > kb.clientWidth ? (x < kr.left + 44 ? -1 : x > kr.right - 44 ? 1 : 0) : 0;
+  }
+  el.addEventListener('pointerdown', (ev) => {
+    const card = ev.target.closest('.kb-card.tar'); if (!card || ev.button > 0 || dr) return;
+    dr = { card, id: card.dataset.tid, x0: ev.clientX, y0: ev.clientY, touch: ev.pointerType !== 'mouse', ativo: false };
+    if (dr.touch) { const d = dr; d.timer = setTimeout(() => { if (dr === d) iniciaDrag(d); }, 350); }
+  });
+  document.addEventListener('pointermove', (ev) => {
+    if (!dr) return;
+    if (!dr.ativo) {
+      const dist = Math.hypot(ev.clientX - dr.x0, ev.clientY - dr.y0);
+      if (dr.touch) { if (dist > 10) { clearTimeout(dr.timer); dr = null; } } else if (dist > 5) iniciaDrag(dr);
+      return;
+    }
+    move(ev.clientX, ev.clientY);
+  });
+  document.addEventListener('pointerup', (ev) => fimDrag(true, ev.clientX, ev.clientY));
+  document.addEventListener('pointercancel', () => { if (dr && !dr.ativo) { clearTimeout(dr.timer); dr = null; } else fimDrag(false); });
+  document.addEventListener('touchmove', (ev) => { if (dr?.ativo) ev.preventDefault(); }, { passive: false });
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && dr?.ativo) fimDrag(false); });
+  el.addEventListener('click', (ev) => { if (supr) { ev.stopPropagation(); ev.preventDefault(); } }, true);
   // dois cliques no campo de data preenchem a data de hoje
   el.addEventListener('dblclick', (ev) => {
     const d = ev.target.closest('input[type=date]'); if (!d || d.value) return;

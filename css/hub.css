@@ -563,3 +563,12 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .id-dia{align-self:stretch;display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:500;color:var(--suave);margin-top:var(--e2)}
 .id-dia::before,.id-dia::after{content:"";flex:1;height:1px;background:var(--borda)}
 .id-dia:first-child{margin-top:0}
+
+/* arrastar tarefas entre os dias */
+.kb-card.tar{cursor:grab;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.kb-card.arrasta{opacity:.3}
+.kb-ghost{position:fixed;z-index:80;margin:0;pointer-events:none;background:var(--cartao);box-shadow:0 16px 38px rgba(0,0,0,.5),inset 0 0 0 1px var(--foco);transform:rotate(1.5deg);list-style:none;border-radius:var(--raio-card,16px)}
+.kb-col{transition:background-color .12s,box-shadow .12s}
+.kb-col.alvo{box-shadow:inset 0 0 0 2px var(--foco);background:color-mix(in srgb,var(--foco) 10%,var(--elevado,transparent))}
+body.kb-arrastando,body.kb-arrastando *{cursor:grabbing!important;-webkit-user-select:none;user-select:none}
+@media (prefers-reduced-motion:reduce){.kb-col{transition:none}}
