@@ -213,28 +213,54 @@ function acoesPrioridades(el, B, getD, desenhar, abertos, getEq, edita) {
   });
 }
 
-// ---------------- Revisão semanal (15 minutos, 4 passos)
+// ---------------- Revisão semanal (15 minutos, 5 passos)
 export async function montarRevisao(ctx) {
   const { el } = ctx, B = base(ctx), hoje = hojeISO(), sem = segunda(hoje), passada = soma(sem, -7);
-  let passo = 0, P, R, eq = [], atrasadas = [], comp = [], revs = [], primeira = true; const abertos = new Set();
+  let passo = 0, P, R, eq = [], atrasadas = [], comp = [], revs = [], tarSem = [], rotAtv = [], rotFeitos = [], primeira = true; const abertos = new Set();
   async function carregar() {
-    const [p, r, e, at, co, rv] = await Promise.all([
+    const fim = soma(passada, 6);
+    const [p, r, e, at, co, rv, ts, ro, rf] = await Promise.all([
       dadosPlacar(B.sb, passada), dadosPrioridades(B.sb, triDe(hoje)), B.equipe(),
       B.sb.from('central_tarefas').select('*').is('feita_em', null).lt('prazo', hoje).order('prazo'),
       B.sb.from('central_compromissos').select('*').gte('semana', passada).order('criado_em'),
       B.sb.from('central_revisoes').select('*').order('semana', { ascending: false }).limit(8),
+      // tarefas da semana passada: as que venciam nela ou que foram concluídas nela
+      B.sb.from('central_tarefas').select('*').or(`and(prazo.gte.${passada},prazo.lte.${fim}),and(feita_em.gte.${passada}T00:00:00-03:00,feita_em.lt.${sem}T00:00:00-03:00)`).order('prazo'),
+      B.sb.from('central_rotinas').select('id, usuario_id, dias').eq('ativo', true),
+      B.sb.from('central_rotina_feitos').select('rotina_id, dia, usuario_id').gte('dia', passada).lte('dia', fim),
     ]);
     P = p; R = r; eq = e; atrasadas = at.data || []; comp = co.data || []; revs = rv.data || [];
+    tarSem = ts.data || []; rotAtv = ro.data || []; rotFeitos = rf.data || [];
   }
-  const PASSOS = ['Placar', 'Prioridades', 'Atrasadas', 'Compromissos'];
+  const PASSOS = ['Placar', 'Tarefas', 'Prioridades', 'Atrasadas', 'Compromissos'], ULT = PASSOS.length - 1;
   function corpo() {
     if (passo === 0) {
       const l = P.numeros.map((n) => { const v = P.val(n, passada), ok = P.bateu(n, v), dono = eq.find((p) => p.usuario_id === n.dono_id);
         return `<li class="gs-num rv"><div class="gs-tit"><b>${esc(n.titulo)}</b><span class="sub">${n.sentido === 'menor' ? 'até' : 'meta'} ${valor(n.meta, n.unidade)}</span></div>${dono ? `<span class="md-quem" title="${esc(dono.nome)}">${B.av(dono, 'p')}</span>` : '<span></span>'}${barrinhas(n, P, passada, null)}<b class="gs-v">${v == null ? '—' : valor(v, n.unidade)}</b>${v == null ? `<span class="tag ex">${svg(IC.relogio)}Sem valor</span>` : ok ? `<span class="tag rec">${svg(IC.check)}No verde</span>` : `<span class="tag ate">${svg(IC.alerta)}Abaixo</span>`}</li>`; }).join('');
       return `<h2>Como foi a semana de ${semanaTxt(passada)}</h2>` + (l ? `<ul class="gs-lista">${l}</ul>` : '<div class="md-vazio listrado"><p>O placar ainda não tem números.</p></div>');
     }
-    if (passo === 1) return `<h2>${nomeTri(triDe(hoje))}: no trilho ou fora?</h2>` + (R.prioridades.length ? `<ul class="gs-prios">${R.prioridades.map((p) => cartaoPrioridade(p, R, B, eq, abertos.has(p.id), false)).join('')}</ul>` : '<div class="md-vazio listrado"><p>Nenhuma prioridade neste trimestre.</p></div>');
-    if (passo === 2) return '<h2>O que ficou para trás</h2>' + (atrasadas.length ? `<ul class="md-lista">${atrasadas.map((t) => { const r = eq.find((x) => x.usuario_id === t.responsavel_id); return `<li><button type="button" class="md-chk" data-atr="${t.id}" aria-pressed="false"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(t.titulo)}</span></button><span class="tag ate">${svg(IC.alerta)}${fCurto.format(dataDe(t.prazo))}</span>${r ? `<span class="md-quem" title="${esc(r.nome)}">${B.av(r, 'p')}</span>` : ''}<button class="btn sec gs-adia" type="button" data-adia="${t.id}">Fica para sexta</button></li>`; }).join('')}</ul>` : `<div class="md-vazio"><p>Nenhuma tarefa atrasada.</p></div>`);
+    if (passo === 1) {
+      const fim = soma(passada, 6), noDia = (t) => (t.feita_em ? t.feita_em : t.prazo + 'T12:00:00-03:00');
+      const pessoas = eq.map((p) => {
+        const ts = tarSem.filter((t) => t.responsavel_id === p.usuario_id), fe = ts.filter((t) => t.feita_em), ab = ts.filter((t) => !t.feita_em);
+        // rotina prevista: dias úteis da semana em que cada item da pessoa estava marcado
+        const prev = rotAtv.filter((r) => r.usuario_id === p.usuario_id).reduce((n, r) => n + [1, 2, 3, 4, 5].filter((d) => (r.dias || []).includes(d)).length, 0);
+        const feitoR = rotFeitos.filter((x) => x.usuario_id === p.usuario_id).length;
+        return { p, ts, fe, ab, prev, feitoR };
+      }).filter((x) => x.ts.length || x.prev);
+      const tot = pessoas.reduce((n, x) => n + x.ts.length, 0), cum = pessoas.reduce((n, x) => n + x.fe.length, 0), pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+      const barra = (a, b) => `<span class="rv-barra" role="img" aria-label="${a} de ${b}"><i style="width:${pct(a, b)}%"></i></span>`;
+      const item = (t, ok) => `<li class="rv-t${ok ? ' feita' : ''}"><span class="cx">${ok ? svg(IC.check, 12) : ''}</span><span class="tx">${esc(t.titulo)}</span>${t.prazo ? `<span class="tag${ok ? '' : ' ate'}">${fCurto.format(dataDe(t.prazo))}</span>` : ''}</li>`;
+      const blocos = pessoas.map(({ p, ts, fe, ab, prev, feitoR }) => `<li class="gs-comp rv-p"><div class="pessoa">${B.av(p)}<b>${esc(p.nome)}</b></div>` +
+        `<div class="rv-res"><div><span class="sub">Tarefas</span><b>${ts.length ? `${fe.length} de ${ts.length}` : '—'}</b>${ts.length ? barra(fe.length, ts.length) : ''}</div>` +
+        `<div><span class="sub">Rotina</span><b>${prev ? `${Math.min(feitoR, prev)} de ${prev}` : '—'}</b>${prev ? barra(Math.min(feitoR, prev), prev) : ''}</div></div>` +
+        (ts.length ? `<ul class="rv-ts">${[...ts].sort((a, b) => (!!b.feita_em - !!a.feita_em) || noDia(a).localeCompare(noDia(b))).map((t) => item(t, !!t.feita_em)).join('')}</ul>` : '') + '</li>').join('');
+      return `<h2>O que foi feito na semana de ${semanaTxt(passada)}</h2>` + (tot || pessoas.length
+        ? `<div class="rv-geral"><b>${cum} de ${tot}</b><span>tarefas concluídas (${pct(cum, tot)}%)</span>${barra(cum, tot)}</div><ul class="gs-comps">${blocos}</ul>`
+        : '<div class="md-vazio listrado"><p>Nenhuma tarefa na semana passada.</p></div>');
+    }
+    if (passo === 2) return `<h2>${nomeTri(triDe(hoje))}: no trilho ou fora?</h2>` + (R.prioridades.length ? `<ul class="gs-prios">${R.prioridades.map((p) => cartaoPrioridade(p, R, B, eq, abertos.has(p.id), false)).join('')}</ul>` : '<div class="md-vazio listrado"><p>Nenhuma prioridade neste trimestre.</p></div>');
+    if (passo === 3) return '<h2>O que ficou para trás</h2>' + (atrasadas.length ? `<ul class="md-lista">${atrasadas.map((t) => { const r = eq.find((x) => x.usuario_id === t.responsavel_id); return `<li><button type="button" class="md-chk" data-atr="${t.id}" aria-pressed="false"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(t.titulo)}</span></button><span class="tag ate">${svg(IC.alerta)}${fCurto.format(dataDe(t.prazo))}</span>${r ? `<span class="md-quem" title="${esc(r.nome)}">${B.av(r, 'p')}</span>` : ''}<button class="btn sec gs-adia" type="button" data-adia="${t.id}">Fica para sexta</button></li>`; }).join('')}</ul>` : `<div class="md-vazio"><p>Nenhuma tarefa atrasada.</p></div>`);
     const blocos = eq.map((p) => {
       const ant = comp.filter((c) => c.usuario_id === p.usuario_id && c.semana === passada), nov = comp.filter((c) => c.usuario_id === p.usuario_id && c.semana === sem), pode = B.admin || p.usuario_id === B.user.id;
       return `<li class="gs-comp"><div class="pessoa">${B.av(p)}<b>${esc(p.nome)}</b></div>` +
@@ -249,7 +275,7 @@ export async function montarRevisao(ctx) {
     el.innerHTML = cab('Revisão semanal', `Semana de ${semanaTxt(sem)}`) +
       `<section class="card${e}" aria-label="Revisão"><ol class="gs-passos">${PASSOS.map((p, i) => `<li><button type="button" data-passo="${i}" class="${i === passo ? 'on' : i < passo ? 'ja' : ''}" aria-current="${i === passo ? 'step' : 'false'}"><i>${i < passo ? svg(IC.check, 14) : i + 1}</i><span>${p}</span></button></li>`).join('')}</ol>` +
       `<div class="gs-corpo">${corpo()}</div><div class="md-acoes"><button class="btn sec" type="button" data-passo="${passo - 1}"${passo ? '' : ' disabled'}>Voltar</button><span class="md-sp"></span>` +
-      (passo < 3 ? `<button class="btn pri" type="button" data-passo="${passo + 1}">Continuar</button>` : feita ? `<span class="tag rec">${svg(IC.check)}Revisão feita${quem ? ' por ' + esc(prim(quem.nome)) : ''}</span>` : B.admin ? '<button class="btn pri" type="button" data-conclui>Concluir revisão</button>' : '<span class="tag ex">' + svg(IC.relogio) + 'Um administrador conclui</span>') + '</div></section>' +
+      (passo < ULT ? `<button class="btn pri" type="button" data-passo="${passo + 1}">Continuar</button>` : feita ? `<span class="tag rec">${svg(IC.check)}Revisão feita${quem ? ' por ' + esc(prim(quem.nome)) : ''}</span>` : B.admin ? '<button class="btn pri" type="button" data-conclui>Concluir revisão</button>' : '<span class="tag ex">' + svg(IC.relogio) + 'Um administrador conclui</span>') + '</div></section>' +
       `<section class="card${e}" style="--o:1" aria-label="Histórico"><div class="qcab"><span class="ico">${svg(IG.revisao)}</span><h2>Revisões feitas</h2></div>` +
       (revs.length ? `<ul class="md-lista">${revs.map((r) => { const q = eq.find((p) => p.usuario_id === r.feita_por); return `<li class="gs-rev"><span>Semana de ${semanaTxt(r.semana)}</span><span class="md-sp"></span>${q ? `<span class="md-quem" title="${esc(q.nome)}">${B.av(q, 'p')}</span>` : ''}<span class="tag rec">${svg(IC.check)}Feita</span></li>`; }).join('')}</ul>` : '<div class="md-vazio listrado"><p>Nenhuma revisão registrada ainda.</p></div>') + '</section>';
     primeira = false;
@@ -257,7 +283,7 @@ export async function montarRevisao(ctx) {
   acoesPrioridades(el, B, () => R, desenhar, abertos, () => eq, null);
   el.addEventListener('click', async (ev) => {
     const b = ev.target.closest('button'); if (!b) return;
-    if (b.dataset.passo != null && !b.disabled) { passo = Math.max(0, Math.min(3, +b.dataset.passo)); desenhar(); el.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); }
+    if (b.dataset.passo != null && !b.disabled) { passo = Math.max(0, Math.min(ULT, +b.dataset.passo)); desenhar(); el.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); }
     else if (b.dataset.atr) { const i = atrasadas.findIndex((t) => t.id === b.dataset.atr); b.classList.add('on', 'pop'); const { error } = await B.sb.from('central_tarefas').update({ feita_em: new Date().toISOString() }).eq('id', b.dataset.atr); if (!error) { atrasadas.splice(i, 1); setTimeout(desenhar, 500); } else desenhar(); }
     else if (b.dataset.adia) { const sexta = soma(sem, 4) >= hoje ? soma(sem, 4) : soma(sem, 11), i = atrasadas.findIndex((t) => t.id === b.dataset.adia); const { error } = await B.sb.from('central_tarefas').update({ prazo: sexta }).eq('id', b.dataset.adia); if (!error) { atrasadas.splice(i, 1); desenhar(); } }
     else if (b.dataset.cum) { const [id, v] = b.dataset.cum.split('|'), c = comp.find((x) => x.id === id), antes = c.cumprido; c.cumprido = v === '1'; desenhar(); const { error } = await B.sb.from('central_compromissos').update({ cumprido: c.cumprido }).eq('id', id); if (error) { c.cumprido = antes; desenhar(); } }
