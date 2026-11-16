@@ -46,6 +46,7 @@ export async function montarCaixaIdeias(ctx) {
     `<div class="id-menu" id="id-menu" role="menu" hidden><div id="id-filtros" role="group" aria-label="Mostrar"></div><hr><button type="button" role="menuitemcheckbox" id="id-ia" aria-checked="${E.ia}" class="id-mi"><span>A IA organiza ao enviar</span><span class="tr" aria-hidden="true"></span></button></div></div></div>` +
     (E.erro ? `<p class="erro" role="alert">${svg(IC.alerta)}<span>${esc(E.erro)}</span></p>` : '') +
     `<div class="id-stream" id="id-stream" aria-live="polite"></div>` +
+    `<p class="id-dica" id="id-dica" hidden>Clique com o botão direito (ou segure) numa ideia para ver as opções</p>` +
     `<div class="id-pb"><div class="id-status" id="id-status" aria-live="polite"><span class="mark"></span><span class="label" id="id-status-t">Pensando</span></div>` +
     `<div class="id-row"><span class="id-varinha" aria-hidden="true">${svg(ID.varinha, 18)}</span><textarea id="id-campo" rows="1" maxlength="2000" placeholder="Anote uma ideia…" aria-label="Nova ideia"></textarea></div>` +
     `<div class="id-base"><button type="button" class="id-chip" id="id-ia-chip" aria-pressed="${E.ia}">${svg(ID.brilho, 14)}<span>Organizar com IA</span></button>` +
@@ -75,8 +76,9 @@ export async function montarCaixaIdeias(ctx) {
     const no = nos.get(i.id); if (!no) return;
     const s = situacao(i), p = pessoa(i.autor_id), meu = i.autor_id === user.id, pode = podeMexer(i), aberto = E.aberta === i.id;
     const TAG = { nova: '<span class="tag listrado">Nova</span>', guardada: '<span class="tag">Guardada</span>', resolvida: `<span class="tag rec">${svg(IC.check)}Resolvida</span>`, descartada: '<span class="tag">Descartada</span>' };
-    no.querySelector('.id-meta').innerHTML = (s === 'aprovar' ? `<span class="tag ate">${pend(i)} para aprovar</span>` : TAG[s]) +
-      `<span class="id-qd">${meu ? '' : esc(prim(p?.nome)) + ' · '}${esc(i.criado_em ? fData.format(new Date(i.criado_em)).replace('.', '') : 'agora')}</span>`;
+    const qd = `${meu ? '' : esc(prim(p?.nome)) + ' · '}${esc(i.criado_em ? fData.format(new Date(i.criado_em)).replace('.', '') : 'agora')}`;
+    no.dataset.qd = qd.replace(/&amp;/g, '&');
+    no.querySelector('.id-meta').innerHTML = s === 'nova' ? (meu ? '' : `<span class="id-qd">${qd}</span>`) : (s === 'aprovar' ? `<span class="tag ate">${pend(i)} para aprovar</span>` : TAG[s]) + (meu ? '' : `<span class="id-qd">${qd}</span>`);
     const A = (a, t, pri) => `<button type="button" data-ac="${a}" aria-label="${t}"${pri ? ' class="pri"' : ''}>${t}</button>`;
     no.querySelector('.id-ac').innerHTML = !pode ? '' : s === 'descartada' ? A('reabrir', 'Reabrir') :
       (i.proposta?.resumo ? A('proposta', aberto ? 'Fechar proposta' : 'Ver proposta', s === 'aprovar') + A('organizar', 'Organizar de novo') : A('organizar', 'Organizar com IA', s === 'nova')) +
@@ -89,14 +91,15 @@ export async function montarCaixaIdeias(ctx) {
     vis.forEach((i) => {
       if (!nos.has(i.id)) {
         const no = document.createElement('div'); no.className = 'id-it' + (i.autor_id === user.id ? ' meu' : ''); no.dataset.id = i.id;
-        no.innerHTML = '<div class="id-bolha"></div><div class="id-meta"></div><div class="id-ac"></div><div class="id-slot"></div>';
+        no.innerHTML = '<div class="id-bolha" tabindex="0" aria-haspopup="menu"></div><div class="id-meta"></div><div class="id-ac"></div><div class="id-slot"></div>';
         no.querySelector('.id-bolha').textContent = i.texto; nos.set(i.id, no);
       }
       pintaItem(i);
     });
     // ordem do chat: mais antigas em cima
     vis.forEach((i) => { const no = nos.get(i.id); if (stream.lastElementChild !== no) stream.appendChild(no); });
-    stream.querySelector('.md-vazio')?.remove();
+    stream.querySelector('.md-vazio, .id-vazio')?.remove();
+    const dica = $('#id-dica'); if (dica) dica.hidden = !vis.length;
     if (!vis.length) stream.innerHTML = E.ficha === 'abertas'
       ? `<div class="id-vazio"><div class="id-orbe" aria-hidden="true"></div><h3>O que você quer anotar?</h3><div class="id-sug">${SUGESTOES.map((t) => `<button type="button" data-sug="${esc(t)}">${esc(t)}</button>`).join('')}</div><p>Só você vê o que anota aqui. Quando uma ideia vira tarefa, o time passa a ver a tarefa.</p></div>`
       : `<div class="md-vazio"><p>${E.ficha === 'resolvidas' ? 'Nada resolvido ainda.' : 'Nenhuma ideia descartada.'}</p></div>`;
@@ -296,6 +299,47 @@ export async function montarCaixaIdeias(ctx) {
     f().elements.titulo.focus(); f().elements.titulo.select();
     nos.get(i.id).scrollIntoView({ block: 'nearest', behavior: reduz() ? 'auto' : 'smooth' });
   }
+
+
+  // ---------------------------------------------------------------- menu de opções (botão direito / segurar)
+  let cm = null;
+  const fechaCtx = () => { if (!cm) return; cm.menu.remove(); cm.no.classList.remove('ctx'); cm = null; };
+  function abreCtx(no, x, y) {
+    fechaCtx();
+    const bts = [...no.querySelectorAll('.id-ac button')]; if (!bts.length) return;
+    const m = document.createElement('div'); m.className = 'id-ctx'; m.setAttribute('role', 'menu');
+    m.innerHTML = (no.dataset.qd ? `<div class="id-ctx-t">${esc(no.dataset.qd)}</div>` : '') + bts.map((b) => `<button type="button" role="menuitem" data-a="${b.dataset.ac}" class="${b.classList.contains('pri') ? 'pri ' : ''}${b.dataset.ac === 'descartar' ? 'perigo' : ''}">${esc(b.textContent)}</button>`).join('');
+    document.body.appendChild(m);
+    const r = m.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    const left = Math.max(8, Math.min(x, W - r.width - 8)), top = Math.max(8, Math.min(y, H - r.height - 8));
+    m.style.left = left + 'px'; m.style.top = top + 'px'; m.style.setProperty('--ox', (x - left) + 'px'); m.style.setProperty('--oy', (y - top) + 'px');
+    no.classList.add('ctx'); cm = { menu: m, no, em: performance.now() };
+    m.querySelector('button')?.focus({ preventScroll: true });
+    m.addEventListener('click', (ev) => {
+      const b = ev.target.closest('button[data-a]'); if (!b) return;
+      const alvo = no.querySelector(`.id-ac button[data-ac="${b.dataset.a}"]`); fechaCtx(); alvo?.click();
+    });
+  }
+  stream.addEventListener('contextmenu', (ev) => {
+    const no = ev.target.closest('.id-it'); if (!no || ev.target.closest('.id-slot')) return;
+    ev.preventDefault(); const r = no.getBoundingClientRect();
+    abreCtx(no, ev.clientX || r.left + 24, ev.clientY || r.bottom);
+  });
+  // toque: segurar ~0,45s em cima da ideia
+  let seg = null;
+  stream.addEventListener('pointerdown', (ev) => {
+    if (ev.pointerType === 'mouse') return;
+    const no = ev.target.closest('.id-it'); if (!no || ev.target.closest('.id-slot')) return;
+    const x = ev.clientX, y = ev.clientY; clearTimeout(seg);
+    seg = setTimeout(() => { seg = null; navigator.vibrate?.(8); abreCtx(no, x, y); }, 450);
+    seg_xy = [x, y];
+  });
+  let seg_xy = [0, 0];
+  stream.addEventListener('pointermove', (ev) => { if (seg && Math.hypot(ev.clientX - seg_xy[0], ev.clientY - seg_xy[1]) > 10) { clearTimeout(seg); seg = null; } });
+  for (const t of ['pointerup', 'pointercancel']) stream.addEventListener(t, () => { clearTimeout(seg); seg = null; });
+  document.addEventListener('pointerdown', (ev) => { if (cm && !ev.target.closest('.id-ctx') && performance.now() - cm.em > 250) fechaCtx(); }, true);
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && cm) { const b = cm.no.querySelector('.id-bolha'); fechaCtx(); b?.focus(); } });
+  addEventListener('resize', fechaCtx); stream.addEventListener('scroll', fechaCtx, { passive: true });
 
   // ---------------------------------------------------------------- ações
   el.addEventListener('click', async (ev) => {

@@ -535,26 +535,27 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .kb-card.tar::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--destaque-claro)}
 .kb-card.tar:not(.feita) .kb-tipo{color:var(--destaque-claro)}
 
-/* Caixa de ideias: cada ideia vira um cartão compacto (texto, situação e ações juntos) */
+/* Caixa de ideias: mesmo esquema de chat, só mais enxuto; opções no menu (botão direito / segurar) */
 .id-stream{gap:var(--e3)}
-.id-it,.id-it.meu{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"tx tx" "meta ac" "slot slot";align-items:center;column-gap:var(--e3);row-gap:6px;padding:10px 12px;border-radius:14px;background:var(--elevado);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--texto) 10%,transparent)}
-.id-bolha,.id-it.meu .id-bolha{grid-area:tx;max-width:none;padding:0;border-radius:0;background:none;color:var(--texto);font-size:14px;line-height:20px;font-weight:500}
-.id-meta{grid-area:meta;padding:0;gap:6px;min-width:0;flex-wrap:wrap}
+.id-it{gap:3px}
+.id-bolha{padding:7px 13px;border-radius:16px;font-size:14px;line-height:20px;max-width:min(80%,560px);-webkit-touch-callout:none}
+.id-ac{display:none!important}
+.id-meta{padding:0 6px;gap:6px;min-height:0}
+.id-meta:empty{display:none}
 .id-meta .tag{font-size:11px;height:20px;padding:0 8px}
-.id-it.meu .id-meta{justify-content:flex-start}
-.id-ac,.id-it.meu .id-ac{grid-area:ac;justify-content:flex-end;gap:2px;flex-wrap:nowrap}
-.id-ac button{height:26px;padding:0 9px;font-size:12px;white-space:nowrap}
-.id-slot{grid-area:slot;min-width:0}
-.id-slot:empty{display:none}
+.id-qd{font-size:11.5px}
 .id-chat{font-size:14px;line-height:20px;gap:8px}
-@media (max-width:640px){
-  .id-it,.id-it.meu{grid-template-columns:minmax(0,1fr);grid-template-areas:"tx" "meta" "ac" "slot"}
-  .id-ac,.id-it.meu .id-ac{justify-content:flex-start;flex-wrap:wrap;margin:0 -4px}
-  .id-qd{display:inline}
-}
-/* a coluna é estreita também no desktop: sempre empilhado, ações em uma linha */
-.id-it,.id-it.meu{grid-template-columns:minmax(0,1fr);grid-template-areas:"tx" "meta" "ac" "slot";row-gap:8px}
-.id-ac,.id-it.meu .id-ac{justify-content:flex-start;flex-wrap:wrap;gap:2px;margin:0 -6px}
-.id-ac button{padding:0 8px}
-.id-meta .tag{flex:none}
-@media (max-width:640px){.id-ac [data-ac=descartar]{font-size:0;width:28px;padding:0;margin-left:auto}.id-ac [data-ac=descartar]::before{content:"✕";font-size:12px}}
+@media (pointer:coarse){.id-bolha{-webkit-user-select:none;user-select:none}}
+.id-bolha{cursor:context-menu}
+.id-bolha:focus-visible{outline:2px solid var(--foco);outline-offset:2px}
+.id-it.ctx .id-bolha{box-shadow:0 0 0 2px var(--foco)}
+.id-dica{margin:0;text-align:center;font-size:11.5px;color:var(--suave);opacity:.8}
+.id-ctx{position:fixed;z-index:60;min-width:190px;max-width:min(280px,calc(100vw - 16px));padding:6px;border-radius:14px;background:var(--cartao);border:1px solid var(--borda);box-shadow:0 12px 36px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:1px;transform-origin:var(--ox,0) var(--oy,0);animation:id-ctx-in 140ms var(--ease,ease-out)}
+@keyframes id-ctx-in{from{opacity:0;transform:scale(.96)}}
+@media (prefers-reduced-motion:reduce){.id-ctx{animation:none}}
+.id-ctx-t{padding:6px 10px 4px;font-size:11.5px;color:var(--suave)}
+.id-ctx button{display:flex;align-items:center;width:100%;height:36px;padding:0 10px;border:0;border-radius:9px;background:none;color:var(--texto);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+.id-ctx button:hover,.id-ctx button:focus-visible{background:var(--elevado);outline:none}
+.id-ctx button.pri{font-weight:600}
+.id-ctx button.perigo{color:var(--atencao,#e5484d)}
+.id-ctx hr{border:0;border-top:1px solid var(--borda);margin:4px 2px}
