@@ -611,3 +611,19 @@ body.kb-arrastando,body.kb-arrastando *{cursor:grabbing!important;-webkit-user-s
 .md-tarefas .md-lista li:has([data-tar]) .md-chk,.kb-card.tar .md-chk{cursor:inherit}
 .md-tarefas .md-lista li .md-chk .cx,.kb-card.tar .md-chk .cx{cursor:pointer;position:relative}
 .md-tarefas .md-lista li .md-chk .cx::after,.kb-card.tar .md-chk .cx::after{content:"";position:absolute;inset:-8px}
+
+/* botão carregando → sucesso (briefing, motion 2) */
+.btn.ba-b{position:relative;overflow:hidden;padding:0;--ba-fundo:var(--texto)}
+.btn.ba-b .ba-r{display:inline-flex;align-items:center;height:100%;padding:0 var(--e5);white-space:nowrap}
+.btn.ba-b .ba-anel,.btn.ba-b .ba-ok{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;pointer-events:none;opacity:0}
+.btn.ba-b .ba-anel i{width:20px;height:20px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 10%,currentColor 85%,transparent 85%);-webkit-mask:radial-gradient(circle closest-side,transparent 64%,#000 68%);mask:radial-gradient(circle closest-side,transparent 64%,#000 68%);animation:ba-gira .7s linear infinite}
+@keyframes ba-gira{to{transform:rotate(360deg)}}
+.btn.ba-b .ba-ok svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.btn.ba-b .ba-ok b{font-weight:600}
+.btn.ba-b .ba-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.btn.ba-b:disabled{opacity:1;cursor:progress}
+@media (prefers-reduced-motion:reduce){.btn.ba-b .ba-anel i{animation:none;background:none;border:2px solid currentColor;border-top-color:transparent}}
+
+.td-add{display:flex;gap:var(--e2);align-items:center}.td-add .md-in{flex:1;min-width:0;height:40px;padding:0 14px;border-radius:var(--r-pilula)}
+.td-rod{display:flex;justify-content:flex-end;margin-top:var(--e2)}
+.md-dlg .td-add .btn.ba-b,.md-dlg .td-rod .btn.ba-b{padding:0}

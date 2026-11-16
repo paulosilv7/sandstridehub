@@ -59,4 +59,59 @@ export function onda(texto) {
     [...String(texto)].map((ch, i) => '<span aria-hidden="true" style="animation-delay:' + (i * 0.07).toFixed(2) + 's">' + (ch === ' ' ? '&nbsp;' : ch.replace(/[<&>]/g, (m) => ({ '<': '&lt;', '&': '&amp;', '>': '&gt;' }[m]))) + '</span>').join('') + '</span>';
 }
 
-if (typeof window !== 'undefined') window.Molas = { S, ajustar, passo, limitar, parada, depois, cancelar, registrar, acordar, pilula, onda };
+// Botão "Carregando → sucesso" (briefing, motion 2): a pílula fecha num círculo com anel girando e, quando a ação termina,
+// abre numa pílula verde com o ✓ se desenhando. Molas: largura 300/22, rótulo 400/30, anel 300/28, sucesso 220/20, cor 200/30, ✓ 120/20.
+// Uso: const b = botaoAcao(botao, { ok: 'Salvo' }); b.rodar(async () => { ...; return true /* ou false se falhou */ });
+// O tempo de "carregando" é o da ação real. Volta ao estado parado 1,8 s depois do sucesso.
+export function botaoAcao(btn, { ok = 'Salvo', carregando = 'Salvando…' } = {}) {
+  const rot = btn.textContent.trim();
+  btn.classList.add('ba-b');
+  btn.innerHTML = '<span class="ba-r"></span><span class="ba-anel" aria-hidden="true"><i></i></span><span class="ba-ok" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></svg><b></b></span><span class="ba-sr" role="status"></span>';
+  const r = btn.querySelector('.ba-r'), anel = btn.querySelector('.ba-anel'), okEl = btn.querySelector('.ba-ok'), tique = okEl.querySelector('path'), sr = btn.querySelector('.ba-sr');
+  r.textContent = rot; okEl.querySelector('b').textContent = ok;
+  tique.style.strokeDasharray = 22;
+  const W = S(0, 300, 22), R = S(1, 400, 30), A = S(0, 300, 28), O = S(0, 220, 20), G = S(0, 200, 30), T = S(0, 120, 20);
+  let estado = 'parado', largura0 = 0, ocupado = false, volta = null;
+  const alvo = (e) => {
+    estado = e;
+    [[W, 300, 22], [R, 400, 30], [A, 300, 28], [O, 220, 20], [G, 200, 30], [T, 120, 20]].forEach(([m, k, c]) => ajustar(m, k, c));
+    if (e === 'carregando') { W.t = btn.offsetHeight || 40; R.t = 0; A.t = 1; O.t = 0; G.t = 0; T.t = 0; }
+    else if (e === 'sucesso') { W.t = Math.max(largura0, okEl.querySelector('b').offsetWidth + 64); R.t = 0; A.t = 0; O.t = 1; G.t = 1; depois(0.15, () => { T.t = 1; acordar(); }); }
+    else { W.t = largura0; R.t = 1; A.t = 0; O.t = 0; G.t = 0; T.t = 0; }
+    acordar();
+  };
+  const c = registrar({
+    quadro(dt) { [W, R, A, O, G, T].forEach((m) => passo(m, dt)); },
+    desenhar() {
+      if (estado === 'parado' && parada(W) && parada(R)) { btn.style.width = ''; btn.style.background = ''; btn.style.color = ''; r.style.opacity = r.style.transform = ''; anel.style.opacity = okEl.style.opacity = '0'; return; }
+      const g = limitar(G.x, 0, 1);
+      btn.style.width = W.x.toFixed(1) + 'px';
+      btn.style.background = `color-mix(in srgb, var(--recebido) ${(g * 100).toFixed(0)}%, ${getComputedStyle(btn).getPropertyValue('--ba-fundo') || 'var(--texto)'})`;
+      btn.style.color = `color-mix(in srgb, #fff ${(g * 100).toFixed(0)}%, var(--cartao))`;
+      r.style.opacity = limitar(R.x, 0, 1); r.style.transform = `translateY(${((1 - limitar(R.x, 0, 1)) * -14).toFixed(1)}px)`;
+      anel.style.opacity = limitar(A.x, 0, 1); anel.style.transform = `scale(${(0.6 + 0.4 * limitar(A.x, 0, 1.2)).toFixed(3)})`;
+      okEl.style.opacity = limitar(O.x, 0, 1); okEl.style.transform = `translateY(${((1 - limitar(O.x, 0, 1)) * 14).toFixed(1)}px)`;
+      tique.style.strokeDashoffset = (22 * (1 - limitar(T.x, 0, 1))).toFixed(2);
+    },
+    ativo() { return !(parada(W) && parada(R) && parada(A) && parada(O) && parada(G) && parada(T)); },
+    fim() { return !btn.isConnected; },
+  });
+  void c;
+  return {
+    async rodar(fn) {
+      if (ocupado) return false;
+      ocupado = true; clearTimeout(volta);
+      largura0 = btn.offsetWidth; W.x = W.t = largura0; btn.style.width = largura0 + 'px';
+      btn.disabled = true; btn.setAttribute('aria-busy', 'true'); sr.textContent = carregando; alvo('carregando');
+      const ini = performance.now(); let certo = false;
+      try { certo = (await fn()) !== false; } catch (e) { certo = false; }
+      const falta = 280 - (performance.now() - ini); if (falta > 0) await new Promise((res) => setTimeout(res, falta));
+      btn.removeAttribute('aria-busy');
+      if (certo) { sr.textContent = ok; alvo('sucesso'); volta = setTimeout(() => { alvo('parado'); btn.disabled = false; ocupado = false; sr.textContent = ''; }, 1800); }
+      else { sr.textContent = ''; alvo('parado'); btn.disabled = false; ocupado = false; }
+      return certo;
+    },
+  };
+}
+
+if (typeof window !== 'undefined') window.Molas = { S, ajustar, passo, limitar, parada, depois, cancelar, registrar, acordar, pilula, onda, botaoAcao };
