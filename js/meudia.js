@@ -54,7 +54,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       sb.from('central_rotinas').select('*').eq('ativo', true).order('ordem').order('criado_em'),
       sb.from('central_rotina_feitos').select('rotina_id, dia, usuario_id').gte('dia', segunda).lte('dia', sexta),
       sb.from('central_tarefas').select('*').or(`feita_em.is.null,feita_em.gte.${hoje}T00:00:00-03:00,and(prazo.gte.${segunda},prazo.lte.${sexta})`).order('prazo', { nullsFirst: false }).order('criado_em'),
-      sb.from('central_metas').select('*').eq('mes', mes).order('atualizado_em'),
+      Promise.resolve(sb.rpc('metas_atualizar_auto')).catch(() => null).then(() => sb.from('central_metas').select('*').eq('mes', mes).order('atualizado_em')),
       sb.from('lojas').select('id, apelido').eq('marketplace', 'mercado_livre').eq('ativa', true).order('apelido'),
       sb.from('ml_codigos_dia').select('loja_id, codigo, recebido_em').eq('dia', hoje),
     ]);
@@ -211,7 +211,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       const pct = Math.max(0, Math.min(1, m.atual / m.alvo));
       if (!medidores.has(m.id)) medidores.set(m.id, S(0, 140, 20)); medidores.get(m.id).t = pct;
       const p = m.responsavel_id && pessoa(m.responsavel_id);
-      return `<div class="md-meta"><div class="md-meta-cab"><b>${esc(m.titulo)}</b>${p ? `<span class="md-quem" title="${esc(p.nome)}">${av(p, 'p')}</span>` : ''}${admin ? `<button class="ibtn p" type="button" data-meta="${m.id}" aria-label="Atualizar meta">${svg(IC.lapis)}</button>` : ''}</div>` +
+      return `<div class="md-meta"><div class="md-meta-cab"><b>${esc(m.titulo)}</b>${m.fonte && m.fonte !== 'manual' ? `<span class="tag" title="Atualiza sozinha a cada 10 minutos">${svg(IC.repetir, 12)}Automática</span>` : ''}${p ? `<span class="md-quem" title="${esc(p.nome)}">${av(p, 'p')}</span>` : ''}${admin ? `<button class="ibtn p" type="button" data-meta="${m.id}" aria-label="Atualizar meta">${svg(IC.lapis)}</button>` : ''}</div>` +
         `<div class="md-med"><svg viewBox="0 0 200 112" aria-hidden="true"><path d="M20 100A80 80 0 0 1 180 100" fill="none" stroke="var(--elevado)" stroke-width="14" stroke-linecap="round"/><path data-arco="${m.id}" d="M20 100A80 80 0 0 1 180 100" pathLength="1" fill="none" stroke="${pct >= 1 ? 'var(--recebido)' : 'var(--destaque)'}" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 1"/></svg><b data-pct="${m.id}">0%</b></div>` +
         `<p class="md-meta-v"><b>${valor(m.atual, m.unidade)}</b> de ${valor(m.alvo, m.unidade)}</p></div>`;
     }).join('');
@@ -449,20 +449,31 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     const m = id === 'nova' ? null : E.metas.find((x) => x.id === id);
     const d = janela(`<form id="md-meta-f"><div class="qcab"><span class="ico">${svg(IC.meta)}</span><h2>${m ? 'Atualizar meta' : 'Nova meta'}</h2><button class="ibtn p" type="button" data-fecha aria-label="Fechar">${svg(IC.x)}</button></div>` +
       `<label class="campo"><span class="rot">Meta</span><input id="mm-t" maxlength="80" required value="${esc(m?.titulo || '')}" placeholder="Ex.: Pares vendidos"></label>` +
+      `<label class="campo"><span class="rot">De onde vem o número</span><select id="mm-f" class="md-in">${[['manual', 'Eu atualizo à mão'], ['faturamento', 'Faturamento do mês (automático)'], ['lucro', 'Lucro do mês (automático)'], ['pedidos', 'Pedidos do mês (automático)'], ['pares', 'Pares vendidos no mês (automático)']].map(([v, r]) => `<option value="${v}"${(m?.fonte || 'manual') === v ? ' selected' : ''}>${r}</option>`).join('')}</select></label>` +
       `<div class="md-duo"><label class="campo"><span class="rot">Medida</span><select id="mm-u" class="md-in">${[['un', 'Quantidade'], ['reais', 'Reais (R$)'], ['pct', 'Porcentagem (%)']].map(([v, r]) => `<option value="${v}"${m?.unidade === v ? ' selected' : ''}>${r}</option>`).join('')}</select></label>` +
       `<label class="campo"><span class="rot">Responsável</span><select id="mm-r" class="md-in"><option value="">Toda a empresa</option>${E.equipe.map((p) => `<option value="${p.usuario_id}"${m?.responsavel_id === p.usuario_id ? ' selected' : ''}>${esc(prim(p.nome))}</option>`).join('')}</select></label></div>` +
-      `<div class="md-duo"><label class="campo"><span class="rot">Onde estamos</span><input id="mm-a" inputmode="decimal" required value="${m ? String(m.atual).replace('.', ',') : '0'}"></label><label class="campo"><span class="rot">Onde queremos chegar</span><input id="mm-v" inputmode="decimal" required value="${m ? String(m.alvo).replace('.', ',') : ''}"></label></div>` +
+      `<div class="md-duo"><label class="campo" id="mm-aw"><span class="rot">Onde estamos</span><input id="mm-a" inputmode="decimal" required value="${m ? String(m.atual).replace('.', ',') : '0'}"></label><label class="campo"><span class="rot">Onde queremos chegar</span><input id="mm-v" inputmode="decimal" required value="${m ? String(m.alvo).replace('.', ',') : ''}"></label></div>` +
+      `<p class="sub" id="mm-auto" hidden>O número vem das vendas do mês e se atualiza sozinho a cada 10 minutos. Você só define onde queremos chegar.</p>` +
       `<p class="erro" id="mm-erro" role="alert" hidden></p><div class="md-acoes">${m ? '<button class="btn sec" type="button" id="mm-apaga">Apagar meta</button>' : ''}<span class="md-sp"></span><button class="btn sec" type="button" data-fecha>Cancelar</button><button class="btn pri" type="submit">Salvar</button></div></form>`);
     const num = (s) => { const v = String(s).trim().replace(/\./g, '').replace(',', '.'); return v === '' ? NaN : Number(v); };
     const erro = d.querySelector('#mm-erro'), falha = (t) => { erro.hidden = false; erro.textContent = t; };
+    const sincFonte = () => {
+      const f = d.querySelector('#mm-f').value, auto = f !== 'manual', u = d.querySelector('#mm-u');
+      d.querySelector('#mm-aw').hidden = auto; d.querySelector('#mm-auto').hidden = !auto;
+      if (auto) u.value = f === 'faturamento' || f === 'lucro' ? 'reais' : 'un';
+      u.disabled = auto; d.querySelector('#mm-a').required = !auto;
+    };
+    d.querySelector('#mm-f').addEventListener('change', sincFonte); sincFonte();
     d.querySelector('#md-meta-f').addEventListener('submit', async (ev) => {
       ev.preventDefault();
-      const reg = { titulo: d.querySelector('#mm-t').value.trim(), unidade: d.querySelector('#mm-u').value, responsavel_id: d.querySelector('#mm-r').value || null, atual: num(d.querySelector('#mm-a').value), alvo: num(d.querySelector('#mm-v').value), atualizado_em: new Date().toISOString() };
+      const reg = { titulo: d.querySelector('#mm-t').value.trim(), unidade: d.querySelector('#mm-u').value, responsavel_id: d.querySelector('#mm-r').value || null, fonte: d.querySelector('#mm-f').value, atual: num(d.querySelector('#mm-a').value), alvo: num(d.querySelector('#mm-v').value), atualizado_em: new Date().toISOString() };
+      if (reg.fonte !== 'manual') reg.atual = 0;
       if (!reg.titulo) return falha('Dê um nome para a meta.');
-      if (!(reg.alvo > 0) || !(reg.atual >= 0)) return falha('Use números: onde estamos (0 ou mais) e onde queremos chegar (maior que 0).');
+      if (!(reg.alvo > 0) || (reg.fonte === 'manual' && !(reg.atual >= 0))) return falha('Use números: onde estamos (0 ou mais) e onde queremos chegar (maior que 0).');
       const q = m ? sb.from('central_metas').update(reg).eq('id', m.id).select().single() : sb.from('central_metas').insert({ ...reg, mes }).select().single();
-      const { data, error } = await q;
+      let { data, error } = await q;
       if (error || !data) return falha('Não consegui salvar a meta. Tente de novo.');
+      if (data.fonte !== 'manual') { await sb.rpc('metas_atualizar_auto'); const n = await sb.from('central_metas').select('*').eq('id', data.id).single(); if (n.data) data = n.data; }
       if (m) Object.assign(m, data); else E.metas.push(data);
       d.close();
     });
