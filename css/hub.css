@@ -627,3 +627,9 @@ body.kb-arrastando,body.kb-arrastando *{cursor:grabbing!important;-webkit-user-s
 .td-add{display:flex;gap:var(--e2);align-items:center}.td-add .md-in{flex:1;min-width:0;height:40px;padding:0 14px;border-radius:var(--r-pilula)}
 .td-rod{display:flex;justify-content:flex-end;margin-top:var(--e2)}
 .md-dlg .td-add .btn.ba-b,.md-dlg .td-rod .btn.ba-b{padding:0}
+
+/* escolha de vários responsáveis */
+.rs-chips{display:flex;flex-wrap:wrap;gap:6px}
+.rs-chip{height:34px;padding:0 14px;border:0;border-radius:var(--r-pilula);background:var(--elevado);color:var(--suave);font:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background var(--t-medio),color var(--t-medio)}
+.rs-chip:hover{color:var(--texto)}.rs-chip.on{background:var(--texto);color:var(--cartao)}
+.md-dlg form#md-nova{gap:var(--e3)}
