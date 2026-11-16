@@ -2,6 +2,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { montarShell, APPS } from './shell.js';
+import { botaoAcao } from './molas.js';
+import { TIPOS, suporte, inscricaoAtual, ativar, desativar, lerPrefs, salvarPref } from './avisos.js';
 
 const sb = window.SB = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 const $ = (id) => document.getElementById(id);
@@ -13,6 +15,7 @@ const IC = {
   alerta: '<path d="M12 4 2.5 20h19zM12 10v4M12 17h.01"/>',
   user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>',
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  sino: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   sair: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
 };
 const svg = (d, t = 18) => `<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -123,6 +126,47 @@ async function tabelaAcessos() {
   };
 }
 
+async function montarAvisos() {
+  const el = $('avisos-corpo'); if (!el) return;
+  const sup = suporte(), sub = sup.ok ? await inscricaoAtual() : null, perm = 'Notification' in window ? Notification.permission : 'denied';
+  const ligado = !!sub && perm === 'granted';
+  let h = '';
+  if (!sup.ok) h = sup.motivo === 'ios-instalar'
+    ? '<p class="sub">No iPhone, os avisos só funcionam com o app instalado: toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>. Abra o Sandstride por esse ícone e volte aqui.</p>'
+    : '<p class="sub">Este navegador não permite avisos. Tente pelo Chrome, Edge ou Safari atualizado.</p>';
+  else {
+    h = `<div class="corujao-st">${ligado ? `<span class="tag rec">${svg(IC.sino)}Ligados neste aparelho</span>` : `<span class="tag">${svg(IC.sino)}Desligados neste aparelho</span>`}` +
+      `<button class="btn ${ligado ? 'sec' : 'pri'}" id="av-bt" type="button">${ligado ? 'Desligar neste aparelho' : 'Ativar avisos neste aparelho'}</button>` +
+      (ligado ? '<button class="btn sec" id="av-teste" type="button">Enviar aviso de teste</button>' : '') + '</div>' +
+      (perm === 'denied' ? '<p class="erro" role="alert">Os avisos estão bloqueados neste navegador. Libere em Configurações do site e tente de novo.</p>' : '');
+    if (ligado) {
+      const pf = await lerPrefs(sb, user);
+      h += '<p class="sub av-tit">Quais avisos você quer receber</p><ul class="av-lista">' + TIPOS.map(([k, nome, desc]) =>
+        `<li><label><input type="checkbox" data-pref="${k}"${pf[k] ? ' checked' : ''}><span><b>${esc(nome)}</b><span class="sub">${esc(desc)}</span></span></label></li>`).join('') + '</ul><p id="av-msg" class="sub" aria-live="polite"></p>';
+    }
+  }
+  el.innerHTML = h;
+  const bt = $('av-bt');
+  if (bt) {
+    const ba = botaoAcao(bt, { ok: ligado ? 'Desligado' : 'Ativado', carregando: ligado ? 'Desligando…' : 'Ativando…' });
+    bt.addEventListener('click', () => ba.rodar(async () => {
+      try { if (ligado) await desativar(sb); else await ativar(sb, user); }
+      catch (e) { const m = e.message === 'negado' ? 'Você não permitiu os avisos neste navegador.' : 'Não consegui ativar os avisos. Tente de novo.'; el.querySelector('.av-erro')?.remove(); el.insertAdjacentHTML('beforeend', `<p class="erro av-erro" role="alert">${m}</p>`); return false; }
+      setTimeout(montarAvisos, 1400); return true;
+    }));
+  }
+  const t = $('av-teste');
+  if (t) {
+    const bt2 = botaoAcao(t, { ok: 'Enviado', carregando: 'Enviando…' });
+    t.addEventListener('click', () => bt2.rodar(async () => { const { error } = await sb.rpc('push_teste'); return !error; }));
+  }
+  el.querySelectorAll('[data-pref]').forEach((c) => c.addEventListener('change', async () => {
+    const ok = await salvarPref(sb, user, c.dataset.pref, c.checked);
+    if (!ok) c.checked = !c.checked;
+    const m = $('av-msg'); if (m) m.textContent = ok ? 'Preferência salva.' : 'Não consegui salvar. Tente de novo.';
+  }));
+}
+
 (async () => {
   const { data } = await sb.auth.getSession();
   user = data?.session?.user;
@@ -140,6 +184,7 @@ async function tabelaAcessos() {
     '<div class="perfil-acoes"><label class="btn sec" for="foto" style="cursor:pointer">Trocar foto</label></div></div><input id="foto" class="sr" type="file" accept="image/*">');
   h += card('aparencia', IC.sol, 'Aparência', 'Escolha o tema do sistema neste aparelho.',
     '<div class="seg" id="tema" role="group" aria-label="Tema"><span class="polegar"></span><button type="button" data-v="light">Claro</button><button type="button" data-v="dark">Escuro</button></div>');
+  h += card('avisos', IC.sino, 'Avisos no aparelho', 'Receba avisos no celular ou no computador, mesmo com o sistema fechado. Cada aparelho se liga separadamente.', '<div id="avisos-corpo"><span class="sub">Carregando…</span></div>');
   h += card('coruja', IC.lua, 'Modo Corujão', 'Das 00h às 06h as atualizações automáticas rodam de hora em hora. Ligue para manter o ritmo normal; ele desliga sozinho às 6h.',
     '<div id="coruja-st" class="corujao-st"><span class="sub">Carregando…</span></div>');
   if (eu.papel === 'admin') h += card('acessos', IC.usuarios, 'Quem acessa o quê', 'Marque as ferramentas que cada pessoa pode abrir. Administradores acessam tudo.', '<div id="tab" class="tbl"><p class="sub">Carregando…</p></div>');
@@ -150,6 +195,7 @@ async function tabelaAcessos() {
   seg($('tema'), temaAtual(), poeTema);
   $('sair').onclick = async () => { await sb.auth.signOut(); location.href = '../'; };
   carregarCoruja();
+  montarAvisos();
   if (eu.papel === 'admin') tabelaAcessos();
   await montarShell({ ativo: 'configuracoes', raiz: '../' });
   window.dispatchEvent(new Event('resize'));
