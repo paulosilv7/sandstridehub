@@ -89,8 +89,10 @@ async function tarefa(c: any) {
 }
 
 async function meta(c: any) {
-  const { data: m } = await supabase.from("central_metas").select("id, titulo, unidade, alvo, atual, mes").eq("id", c.meta_id).maybeSingle();
-  if (!m || !(Number(m.atual) >= Number(m.alvo))) return;
+  const { data: m } = await supabase.from("central_metas").select("id, titulo, unidade, alvo, atual, mes, sentido").eq("id", c.meta_id).maybeSingle();
+  if (!m) return;
+  const bateu = m.sentido === "descer" ? Number(m.atual) > 0 && Number(m.atual) <= Number(m.alvo) : Number(m.atual) >= Number(m.alvo);
+  if (!bateu) return;
   const chave = `meta:${m.id}:${m.alvo}`;
   if ((await supabase.from("push_enviados").insert({ chave })).error) return; // já avisada
   const f = (n: number) => m.unidade === "reais" ? dinheiro(n) : m.unidade === "pct" ? `${Number(n).toLocaleString("pt-BR")}%` : Number(n).toLocaleString("pt-BR");
