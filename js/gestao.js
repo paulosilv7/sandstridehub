@@ -1,4 +1,5 @@
 // Central: placar da semana, prioridades do trimestre e revisão semanal.
+import { abrirDetalheTarefa, tagImp, seloTarefa } from './tarefa-detalhe.js';
 import { SUPABASE_URL } from './config.js';
 import { esc, svg, IC, hojeISO, dataDe, soma, fCurto, nBR, valor } from './meudia.js';
 
@@ -133,7 +134,18 @@ async function dadosPrioridades(sb, tri) {
   const pr = await sb.from('central_prioridades').select('*').eq('trimestre', tri).order('criado_em');
   const ids = (pr.data || []).map((p) => p.id);
   const ta = ids.length ? await sb.from('central_tarefas').select('*').in('prioridade_id', ids).order('criado_em') : { data: [] };
-  return { prioridades: pr.data || [], tarefas: ta.data || [], erro: !!(pr.error || ta.error) };
+  const it = (ta.data || []).length ? await sb.from('central_tarefa_itens').select('*').in('tarefa_id', ta.data.map((t) => t.id)).order('ordem') : { data: [] };
+  return { prioridades: pr.data || [], tarefas: ta.data || [], itens: it.data || [], erro: !!(pr.error || ta.error) };
+}
+// linha de tarefa no modelo novo: círculo conclui; o resto abre o card de detalhes
+function linhaTarefa(t, eq, B, itens, extra = {}) {
+  const on = !!t.feita_em, r = eq.find((x) => x.usuario_id === t.responsavel_id), atr = !on && t.prazo && t.prazo < hojeISO();
+  const prazo = t.prazo ? `<span class="tag${atr ? ' ate' : ''}">${svg(atr ? IC.alerta : IC.relogio)}${t.prazo === hojeISO() ? 'Hoje' : fCurto.format(dataDe(t.prazo))}</span>` : '';
+  return `<li><button type="button" class="md-chk${on ? ' on' : ''}" ${extra.attr || 'data-tar'}="${t.id}" aria-pressed="${on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(t.titulo)}</span></button>` +
+    `${on ? '' : tagImp(t.importancia)}${seloTarefa(t, itens)}${prazo}${r ? `<span class="md-quem" title="${esc(r.nome)}">${B.av(r, 'p')}</span>` : ''}${extra.fim || ''}</li>`;
+}
+function abreDetalhe(B, t, eq, itens, aoFechar) {
+  abrirDetalheTarefa({ sb: B.sb, user: B.user, admin: B.admin, equipe: eq, tarefa: t, itens, aoFechar });
 }
 function cartaoPrioridade(p, D, B, eq, aberto, editar = true) {
   const ts = D.tarefas.filter((t) => t.prioridade_id === p.id), feitas = ts.filter((t) => t.feita_em).length, dono = eq.find((x) => x.usuario_id === p.dono_id);
@@ -142,7 +154,7 @@ function cartaoPrioridade(p, D, B, eq, aberto, editar = true) {
   return `<li class="gs-prio${p.status === 'feita' ? ' feita' : ''}"><div class="gs-prio-cab"><button type="button" class="gs-abre" data-abre="${p.id}" aria-expanded="${aberto}"><b>${esc(p.titulo)}</b><span class="sub">${dono ? esc(prim(dono.nome)) : 'Sem dono'}${p.prazo ? ' · até ' + fCurto.format(dataDe(p.prazo)) : ''} · ${ts.length ? `${feitas} de ${ts.length} tarefas` : 'sem tarefas'}</span></button>` +
     `${dono ? `<span class="md-quem" title="${esc(dono.nome)}">${B.av(dono)}</span>` : ''}<div class="gs-st" role="group" aria-label="Situação">${seg}</div>${B.admin && editar ? `<button class="ibtn p" type="button" data-edita="${p.id}" aria-label="Editar prioridade">${svg(IC.lapis)}</button>` : ''}</div>` +
     `<div class="md-barra${ts.length ? '' : ' listrado'}" aria-hidden="true"><span style="width:${pct}%"></span></div>` +
-    (aberto ? `<div class="gs-prio-corpo">${ts.length ? `<ul class="md-lista">${ts.map((t) => { const on = !!t.feita_em, r = eq.find((x) => x.usuario_id === t.responsavel_id); return `<li><button type="button" class="md-chk${on ? ' on' : ''}" data-tar="${t.id}" aria-pressed="${on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(t.titulo)}</span></button>${t.prazo ? `<span class="tag">${svg(IC.relogio)}${fCurto.format(dataDe(t.prazo))}</span>` : ''}${r ? `<span class="md-quem" title="${esc(r.nome)}">${B.av(r, 'p')}</span>` : ''}</li>`; }).join('')}</ul>` : ''}` +
+    (aberto ? `<div class="gs-prio-corpo">${ts.length ? `<ul class="md-lista">${ts.map((t) => linhaTarefa(t, eq, B, D.itens || [])).join('')}</ul>` : ''}` +
       `<form class="md-nova gs-nt" data-nt="${p.id}"><input class="md-in" name="t" placeholder="Nova tarefa desta prioridade" maxlength="160" aria-label="Nova tarefa" autocomplete="off"><select class="md-in" name="r" aria-label="Responsável">${B.opcoes(eq, p.dono_id)}</select><input class="md-in" name="p" type="date" aria-label="Prazo"><button class="btn pri" type="submit" aria-label="Adicionar tarefa">${svg(IC.mais)}</button></form></div>` : '') + '</li>';
 }
 export async function montarPrioridades(ctx) {
@@ -191,7 +203,12 @@ export async function montarPrioridades(ctx) {
 // cliques comuns às prioridades (usado também na revisão)
 function acoesPrioridades(el, B, getD, desenhar, abertos, getEq, edita) {
   el.addEventListener('click', async (ev) => {
-    const b = ev.target.closest('button'); if (!b) return; const D = getD();
+    const D = getD(), li = ev.target.closest('.md-lista li:has([data-tar])');
+    if (li && D.tarefas && !ev.target.closest('.cx, .md-x, .md-quem') && !(ev.target.closest('button')?.dataset.tar && ev.detail === 0)) {
+      const t = D.tarefas.find((x) => x.id === li.querySelector('[data-tar]').dataset.tar);
+      if (t) { abreDetalhe(B, t, getEq(), D.itens || [], desenhar); return; }
+    }
+    const b = ev.target.closest('button'); if (!b) return;
     if (b.dataset.abre) { if (abertos.has(b.dataset.abre)) abertos.delete(b.dataset.abre); else abertos.add(b.dataset.abre); desenhar(); }
     else if (b.dataset.st) {
       const [id, st] = b.dataset.st.split('|'), p = D.prioridades.find((x) => x.id === id), antes = p.status; if (antes === st) return;
@@ -216,7 +233,7 @@ function acoesPrioridades(el, B, getD, desenhar, abertos, getEq, edita) {
 // ---------------- Revisão semanal (15 minutos, 5 passos)
 export async function montarRevisao(ctx) {
   const { el } = ctx, B = base(ctx), hoje = hojeISO(), sem = segunda(hoje), passada = soma(sem, -7);
-  let passo = 0, P, R, eq = [], atrasadas = [], comp = [], revs = [], tarSem = [], rotAtv = [], rotFeitos = [], primeira = true; const abertos = new Set();
+  let passo = 0, P, R, eq = [], itensRev = [], atrasadas = [], comp = [], revs = [], tarSem = [], rotAtv = [], rotFeitos = [], primeira = true; const abertos = new Set();
   async function carregar() {
     const fim = soma(passada, 6);
     const [p, r, e, at, co, rv, ts, ro, rf] = await Promise.all([
@@ -230,6 +247,7 @@ export async function montarRevisao(ctx) {
       B.sb.from('central_rotina_feitos').select('rotina_id, dia, usuario_id').gte('dia', passada).lte('dia', fim),
     ]);
     P = p; R = r; eq = e; atrasadas = at.data || []; comp = co.data || []; revs = rv.data || [];
+    { const ids = (at.data || []).map((t) => t.id); itensRev = ids.length ? (await B.sb.from('central_tarefa_itens').select('*').in('tarefa_id', ids)).data || [] : []; }
     tarSem = ts.data || []; rotAtv = ro.data || []; rotFeitos = rf.data || [];
   }
   const PASSOS = ['Placar', 'Tarefas', 'Prioridades', 'Atrasadas', 'Compromissos'], ULT = PASSOS.length - 1;
@@ -260,7 +278,7 @@ export async function montarRevisao(ctx) {
         : '<div class="md-vazio listrado"><p>Nenhuma tarefa na semana passada.</p></div>');
     }
     if (passo === 2) return `<h2>${nomeTri(triDe(hoje))}: no trilho ou fora?</h2>` + (R.prioridades.length ? `<ul class="gs-prios">${R.prioridades.map((p) => cartaoPrioridade(p, R, B, eq, abertos.has(p.id), false)).join('')}</ul>` : '<div class="md-vazio listrado"><p>Nenhuma prioridade neste trimestre.</p></div>');
-    if (passo === 3) return '<h2>O que ficou para trás</h2>' + (atrasadas.length ? `<ul class="md-lista">${atrasadas.map((t) => { const r = eq.find((x) => x.usuario_id === t.responsavel_id); return `<li><button type="button" class="md-chk" data-atr="${t.id}" aria-pressed="false"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(t.titulo)}</span></button><span class="tag ate">${svg(IC.alerta)}${fCurto.format(dataDe(t.prazo))}</span>${r ? `<span class="md-quem" title="${esc(r.nome)}">${B.av(r, 'p')}</span>` : ''}<button class="btn sec gs-adia" type="button" data-adia="${t.id}">Fica para sexta</button></li>`; }).join('')}</ul>` : `<div class="md-vazio"><p>Nenhuma tarefa atrasada.</p></div>`);
+    if (passo === 3) return '<h2>O que ficou para trás</h2>' + (atrasadas.length ? `<ul class="md-lista">${atrasadas.map((t) => linhaTarefa(t, eq, B, itensRev, { attr: 'data-atr', fim: `<button class="btn sec gs-adia" type="button" data-adia="${t.id}">Fica para sexta</button>` })).join('')}</ul>` : `<div class="md-vazio"><p>Nenhuma tarefa atrasada.</p></div>`);
     const blocos = eq.map((p) => {
       const ant = comp.filter((c) => c.usuario_id === p.usuario_id && c.semana === passada), nov = comp.filter((c) => c.usuario_id === p.usuario_id && c.semana === sem), pode = B.admin || p.usuario_id === B.user.id;
       return `<li class="gs-comp"><div class="pessoa">${B.av(p)}<b>${esc(p.nome)}</b></div>` +
@@ -282,6 +300,11 @@ export async function montarRevisao(ctx) {
   }
   acoesPrioridades(el, B, () => R, desenhar, abertos, () => eq, null);
   el.addEventListener('click', async (ev) => {
+    const li = ev.target.closest('.md-lista li:has([data-atr])');
+    if (li && !ev.target.closest('.cx, .gs-adia') && !(ev.target.closest('button')?.dataset.atr && ev.detail === 0)) {
+      const t = atrasadas.find((x) => x.id === li.querySelector('[data-atr]').dataset.atr);
+      if (t) { abreDetalhe(B, t, eq, itensRev, async () => { desenhar(); }); return; }
+    }
     const b = ev.target.closest('button'); if (!b) return;
     if (b.dataset.passo != null && !b.disabled) { passo = Math.max(0, Math.min(ULT, +b.dataset.passo)); desenhar(); el.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); }
     else if (b.dataset.atr) { const i = atrasadas.findIndex((t) => t.id === b.dataset.atr); b.classList.add('on', 'pop'); const { error } = await B.sb.from('central_tarefas').update({ feita_em: new Date().toISOString() }).eq('id', b.dataset.atr); if (!error) { atrasadas.splice(i, 1); setTimeout(desenhar, 500); } else desenhar(); }
