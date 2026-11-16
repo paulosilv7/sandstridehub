@@ -79,10 +79,12 @@
   body.sh-com{padding-bottom:104px}
   .sh-folha{display:block;position:fixed;inset:0;z-index:40}
   .sh-folha[hidden]{display:none}
-  .sh-fundo{position:absolute;inset:0;background:rgba(0,0,0,.45);opacity:0;transition:opacity 250ms var(--sh-ease)}
-  .sh-painel{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-height:calc(100% - 80px);overflow-y:auto;padding:10px 10px 12px;border-radius:28px;background:var(--sh-lateral);box-shadow:0 16px 40px rgba(0,0,0,.4);transform:translateY(24px);opacity:0;transition:transform 300ms var(--sh-ease),opacity 250ms var(--sh-ease)}
+  html.sh-trava,html.sh-trava body{overflow:hidden}
+  .sh-fundo{touch-action:none;position:absolute;inset:0;background:rgba(0,0,0,.45);opacity:0;transition:opacity 250ms var(--sh-ease)}
+  .sh-painel{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-height:calc(100% - 80px);overflow-y:auto;overscroll-behavior:contain;padding:10px 10px 12px;border-radius:28px;background:var(--sh-lateral);box-shadow:0 16px 40px rgba(0,0,0,.4);transform:translateY(24px);opacity:0;transition:transform 300ms var(--sh-ease),opacity 250ms var(--sh-ease)}
   .sh-folha.on .sh-fundo{opacity:1}.sh-folha.on .sh-painel{transform:none;opacity:1}
-  .sh-alca{width:36px;height:4px;border-radius:2px;background:var(--sh-suave);opacity:.4;margin:2px auto 8px}
+  .sh-alca{position:relative;width:36px;height:4px;border-radius:2px;background:var(--sh-suave);opacity:.4;margin:2px auto 8px}
+  .sh-alca::after{content:'';position:absolute;inset:-14px -40px}
   .sh-fg{padding:12px 14px 6px;font:600 11px/1 'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--sh-suave)}
   .sh-fi{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-radius:16px;color:inherit;text-decoration:none;font:500 15px/1 'Plus Jakarta Sans',system-ui,sans-serif}
   .sh-fi em{margin-left:auto;font-style:normal;font-size:11px;color:var(--sh-suave)}

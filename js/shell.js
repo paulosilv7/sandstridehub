@@ -100,9 +100,11 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   document.body.insertAdjacentHTML('beforeend', barra);
   document.body.insertAdjacentHTML('beforeend', folha);
   {
-    const fl = document.getElementById('shFolha'), bt = document.getElementById('shMais');
+    const fl = document.getElementById('shFolha'), bt = document.getElementById('shMais'), pn = fl.querySelector('.sh-painel');
     const abre = (v) => {
       fl.hidden = !v; bt.setAttribute('aria-expanded', v ? 'true' : 'false');
+      document.documentElement.classList.toggle('sh-trava', v); // a tela de trás não rola enquanto a folha está aberta
+      pn.style.transform = ''; pn.style.transition = '';
       requestAnimationFrame(() => fl.classList.toggle('on', v));
       if (v) { const f = fl.querySelector('.sh-fi[href]'); if (f) f.focus({ preventScroll: true }); } else bt.focus({ preventScroll: true });
     };
@@ -110,8 +112,21 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
     fl.addEventListener('click', (ev) => { if (ev.target.closest('[data-fecha]')) abre(false); });
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !fl.hidden) abre(false); });
     window.addEventListener('hashchange', () => { if (!fl.hidden) abre(false); });
+    // deslizar para baixo fecha: a folha acompanha o dedo; passou de 90 px (ou foi um gesto rápido) fecha, senão volta
+    let y0 = null, dy = 0, t0 = 0;
+    pn.addEventListener('touchstart', (ev) => { if (pn.scrollTop <= 0 || ev.target.closest('.sh-alca')) { y0 = ev.touches[0].clientY; dy = 0; t0 = Date.now(); } else y0 = null; }, { passive: true });
+    pn.addEventListener('touchmove', (ev) => {
+      if (y0 === null) return;
+      dy = ev.touches[0].clientY - y0;
+      if (dy > 0) { ev.preventDefault(); pn.style.transition = 'none'; pn.style.transform = `translateY(${dy}px)`; } else { dy = 0; pn.style.transform = ''; }
+    }, { passive: false });
+    const solta = () => {
+      if (y0 === null) return; y0 = null;
+      pn.style.transition = '';
+      if (dy > 90 || (dy > 30 && Date.now() - t0 < 250)) abre(false); else pn.style.transform = '';
+    };
+    pn.addEventListener('touchend', solta); pn.addEventListener('touchcancel', solta);
   }
-  document.body.classList.add('sh-com');
 
   // subitens acionam os botões que a ferramenta já tem
   const marca = () => {
