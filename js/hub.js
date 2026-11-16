@@ -27,7 +27,8 @@ const APPS = [
   { id: 'financeiro', nome: 'Financeiro', desc: 'Recebimentos dos marketplaces, despesas, contas fixas e resultado do mês.', href: 'financeiro/',
     usuarios: ['ebccd17d-16d7-46cc-82cd-1622c3fd254d', '0cd665bf-e4fb-4087-91a7-e5312cbafe6a'],
     icone: '<path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v2M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3M3 7a2 2 0 0 0 2 2h14a1 1 0 0 1 1 1v3m0 3h-4a1.500 1.500 0 0 1 0-3h4v3Z"/>' },
-  { id: 'ads', nome: 'Gestor de Ads', desc: 'Gastos e resultados dos anúncios pagos em cada marketplace.', breve: true,
+  { id: 'ads', nome: 'Gestor de Ads', desc: 'ROAS, ACOS e CAC reais dos anúncios, só com pedidos pagos, por loja e marketplace.', href: 'ads/',
+    usuarios: ['ebccd17d-16d7-46cc-82cd-1622c3fd254d', '0cd665bf-e4fb-4087-91a7-e5312cbafe6a'],
     icone: '<path d="M4 20V10m6 10V4m6 16v-7m5 7H3"/>' },
 ];
 const GRUPOS = [['Vender', ['lucro', 'precificacao', 'ads']], ['Atender', ['chat', 'devolucoes']], ['Operar', ['estoque', 'financeiro', 'fornecedores']]];
