@@ -64,7 +64,6 @@ Deno.serve(async (req) => {
     const historico = hist.map((l) => ({ quando: quando(S(l[0])), usuario: S(l[1]), codigo: S(l[2]), tamanho: S(l[3]), antes: Math.round(N(l[4])), depois: Math.round(N(l[5])), diferenca: Math.round(N(l[6])), origem: "planilha" }))
       .filter((h) => h.quando && h.codigo && h.tamanho);
 
-    // produtos: atualiza os que já existem sem apagar o vínculo com o Fornecedores
     await lotes("est_produtos", produtos, { onConflict: "codigo" });
     await sb.from("est_produtos").update({ ativo: false }).not("codigo", "in", `(${[...codigos].map((c) => `"${c}"`).join(",")})`);
     await sb.from("est_grade").delete().neq("codigo", "");

@@ -106,27 +106,6 @@ async function avisar(registroId: number) {
   await telegram("sendMessage", { chat_id: chat, text: linhas, parse_mode: "HTML", disable_web_page_preview: true });
 }
 
-// Resumo de chats sem resposta há mais de 2 dias (único aviso automático do chat).
-async function atrasadas() {
-  const chat = await grupo();
-  if (!chat) return;
-  const limite = new Date(Date.now() - 2 * 24 * 3600_000).toISOString();
-  const { data } = await supabase.from("conversas")
-    .select("id, cliente_nome, ultima_mensagem_em, situacao, bloqueada, lojas(nome, marketplace)")
-    .eq("aguardando_resposta", true).eq("ultima_mensagem_de", "cliente").lt("ultima_mensagem_em", limite)
-    .order("ultima_mensagem_em", { ascending: true }).limit(60);
-  const SEM = ["cancelado", "devolucao", "devolvido", "analise_ml"];
-  const lista = (data ?? []).filter((c: any) => !c.bloqueada && !SEM.includes(c.situacao ?? ""));
-  if (!lista.length) return; // nada parado: nenhuma mensagem
-  const linhas = lista.slice(0, 20).map((c: any) => {
-    const loja: any = Array.isArray(c.lojas) ? c.lojas[0] : c.lojas;
-    const dias = Math.floor((Date.now() - new Date(c.ultima_mensagem_em).getTime()) / 86_400_000);
-    return `• ${esc(c.cliente_nome || "Cliente")} · ${esc(MK[loja?.marketplace] ?? "")} · ${dias} dias · <a href="${SITE}/chat/?c=${c.id}">abrir</a>`;
-  });
-  const texto = [`⏰ <b>CHAT · SEM RESPOSTA HÁ MAIS DE 2 DIAS</b>`, `${lista.length} ${lista.length === 1 ? "conversa" : "conversas"} esperando uma pessoa:`, "", ...linhas, lista.length > 20 ? `… e mais ${lista.length - 20}.` : null].filter((l) => l !== null).join("\n");
-  await telegram("sendMessage", { chat_id: chat, text: texto, parse_mode: "HTML", disable_web_page_preview: true });
-}
-
 Deno.serve(async (req) => {
   const enviado = req.headers.get("x-lucro-token") ?? "";
   const { data: seg } = await supabase.from("lucro_segredo").select("valor").limit(1).maybeSingle();
@@ -134,8 +113,7 @@ Deno.serve(async (req) => {
   const corpo: any = await req.json().catch(() => ({}));
   const tarefa = async () => {
     try {
-      if (corpo.atrasadas) await atrasadas();
-      else if (corpo.descobrir) await descobrir();
+      if (corpo.descobrir) await descobrir();
       else if (corpo.foto_url) await trocarFoto(String(corpo.foto_url));
       else if (corpo.teste) {
         const chat = await grupo();
