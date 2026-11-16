@@ -670,9 +670,12 @@ $('#info').addEventListener('click',abreInfo);
 $('#jOk').addEventListener('click',fechaInfo);
 $('#veu').addEventListener('click',function(e){if(e.target===this)fechaInfo()});
 
+/* ===== atualização automática (sem piscar a tela) ===== */
+setInterval(function(){if(!document.hidden&&!S.carregando&&S.acesso)carregar(true)},120000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden&&S.acesso&&!S.carregando)carregar(true)});
 /* ===== dados ===== */
-async function carregar(){
-  S.carregando=true;S.erro=null;render();
+async function carregar(quieto){
+  if(!quieto){S.carregando=true;S.erro=null;render()}
   var P=periodo(S.per,S.hoje),seq=++S.ano;
   try{
     var rs=await Promise.all([
@@ -693,7 +696,7 @@ async function carregar(){
     if(S.acesso){montaLojas();atualizaBotaoLoja()}
     render();
   }catch(e){
-    if(seq!==S.ano)return;
+    if(seq!==S.ano||quieto)return;
     S.carregando=false;S.erro='Detalhe técnico: '+String((e&&e.message)||e).slice(0,140);render();
   }
 }
