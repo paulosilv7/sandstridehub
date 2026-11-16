@@ -7,6 +7,9 @@
 <link rel="icon" type="image/png" href="../favicon-64.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
+<meta name="theme-color" content="#EDEDEC">
+<script>try{var t=localStorage.getItem("sandstride-tema");if(t!=="dark"&&t!=="light")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<link rel="stylesheet" href="../css/shell.css">
 <style>
 /* Gestor de Ads: segue o Briefing de design v2 (14/11/2026). Sólido é fato, listrado é estimativa. Um destaque por quadro. */
 :root{
@@ -40,8 +43,7 @@
 }
 *{box-sizing:border-box;margin:0}
 [hidden]{display:none!important}
-html,body{height:100%}
-body{font-family:var(--fonte);font-size:14px;line-height:1.5;font-weight:400;color:var(--texto);background:var(--fundo);display:flex;position:relative;overflow:hidden;-webkit-font-smoothing:antialiased}
+body{font-family:var(--fonte);font-size:14px;line-height:1.5;font-weight:400;color:var(--texto);background:var(--fundo);min-height:100vh;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0;text-align:left}
 a{color:inherit}
 :focus-visible{outline:2px solid var(--foco);outline-offset:2px}
@@ -50,31 +52,7 @@ h3{font-size:16px}
 svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .suave{color:var(--suave)}
 
-/* menu lateral */
-.lat{width:232px;flex:none;background:var(--lateral);color:#fff;display:flex;flex-direction:column;padding:var(--e5) var(--e3);gap:var(--e2);border-right:1px solid var(--palco-borda);overflow:hidden;transition:width 280ms var(--ease)}
-.lat.rec{width:64px}
-.marca{padding:0 var(--e3) var(--e3);font-size:17px;font-weight:600;letter-spacing:-.02em;white-space:nowrap;overflow:hidden}
-.lat.rec .marca{opacity:0}
-.lat nav{display:flex;flex-direction:column;gap:2px}
-.lat .grupo{font-size:12px;color:var(--palco-suave);padding:12px 12px 4px;white-space:nowrap;transition:opacity var(--t-medio)}
-.lat.rec .grupo{opacity:0;height:8px;padding:0}
-.lat nav a{display:flex;align-items:center;gap:var(--e3);height:40px;padding:0 11px;border-radius:var(--r-m);text-decoration:none;color:var(--palco-suave);font-weight:500;font-size:13px;white-space:nowrap;transition:background var(--t-medio) var(--ease),color var(--t-medio)}
-.lat nav a:hover{color:#fff}
-.lat nav a.on{background:var(--palco-3);color:#fff}
-.lat nav a.on::after{content:"";margin-left:auto;width:6px;height:6px;border-radius:50%;background:#A9C4FF;flex:none}
-.lat .pe{margin-top:auto;display:flex;flex-direction:column;gap:var(--e2)}
-.lat .seg{background:var(--palco-2)} .lat .seg button{color:var(--palco-suave)} .lat .seg button.on{color:#fff} .lat .seg .polegar{background:var(--palco-3);box-shadow:none}
-.lat .rc{display:flex;align-items:center;gap:var(--e3);height:40px;padding:0 11px;border-radius:var(--r-m);color:var(--palco-suave);font-weight:500;font-size:13px;white-space:nowrap}
-.lat .rc:hover{color:#fff}
-.lat.rec .seg{display:none}
-
-/* coluna */
-.col{flex:1;min-width:0;display:flex;flex-direction:column}
-.topo-m{display:none;align-items:center;justify-content:space-between;padding:var(--e3) var(--e4);background:var(--lateral);color:#fff}
-.topo-m b{font-weight:600;font-size:16px}
-.topo-m .ibtn{border-color:var(--palco-borda)}
-main{flex:1;overflow-y:auto;scroll-behavior:smooth}
-.wrap{max-width:1180px;margin:0 auto;padding:var(--e8) var(--e8) var(--e12);display:flex;flex-direction:column;gap:var(--e4)}
+.wrap{display:flex;flex-direction:column;gap:var(--e4);max-width:1180px;margin:0 auto;padding:var(--e8) var(--e8) var(--e12)}
 
 /* topo da página */
 .topo{display:flex;align-items:center;gap:var(--e3) var(--e4);flex-wrap:wrap;margin-bottom:var(--e2)}
@@ -216,14 +194,6 @@ main{flex:1;overflow-y:auto;scroll-behavior:smooth}
 .janela li svg{margin-top:2px;color:var(--suave)}
 .janela li b{font-weight:600}
 
-/* menu do celular */
-.barra-m{display:none;position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:20}
-.barra{display:inline-flex;gap:6px;padding:6px;border-radius:var(--r-pilula);background:var(--lateral);box-shadow:0 8px 24px rgba(0,0,0,.22)}
-.barra a{height:40px;min-width:40px;border-radius:20px;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--palco-suave);background:var(--palco-2);font-size:13px;font-weight:500;padding:0 11px;text-decoration:none;transition:background 250ms var(--ease),color 250ms}
-.barra a .lb{max-width:0;overflow:hidden;white-space:nowrap;transition:max-width 250ms var(--ease)}
-.barra a.on{background:var(--destaque);color:var(--no-destaque);padding:0 14px}
-.barra a.on .lb{max-width:110px}
-
 /* movimento */
 @keyframes sobe{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes cresce{from{transform:scaleY(0)}to{transform:scaleY(1)}}
@@ -235,7 +205,6 @@ main{flex:1;overflow-y:auto;scroll-behavior:smooth}
 .linha.toca path{animation:desenha 900ms var(--ease) both}
 
 @media (max-width:999px){
-  .lat{display:none} .topo-m{display:flex} .barra-m{display:block}
   .wrap{padding:var(--e5) var(--e4) 112px}
   .g3,.g21{grid-template-columns:minmax(0,1fr)}
   .card{padding:var(--e5)}
@@ -257,30 +226,7 @@ main{flex:1;overflow-y:auto;scroll-behavior:smooth}
 </head>
 <body>
 
-<aside class="lat" id="lat" aria-label="Menu">
-  <div class="marca">Sandstride</div>
-  <nav aria-label="Ferramentas">
-    <a href="../"><span id="i-casa"></span><span class="rot">Central</span></a>
-    <div class="grupo">Vender</div>
-    <a href="../lucro/"><span id="i-grafico"></span><span class="rot">Lucro ao vivo</span></a>
-    <a href="../precificacao/"><span id="i-etiqueta"></span><span class="rot">Precificação</span></a>
-    <a href="./" class="on" aria-current="page"><span id="i-alvo"></span><span class="rot">Gestor de Ads</span></a>
-    <div class="grupo">Atender</div>
-    <a href="../chat/"><span id="i-chat"></span><span class="rot">Chat</span></a>
-    <a href="../devolucoes/"><span id="i-volta"></span><span class="rot">Devoluções</span></a>
-    <div class="grupo">Operar</div>
-    <a href="../estoque/"><span id="i-caixa"></span><span class="rot">Estoque</span></a>
-    <a href="../financeiro/"><span id="i-carteira"></span><span class="rot">Financeiro</span></a>
-  </nav>
-  <div class="pe">
-    <div class="seg" id="tema" role="group" aria-label="Tema"><span class="polegar"></span><button type="button" data-v="light">Claro</button><button type="button" data-v="dark">Escuro</button></div>
-    <button type="button" class="rc" id="recolhe"><span id="i-lado"></span><span class="rot">Recolher</span></button>
-  </div>
-</aside>
-
-<div class="col">
-  <header class="topo-m"><b>Sandstride</b><button type="button" class="ibtn" id="temaM" aria-label="Trocar tema claro ou escuro"><span id="i-gota"></span></button></header>
-  <main id="rolagem"><div class="wrap">
+<main class="wrap">
     <header class="topo">
       <h1>Gestor de Ads</h1>
       <span class="tag" id="atu" hidden></span>
@@ -297,16 +243,7 @@ main{flex:1;overflow-y:auto;scroll-behavior:smooth}
       </div>
     </header>
     <div id="conteudo" class="wrap-c" style="display:flex;flex-direction:column;gap:var(--e4)"></div>
-  </div></main>
-</div>
-
-<nav class="barra-m" aria-label="Menu do celular"><div class="barra">
-  <a href="../" aria-label="Central"><span id="m-casa"></span><span class="lb">Central</span></a>
-  <a href="../lucro/" aria-label="Lucro ao vivo"><span id="m-grafico"></span><span class="lb">Lucro</span></a>
-  <a href="./" class="on" aria-label="Gestor de Ads" aria-current="page"><span id="m-alvo"></span><span class="lb">Ads</span></a>
-  <a href="../chat/" aria-label="Chat"><span id="m-chat"></span><span class="lb">Chat</span></a>
-  <a href="../devolucoes/" aria-label="Devoluções"><span id="m-volta"></span><span class="lb">Devoluções</span></a>
-</div></nav>
+  </main>
 
 <div class="veu" id="veu"><div class="janela" role="dialog" aria-modal="true" aria-labelledby="jt">
   <div class="qcab"><span class="ico" id="jIco"></span><h3 id="jt">Como lemos os números</h3></div>
@@ -326,6 +263,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
 window.SB = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 window.dispatchEvent(new Event('sb-pronto'));
+import { montarShell } from '../js/shell.js';
+montarShell({ ativo: 'ads', raiz: '/' }).catch((e) => console.error('menu lateral', e));
 </script>
 <script>
 (function(){
@@ -358,8 +297,7 @@ var I={
 };
 function svg(n,s){return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"'+(s?' style="width:'+s+'px;height:'+s+'px"':'')+'><path d="'+(I[n]||'')+'"/></svg>'}
 function poeIcones(){
-  ['casa','grafico','etiqueta','alvo','chat','volta','caixa','carteira','lado','gota','baixo','info'].forEach(function(n){var e=$('#i-'+n);if(e)e.innerHTML=svg(n)});
-  ['casa','grafico','alvo','chat','volta'].forEach(function(n){var e=$('#m-'+n);if(e)e.innerHTML=svg(n)});
+  ['baixo','info'].forEach(function(n){var e=$('#i-'+n);if(e)e.innerHTML=svg(n)});
   $('#jIco').innerHTML=svg('info');
   ['check','check','alerta','relogio','relogio','olho'].forEach(function(n,i){$('#j'+(i+1)).innerHTML=svg(n)});
 }
@@ -407,17 +345,6 @@ function seg(el,valor,ao){
   marca(valor,false);
   return function(v){marca(v,false)};
 }
-
-/* ===== tema ===== */
-function temaAtual(){var t=document.documentElement.getAttribute('data-theme');if(t==='dark'||t==='light')return t;return matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}
-var setTema;
-try{var tt=localStorage.getItem('sand-tema');if(tt==='dark'||tt==='light')document.documentElement.setAttribute('data-theme',tt)}catch(e){}
-setTema=seg($('#tema'),temaAtual(),function(v){document.documentElement.setAttribute('data-theme',v);try{localStorage.setItem('sand-tema',v)}catch(e){}});
-$('#temaM').addEventListener('click',function(){var v=temaAtual()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',v);try{localStorage.setItem('sand-tema',v)}catch(e){};setTema(v)});
-
-/* ===== menu lateral recolhível ===== */
-try{if(localStorage.getItem('sand-lat')==='rec')$('#lat').classList.add('rec')}catch(e){}
-$('#recolhe').addEventListener('click',function(){var l=$('#lat');l.classList.toggle('rec');try{localStorage.setItem('sand-lat',l.classList.contains('rec')?'rec':'')}catch(e){}});
 
 /* ===== cálculo ===== */
 function num(v){return v==null?null:Number(v)}
@@ -699,7 +626,7 @@ async function iniciar(){
 }
 addEventListener('resize',function(){var p=$('#per');var b=$('button.on',p);if(b){var pl=$('.polegar',p);pl.style.width=b.offsetWidth+'px';pl.style.transform='translateX('+b.offsetLeft+'px)'}});
 render();
-if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){setPer(S.per);setTema(temaAtual())});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){setPer(S.per)});
 if(window.SB)iniciar();else window.addEventListener('sb-pronto',iniciar,{once:true});
 })();
 </script>
