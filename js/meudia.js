@@ -13,6 +13,7 @@ export const IC = {
   mais: '<path d="M12 5v14M5 12h14"/>',
   lapis: '<path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  texto: '<path d="M4 7h16M4 12h16M4 17h10"/>',
   relogio: '<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/>',
   alerta: '<path d="M12 4 2.5 20h19zM12 10v4M12 17h.01"/>',
   check: '<path d="M5 12.5 10 17 19 7"/>',
@@ -36,7 +37,7 @@ function saudacao() {
 
 export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   const admin = eu.papel === 'admin';
-  const E = { editId: null, lojasML: null, codigos: [], equipe: [], rotinas: [], feitos: new Set(), tarefas: [], metas: [], filtro: 'hoje', eqAberta: false, feitosSem: [], primeira: true, erro: '', pop: false, aberta: new Set(), rasc: { titulo: '', resp: user.id, prazo: '', imp: 'normal' } };
+  const E = { itens: [], editId: null, lojasML: null, codigos: [], equipe: [], rotinas: [], feitos: new Set(), tarefas: [], metas: [], filtro: 'hoje', eqAberta: false, feitosSem: [], primeira: true, erro: '', pop: false, aberta: new Set(), rasc: { titulo: '', resp: user.id, prazo: '', imp: 'normal' } };
   const hoje = hojeISO(), dsem = dataDe(hoje).getUTCDay(), mes = hoje.slice(0, 8) + '01';
   // semana de trabalho: segunda a sexta (no fim de semana mostra a próxima)
   const segunda = dsem === 0 ? soma(hoje, 1) : dsem === 6 ? soma(hoje, 2) : soma(hoje, 1 - dsem), sexta = soma(segunda, 4);
@@ -60,7 +61,15 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     E.erro = [eq, ro, fe, ta, me].some((r) => r.error) ? 'Não consegui carregar tudo. Atualize a página.' : '';
     E.equipe = eq.data || []; E.rotinas = ro.data || []; E.feitosSem = fe.data || []; E.feitos = new Set(E.feitosSem.filter((x) => x.dia === hoje).map((x) => x.rotina_id));
     E.tarefas = ta.data || []; E.metas = me.data || [];
+    // subtarefas (checklist) das tarefas carregadas; se falhar, as tarefas seguem sem o contador
+    const ids = E.tarefas.map((t) => t.id);
+    const it = ids.length ? await sb.from('central_tarefa_itens').select('id, tarefa_id, texto, feito, ordem').in('tarefa_id', ids).order('ordem').order('criado_em') : { data: [] };
+    E.itens = it.error ? [] : (it.data || []);
   }
+  const itensDe = (id) => E.itens.filter((i) => i.tarefa_id === id);
+  // selo com subtarefas feitas/total e ícone de descrição
+  const seloCk = (t) => { const l = itensDe(t.id), f = l.filter((i) => i.feito).length;
+    return (l.length ? `<span class="tag ck${f === l.length ? ' ok' : ''}" title="Subtarefas">${svg(IC.check, 12)}${f}/${l.length}</span>` : '') + (t.descricao ? `<span class="tag ck" title="Tem descrição">${svg(IC.texto, 12)}</span>` : ''); };
   const rotinaDe = (uid) => E.rotinas.filter((r) => r.usuario_id === uid && (r.dias || []).includes(dsem));
   const PESO = { baixa: 0, normal: 1, alta: 2 };
   const abertas = (uid) => E.tarefas.filter((t) => t.responsavel_id === uid && !t.feita_em);
@@ -131,13 +140,13 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       const dia = soma(segunda, i), eHoje = dia === hoje, passou = dia < hoje;
       const cards = [
         ...mine.filter((r) => (r.dias || []).includes(i + 1)).map((r) => ({ tipo: 'Rotina', on: feito(r.id, dia), attr: `data-rot="${r.id}" data-dia="${dia}"`, titulo: r.titulo })),
-        ...minhas.filter((t) => t.prazo === dia).sort((a, b) => (PESO[b.importancia] ?? 1) - (PESO[a.importancia] ?? 1)).map((t) => ({ tipo: 'Tarefa', on: !!t.feita_em, attr: `data-tar="${t.id}"`, tid: t.id, titulo: t.titulo, imp: t.importancia || 'normal' })),
+        ...minhas.filter((t) => t.prazo === dia).sort((a, b) => (PESO[b.importancia] ?? 1) - (PESO[a.importancia] ?? 1)).map((t) => ({ tipo: 'Tarefa', on: !!t.feita_em, attr: `data-tar="${t.id}"`, tid: t.id, titulo: t.titulo, imp: t.importancia || 'normal', selo: seloCk(t) })),
       ].sort((a, b) => a.on - b.on);
       const feitas = cards.filter((c) => c.on).length;
       const lis = cards.map((c) => {
         const falta = passou && !c.on;
         return `<li class="kb-card ${c.tipo === 'Rotina' ? 'rot' : 'tar'}${c.on ? ' feita' : ''}${falta ? ' falta' : ''}"${c.tid ? ` data-tid="${c.tid}"` : ''}><button type="button" class="md-chk${c.on ? ' on' : ''}" ${c.attr} aria-pressed="${c.on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(c.titulo)}</span></button>` +
-          `<span class="kb-meta"><span class="kb-tipo">${svg(c.tipo === 'Rotina' ? IC.repetir : IC.tarefa, 12)}${c.tipo === 'Rotina' ? 'Rotina' : 'Avulsa'}</span>${c.imp && !c.on ? tagImp(c.imp) : ''}${falta ? '<span class="kb-falta">Não feita</span>' : ''}</span></li>`;
+          `<span class="kb-meta"><span class="kb-tipo">${svg(c.tipo === 'Rotina' ? IC.repetir : IC.tarefa, 12)}${c.tipo === 'Rotina' ? 'Rotina' : 'Avulsa'}</span>${c.imp && !c.on ? tagImp(c.imp) : ''}${c.selo || ''}${falta ? '<span class="kb-falta">Não feita</span>' : ''}</span></li>`;
       }).join('');
       return `<li class="kb-col${eHoje ? ' hoje' : ''}${passou ? ' passou' : ''}" data-dia="${dia}" aria-label="${DIAS_N[i + 1]}, ${dataDe(dia).getUTCDate()}"><div class="kb-cab"><b>${ABR[i]}</b><span class="kb-dia">${dataDe(dia).getUTCDate()}</span>${cards.length ? `<em class="kb-n">${feitas}/${cards.length}</em>` : ''}</div>` +
         (cards.length ? `<ul class="kb-cards">${lis}</ul>` : `<p class="kb-nada">Nada marcado</p>`) + `</li>`;
@@ -181,7 +190,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       const prazo = t.prazo ? `<span class="tag${atrasada(t) ? ' ate' : ''}">${svg(atrasada(t) ? IC.alerta : IC.relogio)}${t.prazo === hoje ? 'Hoje' : fCurto.format(dataDe(t.prazo))}</span>` : '';
       const imp = on ? '' : tagImp(t.importancia);
       return `<li><button type="button" class="md-chk${on ? ' on' : ''}" data-tar="${t.id}" aria-pressed="${on}"${pode ? '' : ' disabled'}><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(t.titulo)}</span></button>` +
-        `${imp}${prazo}${!meu && p ? `<span class="md-quem" title="${esc(p.nome)}">${av(p, 'p')}</span>` : ''}${pode ? `<button class="md-x md-ed" type="button" data-edit="${t.id}" aria-label="Editar tarefa" title="Editar">${svg(IC.lapis, 14)}</button>` : ''}${t.criado_por === user.id || admin ? `<button class="md-x" type="button" data-apaga="${t.id}" aria-label="Apagar tarefa">${svg(IC.x, 14)}</button>` : ''}</li>`;
+        `${imp}${seloCk(t)}${prazo}${!meu && p ? `<span class="md-quem" title="${esc(p.nome)}">${av(p, 'p')}</span>` : ''}${pode ? `<button class="md-x md-ed" type="button" data-edit="${t.id}" aria-label="Editar tarefa" title="Editar">${svg(IC.lapis, 14)}</button>` : ''}${t.criado_por === user.id || admin ? `<button class="md-x" type="button" data-apaga="${t.id}" aria-label="Apagar tarefa">${svg(IC.x, 14)}</button>` : ''}</li>`;
     };
     const feitasR = lr.filter((x) => x.includes(' on"')), abertasR = lr.filter((x) => !x.includes(' on"'));
     return `<ul class="md-lista">${abertasT.map(item).join('')}${abertasR.join('')}${feitasT.map(item).join('')}${feitasR.join('')}</ul>`;
@@ -271,6 +280,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       if (error) { aplica(!on); falhou('Não consegui salvar a marcação. Tente de novo.'); } else setTimeout(desenhar, 700);
     } else if (b.dataset.tar) {
       const t = E.tarefas.find((x) => x.id === b.dataset.tar); if (!t) return;
+      if (ev.target.closest('.tx')) { janelaTarefa(t.id); return; }
       const antes = t.feita_em; t.feita_em = antes ? null : new Date().toISOString(); marcar(b, !!t.feita_em); atualizaPalco();
       const { error } = await sb.from('central_tarefas').update({ feita_em: t.feita_em }).eq('id', t.id);
       if (error) { t.feita_em = antes; atualizaPalco(); falhou('Não consegui salvar a tarefa. Tente de novo.'); } else setTimeout(desenhar, 700);
@@ -280,9 +290,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       const { error } = await sb.from('central_tarefas').delete().eq('id', t.id);
       if (error) { E.tarefas.splice(i, 0, t); falhou('Não consegui apagar a tarefa.'); }
     } else if (b.dataset.edit) {
-      const t = E.tarefas.find((x) => x.id === b.dataset.edit); if (!t) return;
-      E.editId = t.id; E.rasc = { titulo: t.titulo, resp: t.responsavel_id, prazo: t.prazo || '', imp: t.importancia || 'normal' }; E.pop = true; desenhar();
-      el.querySelector('#md-titulo')?.focus();
+      janelaTarefa(b.dataset.edit);
     } else if (b.dataset.pop) {
       if (b.dataset.pop === 'abre') { if (E.editId) { fechaPop(); E.pop = true; } else E.pop = !E.pop; } else fechaPop();
       desenhar(); if (E.pop) el.querySelector('#md-titulo')?.focus();
@@ -387,6 +395,44 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     E.tarefas.push(...criadas); E.filtro = filtroDe(criadas.find((t) => t.responsavel_id === user.id) || criadas[0]);
     E.rasc = padraoRasc(); E.pop = false; E.erro = ''; desenhar();
   });
+
+  // ---- detalhes da tarefa: título, responsável, data, importância, descrição e subtarefas
+  function janelaTarefa(id) {
+    const t = E.tarefas.find((x) => x.id === id); if (!t) return;
+    const pode = t.responsavel_id === user.id || t.criado_por === user.id || admin, dis = pode ? '' : ' disabled';
+    const lista = () => itensDe(id), pct = () => { const l = lista(); return l.length ? Math.round((l.filter((i) => i.feito).length / l.length) * 100) : 0; };
+    const itensHtml = () => lista().map((i) => `<li class="td-it${i.feito ? ' feito' : ''}"><button type="button" class="md-chk${i.feito ? ' on' : ''}" data-ti="${i.id}" aria-pressed="${i.feito}"${dis}><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(i.texto)}</span></button>${pode ? `<button class="md-x" type="button" data-tdel="${i.id}" aria-label="Remover subtarefa">${svg(IC.x, 14)}</button>` : ''}</li>`).join('');
+    const d = janela(`<div class="td"><div class="qcab"><span class="ico">${svg(IC.tarefa)}</span><input class="td-tit" id="td-t" maxlength="200" value="${esc(t.titulo)}" aria-label="Título da tarefa"${dis}><button class="ibtn p" type="button" data-fecha aria-label="Fechar">${svg(IC.x)}</button></div>` +
+      `<div class="td-lin"><label class="campo"><span class="rot">Responsável</span><select class="md-in" id="td-r"${dis}>${E.equipe.map((p) => `<option value="${p.usuario_id}"${p.usuario_id === t.responsavel_id ? ' selected' : ''}>${esc(p.usuario_id === user.id ? 'Para mim' : prim(p.nome))}</option>`).join('')}</select></label>` +
+      `<label class="campo"><span class="rot">Data</span><input class="md-in" id="td-p" type="date" value="${esc(t.prazo || '')}"${dis}></label>` +
+      `<div class="campo"><span class="rot">Importância</span><div class="md-imp" id="td-i">${['baixa', 'normal', 'alta'].map((v) => `<button type="button" data-timp="${v}" class="${(t.importancia || 'normal') === v ? 'on' : ''}"${dis}>${v[0].toUpperCase() + v.slice(1)}</button>`).join('')}</div></div></div>` +
+      `<h3 class="td-h">${svg(IC.texto, 16)}Descrição</h3><textarea class="md-in td-desc" id="td-d" rows="3" maxlength="4000" placeholder="Adicione uma descrição mais detalhada..."${dis}>${esc(t.descricao || '')}</textarea>` +
+      `<div class="td-hl"><h3 class="td-h">${svg(IC.check, 16)}Subtarefas</h3><span class="td-pct" id="td-pct"></span></div><span class="rv-barra" id="td-bar"><i></i></span><ul class="td-its" id="td-its"></ul>` +
+      (pode ? `<form class="td-add" id="td-add"><input class="md-in" id="td-n" maxlength="300" placeholder="Adicionar um item" autocomplete="off" aria-label="Nova subtarefa"><button class="btn pri" type="submit">Adicionar</button></form>` : '') + '</div>');
+    const ul = d.querySelector('#td-its'), bar = d.querySelector('#td-bar i'), pc = d.querySelector('#td-pct');
+    const redesenha = () => { ul.innerHTML = itensHtml(); const l = lista(); pc.textContent = l.length ? `${l.filter((i) => i.feito).length}/${l.length} · ${pct()}%` : ''; bar.style.width = pct() + '%'; d.querySelector('#td-bar').style.display = l.length ? '' : 'none'; };
+    redesenha();
+    const salva = async (campos, volta) => { const { error } = await sb.from('central_tarefas').update(campos).eq('id', id); if (error) { volta(); falhou('Não consegui salvar a tarefa. Tente de novo.'); } };
+    d.querySelector('#td-t').addEventListener('change', (ev) => { const v = ev.target.value.trim(), antes = t.titulo; if (!v) { ev.target.value = antes; return; } t.titulo = v; salva({ titulo: v }, () => { t.titulo = antes; ev.target.value = antes; }); });
+    d.querySelector('#td-r').addEventListener('change', (ev) => { const antes = t.responsavel_id; t.responsavel_id = ev.target.value; salva({ responsavel_id: t.responsavel_id }, () => { t.responsavel_id = antes; ev.target.value = antes; }); });
+    const dp = d.querySelector('#td-p');
+    dp.addEventListener('change', (ev) => { const antes = t.prazo; t.prazo = ev.target.value || null; salva({ prazo: t.prazo }, () => { t.prazo = antes; ev.target.value = antes || ''; }); });
+    dp.addEventListener('dblclick', () => { if (!dp.value && pode) { dp.value = hoje; dp.dispatchEvent(new Event('change')); } });
+    d.querySelector('#td-d').addEventListener('change', (ev) => { const antes = t.descricao, v = ev.target.value.trim() || null; t.descricao = v; salva({ descricao: v }, () => { t.descricao = antes; ev.target.value = antes || ''; }); });
+    d.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('button'); if (!b) return;
+      if (b.dataset.timp) { const antes = t.importancia; t.importancia = b.dataset.timp; d.querySelectorAll('[data-timp]').forEach((x) => x.classList.toggle('on', x === b)); salva({ importancia: t.importancia }, () => { t.importancia = antes; d.querySelectorAll('[data-timp]').forEach((x) => x.classList.toggle('on', x.dataset.timp === antes)); }); }
+      else if (b.dataset.ti) { const i = E.itens.find((x) => x.id === b.dataset.ti); if (!i) return; i.feito = !i.feito; redesenha(); const { error } = await sb.from('central_tarefa_itens').update({ feito: i.feito }).eq('id', i.id); if (error) { i.feito = !i.feito; redesenha(); falhou('Não consegui salvar a subtarefa.'); } }
+      else if (b.dataset.tdel) { const k = E.itens.findIndex((x) => x.id === b.dataset.tdel); if (k < 0) return; const [i] = E.itens.splice(k, 1); redesenha(); const { error } = await sb.from('central_tarefa_itens').delete().eq('id', i.id); if (error) { E.itens.splice(k, 0, i); redesenha(); falhou('Não consegui remover a subtarefa.'); } }
+    });
+    d.querySelector('#td-add')?.addEventListener('submit', async (ev) => {
+      ev.preventDefault(); const inp = d.querySelector('#td-n'), texto = inp.value.trim(); if (!texto) return;
+      const ordem = lista().reduce((m, i) => Math.max(m, i.ordem || 0), 0) + 1; inp.value = '';
+      const { data, error } = await sb.from('central_tarefa_itens').insert({ tarefa_id: id, texto, ordem }).select().single();
+      if (error || !data) { inp.value = texto; falhou('Não consegui adicionar a subtarefa.'); return; }
+      E.itens.push(data); redesenha(); inp.focus();
+    });
+  }
 
   // ---- janelas (rotina de uma pessoa, meta)
   function janela(html) {
