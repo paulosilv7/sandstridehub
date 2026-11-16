@@ -225,7 +225,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     const foco = document.activeElement?.id;
     const pA = `<div class="pg-cab${e}"${o()}><h1>${saudacao()}, ${esc(prim(eu.nome))}.</h1><p class="sub md-data">${esc(fDia.format(dataDe(hoje)))}</p></div>` +
       (E.erro ? `<p class="erro" role="alert">${svg(IC.alerta)}<span>${esc(E.erro)}</span></p>` : '') +
-      `<div class="${e.trim()}"${o()}>${palco()}</div>` + (qCodigos() ? `<div class="${e.trim()}"${o()}>${qCodigos()}</div>` : '') + `<div class="${e.trim()}"${o()}>${qRotina()}</div>`;
+      `<div class="${e.trim()}"${o()}>${palco()}</div>` + (qCodigos() ? `<div class="${e.trim()} md-cod-w"${o()}>${qCodigos()}</div>` : '') + `<div class="${e.trim()}"${o()}>${qRotina()}</div>`;
     const pE = `<div class="${e.trim()}"${o()}>${qTarefas()}</div><div class="${e.trim()}"${o()}>${qMetas()}</div>`;
     const pB = (admin ? `<div class="${e.trim()}"${o()}>${qEquipe()}</div>` : '');
     el.querySelector('#md-a').innerHTML = pA; el.querySelector('#md-e').innerHTML = pE; el.querySelector('#md-b').innerHTML = pB;

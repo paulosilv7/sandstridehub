@@ -506,3 +506,5 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .cd-esp{align-self:flex-start;font-size:13px;font-weight:500;background:var(--cartao);padding:4px 12px;border-radius:var(--r-pilula,99px)}
 @media (min-width:700px){.cd-lista{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:520px){.md-cod .cd-faixa{display:none}}
+/* O código do dia só serve no celular (é onde se usa com o motorista); no computador o cartão não aparece */
+@media (min-width:1000px){.md-cod,.md-cod-w{display:none}}
