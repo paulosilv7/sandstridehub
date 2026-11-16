@@ -9,7 +9,7 @@ export const tagImp = (v) => { const k = v === 'alta' ? ['alta', 'Alta'] : v ===
 export const seloTarefa = (t, itens) => { const l = itens.filter((i) => i.tarefa_id === t.id), f = l.filter((i) => i.feito).length;
   return (l.length ? `<span class="tag ck${f === l.length ? ' ok' : ''}" title="Subtarefas">${svg(IC.check, 12)}${f}/${l.length}</span>` : '') + (t.descricao ? `<span class="tag ck" title="Tem descrição">${svg(IC.texto, 12)}</span>` : ''); };
 
-export function abrirDetalheTarefa({ sb, user, admin, equipe, tarefa: t, itens, aoFechar = () => {}, aoFalhar = () => {} }) {
+export function abrirDetalheTarefa({ sb, user, admin, equipe, tarefa: t, itens, aoFechar = () => {}, aoFalhar = () => {}, aoApagar = null }) {
   const hoje = hojeISO(), id = t.id;
   const janela = (html) => {
     document.getElementById('md-dlg')?.remove();
@@ -30,7 +30,7 @@ export function abrirDetalheTarefa({ sb, user, admin, equipe, tarefa: t, itens, 
       `<h3 class="td-h">${svg(IC.texto, 16)}Descrição</h3><textarea class="md-in td-desc" id="td-d" rows="3" maxlength="4000" placeholder="Adicione uma descrição mais detalhada..."${dis}>${esc(t.descricao || '')}</textarea>` +
       `<div class="td-hl"><h3 class="td-h">${svg(IC.check, 16)}Subtarefas</h3><span class="td-pct" id="td-pct"></span></div><span class="rv-barra" id="td-bar"><i></i></span><ul class="td-its" id="td-its"></ul>` +
       (pode ? `<div class="td-add"><input class="md-in" id="td-n" maxlength="300" placeholder="Adicionar um item" autocomplete="off" aria-label="Nova subtarefa"><button class="btn sec" type="button" id="td-mais">Adicionar</button></div>` : '') +
-      (pode ? `<div class="td-rod"><button class="btn pri" type="submit" id="td-salvar">Salvar</button></div>` : '') + '</form>');
+      (pode ? `<div class="td-rod">${aoApagar && (t.criado_por === user.id || admin) ? `<button class="btn sec td-apaga" type="button" id="td-apaga">Apagar tarefa</button>` : ''}<span class="md-sp"></span><button class="btn pri" type="submit" id="td-salvar">Salvar</button></div>` : '') + '</form>');
     const ul = d.querySelector('#td-its'), bar = d.querySelector('#td-bar i'), pc = d.querySelector('#td-pct');
     const redesenha = () => { ul.innerHTML = itensHtml(); const l = lista(); pc.textContent = l.length ? `${l.filter((i) => i.feito).length}/${l.length} · ${pct()}%` : ''; bar.style.width = pct() + '%'; d.querySelector('#td-bar').style.display = l.length ? '' : 'none'; };
     redesenha();
@@ -63,6 +63,14 @@ export function abrirDetalheTarefa({ sb, user, admin, equipe, tarefa: t, itens, 
       if (b.dataset.timp) { marca('importancia', b.dataset.timp); d.querySelectorAll('[data-timp]').forEach((x) => x.classList.toggle('on', x === b)); }
       else if (b.dataset.ti) { const i = itens.find((x) => x.id === b.dataset.ti); if (!i) return; i.feito = !i.feito; redesenha(); const { error } = await sb.from('central_tarefa_itens').update({ feito: i.feito }).eq('id', i.id); if (error) { i.feito = !i.feito; redesenha(); falhou('Não consegui salvar a subtarefa.'); } }
       else if (b.dataset.tdel) { const k = itens.findIndex((x) => x.id === b.dataset.tdel); if (k < 0) return; const [i] = itens.splice(k, 1); redesenha(); const { error } = await sb.from('central_tarefa_itens').delete().eq('id', i.id); if (error) { itens.splice(k, 0, i); redesenha(); falhou('Não consegui remover a subtarefa.'); } }
+    });
+    const ap = d.querySelector('#td-apaga');
+    if (ap) ap.addEventListener('click', async () => {
+      if (!ap.dataset.certo) { ap.dataset.certo = '1'; ap.textContent = 'Confirmar: apagar de vez'; setTimeout(() => { if (ap.isConnected) { delete ap.dataset.certo; ap.textContent = 'Apagar tarefa'; } }, 4000); return; }
+      ap.disabled = true; sujo.clear();
+      const { error } = await sb.from('central_tarefas').delete().eq('id', id);
+      if (error) { ap.disabled = false; falhou('Não consegui apagar a tarefa.'); return; }
+      aoApagar(t); d.close();
     });
     if (pode) {
       const bMais = botaoAcao(d.querySelector('#td-mais'), { ok: 'Adicionado', carregando: 'Adicionando…' }), bSalvar = botaoAcao(d.querySelector('#td-salvar'), { ok: 'Salvo', carregando: 'Salvando…' });

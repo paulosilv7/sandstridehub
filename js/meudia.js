@@ -401,7 +401,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   // ---- detalhes da tarefa: título, responsável, data, importância, descrição e subtarefas
   function janelaTarefa(id) {
     const t = E.tarefas.find((x) => x.id === id); if (!t) return;
-    abrirDetalheTarefa({ sb, user, admin, equipe: E.equipe, tarefa: t, itens: E.itens, aoFechar: desenhar, aoFalhar: falhou });
+    abrirDetalheTarefa({ sb, user, admin, equipe: E.equipe, tarefa: t, itens: E.itens, aoFechar: desenhar, aoFalhar: falhou, aoApagar: (x) => { E.tarefas = E.tarefas.filter((y) => y.id !== x.id); } });
   }
 
   // ---- janelas (rotina de uma pessoa, meta)

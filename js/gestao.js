@@ -144,8 +144,8 @@ function linhaTarefa(t, eq, B, itens, extra = {}) {
   return `<li><button type="button" class="md-chk${on ? ' on' : ''}" ${extra.attr || 'data-tar'}="${t.id}" aria-pressed="${on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(t.titulo)}</span></button>` +
     `${on ? '' : tagImp(t.importancia)}${seloTarefa(t, itens)}${prazo}${r ? `<span class="md-quem" title="${esc(r.nome)}">${B.av(r, 'p')}</span>` : ''}${extra.fim || ''}</li>`;
 }
-function abreDetalhe(B, t, eq, itens, aoFechar) {
-  abrirDetalheTarefa({ sb: B.sb, user: B.user, admin: B.admin, equipe: eq, tarefa: t, itens, aoFechar });
+function abreDetalhe(B, t, eq, itens, aoFechar, aoApagar) {
+  abrirDetalheTarefa({ sb: B.sb, user: B.user, admin: B.admin, equipe: eq, tarefa: t, itens, aoFechar, aoApagar });
 }
 function cartaoPrioridade(p, D, B, eq, aberto, editar = true) {
   const ts = D.tarefas.filter((t) => t.prioridade_id === p.id), feitas = ts.filter((t) => t.feita_em).length, dono = eq.find((x) => x.usuario_id === p.dono_id);
@@ -206,7 +206,7 @@ function acoesPrioridades(el, B, getD, desenhar, abertos, getEq, edita) {
     const D = getD(), li = ev.target.closest('.md-lista li:has([data-tar])');
     if (li && D.tarefas && !ev.target.closest('.cx, .md-x, .md-quem') && !(ev.target.closest('button')?.dataset.tar && ev.detail === 0)) {
       const t = D.tarefas.find((x) => x.id === li.querySelector('[data-tar]').dataset.tar);
-      if (t) { abreDetalhe(B, t, getEq(), D.itens || [], desenhar); return; }
+      if (t) { abreDetalhe(B, t, getEq(), D.itens || [], desenhar, (x) => { D.tarefas.splice(D.tarefas.findIndex((y) => y.id === x.id), 1); }); return; }
     }
     const b = ev.target.closest('button'); if (!b) return;
     if (b.dataset.abre) { if (abertos.has(b.dataset.abre)) abertos.delete(b.dataset.abre); else abertos.add(b.dataset.abre); desenhar(); }
@@ -303,7 +303,7 @@ export async function montarRevisao(ctx) {
     const li = ev.target.closest('.md-lista li:has([data-atr])');
     if (li && !ev.target.closest('.cx, .gs-adia') && !(ev.target.closest('button')?.dataset.atr && ev.detail === 0)) {
       const t = atrasadas.find((x) => x.id === li.querySelector('[data-atr]').dataset.atr);
-      if (t) { abreDetalhe(B, t, eq, itensRev, async () => { desenhar(); }); return; }
+      if (t) { abreDetalhe(B, t, eq, itensRev, async () => { desenhar(); }, (x) => { atrasadas.splice(atrasadas.findIndex((y) => y.id === x.id), 1); }); return; }
     }
     const b = ev.target.closest('button'); if (!b) return;
     if (b.dataset.passo != null && !b.disabled) { passo = Math.max(0, Math.min(ULT, +b.dataset.passo)); desenhar(); el.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); }

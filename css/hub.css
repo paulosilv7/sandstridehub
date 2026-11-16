@@ -638,3 +638,6 @@ body.kb-arrastando,body.kb-arrastando *{cursor:grabbing!important;-webkit-user-s
 .md-pend .md-pt{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;min-width:0}
 .md-pend .md-pt:hover{text-decoration:underline;text-underline-offset:3px}
 .md-pend li .md-ed{opacity:.6}.md-pend li:hover .md-ed,.md-pend li .md-ed:focus-visible{opacity:1}
+
+.td-rod{display:flex;align-items:center;gap:var(--e3)}.td-rod .md-sp{flex:1}
+.td-apaga{color:var(--suave)}
