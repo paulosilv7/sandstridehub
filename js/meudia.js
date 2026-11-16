@@ -35,7 +35,8 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   const admin = eu.papel === 'admin';
   const E = { equipe: [], rotinas: [], feitos: new Set(), tarefas: [], metas: [], filtro: 'hoje', eqAberta: false, feitosSem: [], primeira: true, erro: '', pop: false, aberta: new Set(), rasc: { titulo: '', resp: user.id, prazo: '', imp: 'normal' } };
   const hoje = hojeISO(), dsem = dataDe(hoje).getUTCDay(), mes = hoje.slice(0, 8) + '01';
-  const domingo = soma(hoje, -dsem), sabado = soma(domingo, 6);
+  // semana de trabalho: segunda a sexta (no fim de semana mostra a próxima)
+  const segunda = dsem === 0 ? soma(hoje, 1) : dsem === 6 ? soma(hoje, 2) : soma(hoje, 1 - dsem), sexta = soma(segunda, 4);
   const fotoUrl = (p) => (p ? `${SUPABASE_URL}/storage/v1/object/public/avatares/${p}` : '');
   const av = (p, cls = '') => { const u = fotoUrl(p?.foto_path); return u ? `<img class="av ${cls}" src="${esc(u)}" alt="">` : `<span class="av ${cls}" aria-hidden="true">${esc(String(p?.nome || '?').charAt(0).toUpperCase())}</span>`; };
   const pessoa = (id) => E.equipe.find((p) => p.usuario_id === id);
@@ -45,7 +46,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     const [eq, ro, fe, ta, me] = await Promise.all([
       sb.from('equipe').select('usuario_id, nome, papel, foto_path').order('nome'),
       sb.from('central_rotinas').select('*').eq('ativo', true).order('ordem').order('criado_em'),
-      sb.from('central_rotina_feitos').select('rotina_id, dia, usuario_id').gte('dia', domingo).lte('dia', sabado),
+      sb.from('central_rotina_feitos').select('rotina_id, dia, usuario_id').gte('dia', segunda).lte('dia', sexta),
       sb.from('central_tarefas').select('*').or(`feita_em.is.null,feita_em.gte.${hoje}T00:00:00-03:00`).order('prazo', { nullsFirst: false }).order('criado_em'),
       sb.from('central_metas').select('*').eq('mes', mes).order('atualizado_em'),
     ]);
@@ -108,13 +109,13 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     anel.t = R.total ? R.f / R.total : 0; acordar();
   }
   const fSem = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-  const ABR = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  const ABR = ['seg', 'ter', 'qua', 'qui', 'sex'];
   // Rotina da semana: painel só para consultar. Marcar como feita só no dia, pela lista de Tarefas.
   function qRotina() {
     const mine = E.rotinas.filter((r) => r.usuario_id === user.id);
     const feito = (id, dia) => (dia === hoje ? E.feitos.has(id) : E.feitosSem.some((x) => x.rotina_id === id && x.dia === dia));
     const dias = ABR.map((ab, i) => {
-      const dia = soma(domingo, i), itens = mine.filter((r) => (r.dias || []).includes(i)), eHoje = dia === hoje, passou = dia < hoje;
+      const dia = soma(segunda, i), itens = mine.filter((r) => (r.dias || []).includes(i + 1)), eHoje = dia === hoje, passou = dia < hoje;
       const lis = itens.map((r) => {
         const on = feito(r.id, dia), falta = passou && !on;
         const ic = on ? `<span class="rs-ic feito" title="Feita">${svg(IC.check, 13)}</span>` : falta ? `<span class="rs-ic falhou" title="Não foi feita">${svg(IC.x, 12)}</span>` : `<span class="rs-ic" aria-hidden="true"></span>`;
@@ -123,7 +124,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       return `<li class="rs-dia${eHoje ? ' hoje' : ''}${passou ? ' passou' : ''}"><div class="rs-d"><b>${ABR[i]}</b><span>${dataDe(dia).getUTCDate()}</span></div>` +
         (itens.length ? `<ul class="rs-itens">${lis}</ul>` : `<p class="rs-nada">Sem rotina</p>`) + `</li>`;
     }).join('');
-    const faixa = `${fSem.format(dataDe(domingo)).replace('.', '')} a ${fSem.format(dataDe(sabado)).replace('.', '')}`;
+    const faixa = `${fSem.format(dataDe(segunda)).replace('.', '')} a ${fSem.format(dataDe(sexta)).replace('.', '')}`;
     return `<section class="card md-rsem" aria-label="Rotina da semana"><div class="qcab"><span class="ico">${svg(IC.rotina)}</span><h2>Rotina da semana</h2><span class="rs-faixa">${esc(faixa)}</span><button class="ibtn p" type="button" data-editar="${user.id}" aria-label="Editar minha rotina" title="Editar minha rotina">${svg(IC.lapis)}</button></div>` +
       (mine.length ? `<ol class="rs-lista">${dias}</ol><p class="rs-dica">Para marcar como feita, use a lista de Tarefas no próprio dia.</p>` : `<div class="md-vazio listrado"><p>Você ainda não montou sua rotina.</p><button class="btn sec" type="button" data-editar="${user.id}">Montar rotina</button></div>`) + '</section>';
   }
@@ -276,7 +277,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     const falha = (m) => { erro.hidden = false; erro.textContent = m; };
     const pinta = () => {
       const l = E.rotinas.filter((r) => r.usuario_id === uid);
-      lista.innerHTML = l.length ? l.map((r) => `<li><span class="tx">${esc(r.titulo)}</span><span class="md-dias" role="group" aria-label="Dias da semana">${DIAS.map((x, i) => `<button type="button" data-r="${r.id}" data-d="${i}" class="${r.dias.includes(i) ? 'on' : ''}" aria-pressed="${r.dias.includes(i)}" aria-label="${DIAS_N[i]}">${x}</button>`).join('')}</span><button class="md-x" type="button" data-tira="${r.id}" aria-label="Remover item">${svg(IC.x, 14)}</button></li>`).join('') : '<li class="md-vazio"><p>Nenhum item ainda.</p></li>';
+      lista.innerHTML = l.length ? l.map((r) => `<li><span class="tx">${esc(r.titulo)}</span><span class="md-dias" role="group" aria-label="Dias da semana">${DIAS.map((x, i) => (i === 0 || i === 6) ? '' : `<button type="button" data-r="${r.id}" data-d="${i}" class="${r.dias.includes(i) ? 'on' : ''}" aria-pressed="${r.dias.includes(i)}" aria-label="${DIAS_N[i]}">${x}</button>`).join('')}</span><button class="md-x" type="button" data-tira="${r.id}" aria-label="Remover item">${svg(IC.x, 14)}</button></li>`).join('') : '<li class="md-vazio"><p>Nenhum item ainda.</p></li>';
     };
     pinta();
     lista.addEventListener('click', async (ev) => {
@@ -294,7 +295,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     });
     d.querySelector('#md-rot-nova').addEventListener('submit', async (ev) => {
       ev.preventDefault(); const t = d.querySelector('#md-rot-t'), titulo = t.value.trim(); if (!titulo) return; t.value = ''; erro.hidden = true;
-      const { data, error } = await sb.from('central_rotinas').insert({ usuario_id: uid, titulo, dias: [1, 2, 3, 4, 5, 6], ordem: E.rotinas.filter((r) => r.usuario_id === uid).length }).select().single();
+      const { data, error } = await sb.from('central_rotinas').insert({ usuario_id: uid, titulo, dias: [1, 2, 3, 4, 5], ordem: E.rotinas.filter((r) => r.usuario_id === uid).length }).select().single();
       if (error || !data) return falha('Não consegui adicionar o item.');
       E.rotinas.push(data); pinta(); t.focus();
     });

@@ -471,7 +471,7 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 
 /* semana em 7 colunas (computador); no celular volta a ser lista */
 @media (min-width:900px){
-  .rs-lista{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--e2)}
+  .rs-lista{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--e2)}
   .rs-dia{flex-direction:column;gap:var(--e3);padding:var(--e3);align-items:stretch}
   .rs-dia.hoje{box-shadow:inset 0 3px 0 var(--destaque)}
   .rs-d{width:auto;flex-direction:row;align-items:baseline;gap:6px}
@@ -484,3 +484,9 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 @media (min-width:900px){.md-cols{align-items:stretch}}
 @media (max-width:899px){.md-esq .md-metas{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:520px){.md-rsem .rs-faixa{display:none}.md-rsem .qcab h2{white-space:nowrap}.md-eqbt .tag{display:none}.md-eq.on .md-eqbt .tag{display:none}}
+/* Tarefas: cada item é um cartão separado */
+.md-tarefas .md-lista{gap:var(--e2)}
+.md-tarefas .md-lista li{min-height:56px;padding:0 var(--e3) 0 var(--e4);border:0;border-radius:16px;background:var(--elevado);transition:background var(--t-medio),box-shadow var(--t-medio)}
+.md-tarefas .md-lista li:last-child{border:0}
+.md-tarefas .md-lista li:has(.md-chk.on){background:transparent;box-shadow:inset 0 0 0 1px var(--borda)}
+.md-tarefas .md-lista .md-chk{padding:var(--e3) 0}
