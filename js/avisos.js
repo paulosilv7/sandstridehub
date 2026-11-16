@@ -2,7 +2,6 @@
 export const TIPOS = [
   ['tarefas', 'Tarefas', 'Quando uma tarefa for passada para você ou alguém alterar a sua.'],
   ['resumo', 'Resumo da manhã', 'Às 8h: o que vence hoje e o que está atrasado.'],
-  ['chats', 'Chats', 'Quando a Sandy não resolve e um cliente espera uma pessoa.'],
   ['devolucoes', 'Devoluções vencendo', 'No resumo da manhã: devoluções que vencem hoje.'],
   ['metas', 'Meta batida', 'Quando a meta do mês ou a meta de lucro do dia é alcançada.'],
 ];
