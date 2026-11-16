@@ -44,6 +44,8 @@ async function rodar() {
     ...pend.slice(0, 15).map((c: any) => `• ${esc(c.lojas.apelido)} · ${esc(c.pedido)}`),
     "", `Prazos nas próximas 24 h (abertos): ${abertosUrgentes}`, vencidos ? `⚠️ Abertos com prazo vencido: ${vencidos}` : "Abertos com prazo vencido: 0",
     sync?.[0]?.atualizado_em ? `Última atualização de qualquer caso: ${new Date(sync[0].atualizado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}` : null];
+  const { data: liga } = await admin.from("devol_config").select("valor").eq("chave", "telegram_devolucoes").maybeSingle();
+  if (liga?.valor !== "true") return { lidos, falhas, pendentes: pend.length, abertosUrgentes, vencidos, telegram: "desligado" };
   const { data: cfg } = await admin.from("configuracoes").select("valor").eq("chave", "telegram_chat_id").maybeSingle();
   const tok = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
   if (cfg?.valor && tok) await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: cfg.valor, text: linhas.filter((l) => l !== null).join("\n"), parse_mode: "HTML" }) }).catch(() => null);
