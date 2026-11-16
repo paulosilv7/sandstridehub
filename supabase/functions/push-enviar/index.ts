@@ -40,10 +40,11 @@ async function chaves() {
 }
 
 
-// textos editáveis: {variavel} é trocada pelo valor; separadores " · " que ficarem soltos são removidos
+// textos editáveis: {variavel} é trocada pelo valor; separadores " · " soltos são removidos e cada trecho começa com maiúscula
 async function texto(tipo: string, v: Record<string, string>): Promise<{ titulo: string; corpo: string }> {
   const { data } = await supabase.from("push_textos").select("titulo, corpo").eq("tipo", tipo).maybeSingle();
-  const r = (t: string) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "").replace(/(\s*·\s*){2,}/g, " · ").replace(/^\s*·\s*|\s*·\s*$/g, "").replace(/\s+/g, " ").trim();
+  const r = (t: string) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "").replace(/(\s*·\s*){2,}/g, " · ").replace(/^\s*·\s*|\s*·\s*$/g, "").replace(/\s+/g, " ").trim()
+    .replace(/(^|·\s*)([^\p{L}\p{N}]*?)(\p{Ll})/gu, (_m, a, b, c) => a + b + c.toUpperCase()); // cada trecho começa com maiúscula
   return { titulo: r(data?.titulo ?? "") || "Sandstride", corpo: r(data?.corpo ?? "") };
 }
 const amanhaBR = () => new Date(new Date(hojeBR() + "T12:00:00Z").getTime() + 86400_000).toISOString().slice(0, 10);
