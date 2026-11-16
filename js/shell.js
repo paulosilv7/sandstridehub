@@ -16,7 +16,7 @@ export const APPS = [
   { id: 'devolucoes', nome: 'Devoluções', href: 'devolucoes/', d: '<path d="M12 3 4 6v5c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-3Zm-3 9 2.5 2.5L15.5 9.5"/>' },
   { id: 'fornecedores', nome: 'Fornecedores', href: 'fornecedores/', usuarios: ADMINS_FINANCEIRO, d: '<path d="M4 21V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v16M2 21h20M8 7h5M8 11h5M8 15h2m7-5h3v11M8 21v-3h5v3"/>' },
   { id: 'financeiro', nome: 'Financeiro', href: 'financeiro/', usuarios: ADMINS_FINANCEIRO, d: '<path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v2M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3M3 7a2 2 0 0 0 2 2h14a1 1 0 0 1 1 1v3m0 3h-4a1.5 1.5 0 0 1 0-3h4v3Z"/>' },
-  { id: 'ads', nome: 'Gestor de Ads', breve: true, d: '<path d="M4 20V10m6 10V4m6 16v-7m5 7H3"/>' },
+  { id: 'ads', nome: 'Gestor de Ads', href: 'ads/', usuarios: ADMINS_FINANCEIRO, d: '<path d="M4 20V10m6 10V4m6 16v-7m5 7H3"/>' },
 ];
 export const GRUPOS = [['Vender', ['lucro', 'precificacao', 'ads']], ['Atender', ['chat', 'devolucoes']], ['Operar', ['estoque', 'financeiro', 'fornecedores']]];
 const IC = {

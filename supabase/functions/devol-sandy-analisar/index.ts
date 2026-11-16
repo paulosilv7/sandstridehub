@@ -6,6 +6,7 @@
 // ECONOMIA DE TOKENS: se o número informado já acha o caso, não lê a etiqueta nas fotos; em nova análise do mesmo lote, reaproveita a etiqueta e a leitura do estado das fotos já feitas.
 // v10: o nome lido na etiqueta é o do REMETENTE (o cliente que devolve); nomes da equipe/loja (destinatário) são descartados.
 // v11: a leitura das fotos (estado) também recebe as regras 'Detalhe do modelo' (detalhes de outra cor que são de fábrica), para não tomar o desenho do modelo por erro de cor.
+// v12: sem 'pedir informação' (só contestar ou aceitar); ao contestar contra a recomendação, a instrução escrita pelo dono (instrucao_equipe) vira a base do relato.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 

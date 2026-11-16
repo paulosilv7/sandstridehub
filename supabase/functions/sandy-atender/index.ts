@@ -339,7 +339,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
         await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo };
       }
     }
-    // Já acolheu este cliente nas últimas 24 h? Então a equipe acompanha o caso: a Sandy só responde cordialmente ao que não pedir nada novo.
+    // Já acolheu este cliente (últimos 30 dias)? Então a equipe acompanha o caso: a Sandy só responde cordialmente ao que não pedir nada novo.
     const { count: acolhimentos } = await supabase.from("sandy_registros").select("id", { count: "exact", head: true })
       .eq("conversa_id", conversaId).eq("decisao", "respondeu").like("motivo", "[acolhimento]%").gt("criado_em", new Date(Date.now() - 30 * 24 * 3600_000).toISOString());
     // Também vale quando o texto de acolhimento já aparece nas mensagens da loja (mesmo sem registro da Sandy).
