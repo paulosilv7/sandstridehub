@@ -25,6 +25,7 @@ const IC = {
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   sair: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   lado: '<path d="M4 4h16v16H4zM9 4v16"/>',
+  grade: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
   engrenagem: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
 };
 const TEMA_CH = 'sandstride-tema', MENU_CH = 'sandstride-menu';
@@ -71,7 +72,19 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   const favs = central && !subs.length ? ['lucro', 'chat', 'devolucoes', 'financeiro'].map((id) => APPS.find((a) => a.id === id)).filter((a) => a && pode(a)) : [];
   const barra = `<nav class="sh-barra-m" aria-label="Atalhos"><div class="sh-barra"><a href="${url('')}" aria-label="Central"${central && !subs.length ? ' aria-current="page"' : ''}>${ic(IC.casa)}<span>Central</span></a>` +
     favs.map((a) => `<a href="${url(a.href)}" aria-label="${esc(a.nome)}">${ic(a.d)}<span>${esc(a.nome)}</span></a>`).join('') +
-    subs.map((x, i) => `<button type="button" data-sub="${i}" aria-label="${esc(x.rotulo)}">${ic(x.d)}<span>${esc(x.rotulo)}</span><b class="sh-selo" hidden></b></button>`).join('') + '</div></nav>';
+    subs.map((x, i) => `<button type="button" data-sub="${i}" aria-label="${esc(x.rotulo)}">${ic(x.d)}<span>${esc(x.rotulo)}</span><b class="sh-selo" hidden></b></button>`).join('') +
+    `<button type="button" id="shMais" class="sh-mais" aria-label="Todas as ferramentas" aria-haspopup="dialog" aria-expanded="false">${ic(IC.grade)}<span>Ferramentas</span></button></div></nav>`;
+  // folha com todas as ferramentas (celular): garante o caminho para qualquer tela, mesmo quando a barra mostra só as abas da ferramenta atual
+  const linkF = (a) => a.breve
+    ? `<span class="sh-fi sh-off">${ic(a.d)}<span>${esc(a.nome)}</span><em>Em breve</em></span>`
+    : `<a class="sh-fi" href="${url(a.href)}"${a.id === ativo ? ' aria-current="page"' : ''}>${ic(a.d)}<span>${esc(a.nome)}</span></a>`;
+  const gruposF = GRUPOS.map(([nome, ids]) => {
+    const h = ids.map((id) => APPS.find((x) => x.id === id)).filter((x) => x && (x.breve || pode(x))).map(linkF).join('');
+    return h ? `<div class="sh-fg">${nome}</div>${h}` : '';
+  }).join('');
+  const folha = `<div class="sh-folha" id="shFolha" hidden><div class="sh-fundo" data-fecha></div><div class="sh-painel" role="dialog" aria-modal="true" aria-label="Ferramentas"><div class="sh-alca" aria-hidden="true"></div>` +
+    `<a class="sh-fi" href="${url('')}"${central ? ' aria-current="page"' : ''}>${ic(IC.casa)}<span>Central</span></a>${gruposF}` +
+    `<a class="sh-fi" href="${url('configuracoes/')}"${cfg ? ' aria-current="page"' : ''}>${ic(IC.engrenagem)}<span>Configurações</span></a></div></div>`;
 
   // envolve o conteúdo existente sem recriá-lo (os ouvintes e ids da ferramenta continuam valendo)
   const app = document.createElement('div'); app.className = 'sh-app';
@@ -85,6 +98,19 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   app.appendChild(col);
   document.body.prepend(app);
   document.body.insertAdjacentHTML('beforeend', barra);
+  document.body.insertAdjacentHTML('beforeend', folha);
+  {
+    const fl = document.getElementById('shFolha'), bt = document.getElementById('shMais');
+    const abre = (v) => {
+      fl.hidden = !v; bt.setAttribute('aria-expanded', v ? 'true' : 'false');
+      requestAnimationFrame(() => fl.classList.toggle('on', v));
+      if (v) { const f = fl.querySelector('.sh-fi[href]'); if (f) f.focus({ preventScroll: true }); } else bt.focus({ preventScroll: true });
+    };
+    bt.addEventListener('click', () => abre(fl.hidden));
+    fl.addEventListener('click', (ev) => { if (ev.target.closest('[data-fecha]')) abre(false); });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !fl.hidden) abre(false); });
+    window.addEventListener('hashchange', () => { if (!fl.hidden) abre(false); });
+  }
   document.body.classList.add('sh-com');
 
   // subitens acionam os botões que a ferramenta já tem
