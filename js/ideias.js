@@ -2,6 +2,7 @@
 // que propõe meta, tarefas e prioridade; a pessoa aprova item por item.
 // Componentes (biblioteca de motions): Prompt box, Goo thinking, Streaming reply (designbookmark.com, molas iguais)
 // e Tool approval (Kokonut UI, MIT) refeitos em JavaScript puro com as cores do sistema.
+import { novoEstado, chipsResp, alternaResp, donosDe } from './responsaveis.js';
 import { S, ajustar, passo, parada, limitar, registrar, acordar, depois, cancelar } from './molas.js';
 import { esc, svg, IC, dataDe, fCurto, valor } from './meudia.js';
 import { base } from './gestao.js';
@@ -278,33 +279,34 @@ export async function montarCaixaIdeias(ctx) {
     limpaFio(); if (E.aberta && E.aberta !== i.id) { const ant = ideiaDe(E.aberta); fechaSlot(E.aberta); E.aberta = null; if (ant) pintaItem(ant); }
     E.aberta = i.id; pintaItem(i);
     const slot = nos.get(i.id).querySelector('.id-slot');
-    const R = { titulo: String(i.texto).split('\n')[0].slice(0, 160), resp: user.id, prazo: '', imp: 'normal' };
+    const R = { titulo: String(i.texto).split('\n')[0].slice(0, 160), prazo: '', imp: 'normal' }, est = novoEstado(user.id);
     const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
     const pinta = () => {
       const imp = (v, r) => `<button type="button" data-iimp="${v}" class="${R.imp === v ? 'on' : ''}" aria-pressed="${R.imp === v}">${r}</button>`;
       slot.innerHTML = `<form class="id-form"><p class="id-form-t">Virar tarefa</p><label class="campo"><span>Nome da tarefa</span><input class="md-in" name="titulo" maxlength="160" autocomplete="off" value="${esc(R.titulo)}"></label>` +
-        `<div class="md-duo"><label class="campo"><span>Responsável</span><select class="md-in" name="resp">${E.equipe.map((p) => `<option value="${p.usuario_id}"${p.usuario_id === R.resp ? ' selected' : ''}>${esc(p.usuario_id === user.id ? 'Para mim' : prim(p.nome))}</option>`).join('')}<option value="todos"${R.resp === 'todos' ? ' selected' : ''}>Todos</option></select></label>` +
-        `<label class="campo"><span>Data</span><input class="md-in" name="prazo" type="date" min="${hoje}" value="${esc(R.prazo)}"></label></div>` +
+        `<div class="campo"><span>Responsáveis</span>${chipsResp(E.equipe, user.id, est, prim, esc)}</div>` +
+        `<label class="campo"><span>Data</span><input class="md-in" name="prazo" type="date" min="${hoje}" value="${esc(R.prazo)}"></label>` +
         `<div class="campo"><span>Importância</span><div class="md-imp" role="group" aria-label="Importância">${imp('baixa', 'Baixa')}${imp('normal', 'Normal')}${imp('alta', 'Alta')}</div></div>` +
         `<p class="erro" role="alert" hidden></p><div class="md-acoes"><button class="btn" type="button" data-ci="cancela">Cancelar</button><button class="btn pri" type="submit">Criar tarefa</button></div></form>`;
     };
     pinta();
     const f = () => slot.querySelector('form');
-    slot.oninput = (ev) => { const k = { titulo: 'titulo', resp: 'resp', prazo: 'prazo' }[ev.target.name]; if (k) R[k] = ev.target.value; };
+    slot.oninput = (ev) => { const k = { titulo: 'titulo', prazo: 'prazo' }[ev.target.name]; if (k) R[k] = ev.target.value; };
     slot.ondblclick = (ev) => { const d = ev.target.closest('input[type=date]'); if (d && !d.value) { d.value = hoje; R.prazo = hoje; } };
     slot.onclick = (ev) => {
       const b = ev.target.closest('button'); if (!b) return;
       if (b.dataset.iimp) { R.imp = b.dataset.iimp; pinta(); }
+      else if (b.dataset.rp) { alternaResp(est, b.dataset.rp, user.id); const t = f().elements.titulo.value, p = f().elements.prazo.value; R.titulo = t; R.prazo = p; pinta(); slot.querySelector(`[data-rp="${b.dataset.rp}"]`)?.focus(); }
       else if (b.dataset.ci === 'cancela') { slot.innerHTML = ''; slot.oninput = slot.onclick = slot.ondblclick = null; E.aberta = null; pintaItem(i); }
     };
     slot.onsubmit = async (ev) => {
       ev.preventDefault(); const titulo = R.titulo.trim(), erro = slot.querySelector('.erro');
       if (!titulo) { f().elements.titulo.focus(); return; }
-      const donos = R.resp === 'todos' ? E.equipe.map((p) => p.usuario_id) : [R.resp];
+      const donos = donosDe(est, E.equipe);
       const nova = { titulo, responsavel_id: donos[0], prazo: R.prazo || null, importancia: R.imp, criado_por: user.id };
       const { error } = await sb.from('central_tarefas').insert(donos.map((d) => ({ ...nova, responsavel_id: d })));
       if (error) { erro.hidden = false; erro.textContent = 'Não consegui criar a tarefa. Tente de novo.'; return; }
-      i.proposta = { resumo: 'Virou tarefa.', itens: [{ id: crypto.randomUUID(), tipo: 'tarefa', titulo, detalhe: '', responsavel_id: R.resp === 'todos' ? null : R.resp, prazo: nova.prazo, importancia: R.imp, estado: 'criado' }], criado_em: new Date().toISOString() };
+      i.proposta = { resumo: 'Virou tarefa.', itens: [{ id: crypto.randomUUID(), tipo: 'tarefa', titulo, detalhe: '', responsavel_id: donos.length === 1 ? donos[0] : null, prazo: nova.prazo, importancia: R.imp, estado: 'criado' }], criado_em: new Date().toISOString() };
       i.estado = 'organizada'; await salvarProposta(i);
       slot.innerHTML = ''; slot.oninput = slot.onclick = slot.onsubmit = slot.ondblclick = null; E.aberta = null;
       sincroniza(); ctx.aoCriarTarefa && ctx.aoCriarTarefa();
