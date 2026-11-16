@@ -527,3 +527,10 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .kb-card.feita>*,.md-tarefas .md-lista li:has(.md-chk.on)>*{opacity:.55}
 .kb-card.feita .md-chk .cx,.md-tarefas .md-lista li:has(.md-chk.on) .md-chk .cx{background:#5CD08A;border-color:#5CD08A;color:#0b2e1a}
 .kb-card.feita .md-chk.on .tx,.md-tarefas .md-lista li:has(.md-chk.on) .md-chk.on .tx{text-decoration-color:#5CD08A}
+
+/* rotina × tarefa avulsa no quadro */
+.kb-tipo{display:inline-flex;align-items:center;gap:4px;font-weight:500}
+.kb-tipo svg{width:12px;height:12px}
+.kb-card{position:relative;overflow:hidden}
+.kb-card.tar::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--destaque-claro)}
+.kb-card.tar:not(.feita) .kb-tipo{color:var(--destaque-claro)}

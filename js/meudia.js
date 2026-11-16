@@ -5,6 +5,7 @@ import { S, passo, parada, registrar, acordar } from './molas.js';
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const svg = (d, t = 18) => `<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 export const IC = {
+  repetir: '<path d="M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"/>',
   rotina: '<path d="M4 6.5 5.5 8 8 5M4 12.5 5.5 14 8 11M4 18.5 5.5 20 8 17M11 6.5h9M11 12.5h9M11 18.5h9"/>',
   tarefa: '<path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1ZM8 5H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2M9 13l2 2 4-4"/>',
   meta: '<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01"/>',
@@ -130,13 +131,13 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       const dia = soma(segunda, i), eHoje = dia === hoje, passou = dia < hoje;
       const cards = [
         ...mine.filter((r) => (r.dias || []).includes(i + 1)).map((r) => ({ tipo: 'Rotina', on: feito(r.id, dia), attr: `data-rot="${r.id}" data-dia="${dia}"`, titulo: r.titulo })),
-        ...minhas.filter((t) => t.prazo === dia).map((t) => ({ tipo: 'Tarefa', on: !!t.feita_em, attr: `data-tar="${t.id}"`, titulo: t.titulo, imp: t.importancia || 'normal' })),
+        ...minhas.filter((t) => t.prazo === dia).sort((a, b) => (PESO[b.importancia] ?? 1) - (PESO[a.importancia] ?? 1)).map((t) => ({ tipo: 'Tarefa', on: !!t.feita_em, attr: `data-tar="${t.id}"`, titulo: t.titulo, imp: t.importancia || 'normal' })),
       ].sort((a, b) => a.on - b.on);
       const feitas = cards.filter((c) => c.on).length;
       const lis = cards.map((c) => {
         const falta = passou && !c.on;
-        return `<li class="kb-card${c.on ? ' feita' : ''}${falta ? ' falta' : ''}"><button type="button" class="md-chk${c.on ? ' on' : ''}" ${c.attr} aria-pressed="${c.on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(c.titulo)}</span></button>` +
-          `<span class="kb-meta"><span class="kb-tipo">${c.tipo}</span>${c.imp && !c.on ? tagImp(c.imp) : ''}${falta ? '<span class="kb-falta">Não feita</span>' : ''}</span></li>`;
+        return `<li class="kb-card ${c.tipo === 'Rotina' ? 'rot' : 'tar'}${c.on ? ' feita' : ''}${falta ? ' falta' : ''}"><button type="button" class="md-chk${c.on ? ' on' : ''}" ${c.attr} aria-pressed="${c.on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(c.titulo)}</span></button>` +
+          `<span class="kb-meta"><span class="kb-tipo">${svg(c.tipo === 'Rotina' ? IC.repetir : IC.tarefa, 12)}${c.tipo === 'Rotina' ? 'Rotina' : 'Avulsa'}</span>${c.imp && !c.on ? tagImp(c.imp) : ''}${falta ? '<span class="kb-falta">Não feita</span>' : ''}</span></li>`;
       }).join('');
       return `<li class="kb-col${eHoje ? ' hoje' : ''}${passou ? ' passou' : ''}" aria-label="${DIAS_N[i + 1]}, ${dataDe(dia).getUTCDate()}"><div class="kb-cab"><b>${ABR[i]}</b><span class="kb-dia">${dataDe(dia).getUTCDate()}</span>${cards.length ? `<em class="kb-n">${feitas}/${cards.length}</em>` : ''}</div>` +
         (cards.length ? `<ul class="kb-cards">${lis}</ul>` : `<p class="kb-nada">Nada marcado</p>`) + `</li>`;
@@ -170,7 +171,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     const fimMes = fimMesISO();
     const f = { hoje: (t) => t.responsavel_id === user.id && (!t.prazo || t.prazo === hoje), atrasadas: (t) => t.responsavel_id === user.id && atrasada(t), mes: (t) => t.responsavel_id === user.id && t.prazo > hoje && t.prazo <= fimMes, equipe: (t) => t.responsavel_id !== user.id }[E.filtro];
     const ini = new Date(`${hoje}T00:00:00-03:00`).getTime();
-    const l = E.tarefas.filter((t) => f(t) && (!t.feita_em || new Date(t.feita_em).getTime() >= ini) && (E.filtro !== 'atrasadas' || !t.feita_em)).sort((a, b) => (!!a.feita_em - !!b.feita_em) || (PESO[b.importancia] || 1) - (PESO[a.importancia] || 1));
+    const l = E.tarefas.filter((t) => f(t) && (!t.feita_em || new Date(t.feita_em).getTime() >= ini) && (E.filtro !== 'atrasadas' || !t.feita_em)).sort((a, b) => (!!a.feita_em - !!b.feita_em) || ((a.prazo || hoje) < (b.prazo || hoje) ? -1 : (a.prazo || hoje) > (b.prazo || hoje) ? 1 : 0) || (PESO[b.importancia] ?? 1) - (PESO[a.importancia] ?? 1));
     const rot = E.filtro === 'hoje' ? rotinaDe(user.id).slice().sort((a, b) => E.feitos.has(a.id) - E.feitos.has(b.id)) : [];
     const lr = rot.map((r) => { const on = E.feitos.has(r.id); return `<li class="md-rotli"><button type="button" class="md-chk${on ? ' on' : ''}" data-rot="${r.id}" aria-pressed="${on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(r.titulo)}</span></button><span class="tag rot">${svg(IC.rotina, 12)}Rotina</span></li>`; });
     if (!l.length && !lr.length) return `<div class="md-vazio"><p>${{ hoje: 'Nada para hoje.', atrasadas: 'Nada atrasado.', mes: 'Nada mais para este mês.', equipe: 'A equipe não tem tarefas abertas.' }[E.filtro]}</p></div>`;
