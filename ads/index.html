@@ -284,12 +284,12 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
 <div class="veu" id="veu"><div class="janela" role="dialog" aria-modal="true" aria-labelledby="jt">
   <div class="qcab"><span class="ico" id="jIco"></span><h3 id="jt">Como lemos os números</h3></div>
   <ul>
-    <li><span id="j1"></span><span><b>ROAS e ACOS usam as vendas totais.</b> A conta é feita sobre todos os pedidos pagos da loja, com ou sem anúncio: ROAS = vendas totais ÷ gasto; ACOS = gasto ÷ vendas totais. Pedido cancelado ou não pago fica de fora, e devolução e reembolso também.</span></li>
+    <li><span id="j1"></span><span><b>ROAS e ACOS usam as vendas totais.</b> A conta é feita sobre todos os pedidos válidos da loja, com ou sem anúncio: ROAS = vendas totais ÷ gasto; ACOS = gasto ÷ vendas totais. Pedido cancelado ou não pago fica de fora, e devolução e reembolso também.</span></li>
     <li><span id="j2"></span><span><b>ROAS dos anúncios:</b> só as vendas atribuídas ao anúncio. No Mercado Livre vem direto do marketplace; pedidos são as unidades vendidas em anúncio.</span></li>
     <li><span id="j3"></span><span><b>Shopee (listrado):</b> estimativa. Vendas de anúncio multiplicadas por pedidos pagos ÷ pedidos criados no período, porque a Shopee conta pedido cancelado ou não pago.</span></li>
     <li><span id="j4"></span><span><b>Janela de atribuição:</b> é a de cada marketplace. As APIs não deixam escolher.</span></li>
     <li><span id="j5"></span><span><b>Período fecha ontem.</b> O dia de hoje ainda está acontecendo e aparece listrado no gráfico.</span></li>
-    <li><span id="j7"></span><span><b>Dois custos por pedido.</b> “Do ads” divide o gasto pelos pedidos que vieram de anúncio. “De ads por pedido” divide o gasto por todos os pedidos pagos das lojas Mercado Livre e Shopee, com ou sem anúncio, e serve de base para precificar.</span></li>
+    <li><span id="j7"></span><span><b>Dois custos por pedido.</b> “Do ads” divide o gasto pelos pedidos que vieram de anúncio. “De ads por pedido” divide o gasto por todos os pedidos válidos das lojas Mercado Livre e Shopee, com ou sem anúncio, e serve de base para precificar. Pedido válido é o que não foi cancelado; no Mercado Livre, um carrinho com vários itens conta uma vez. O TikTok Shop, o Magalu e a Shein ficam de fora, porque ainda não lemos o anúncio deles.</span></li>
     <li><span id="j6"></span><span><b>Só observa.</b> Esta tela não muda lance, orçamento nem campanha.</span></li>
   </ul>
   <button type="button" class="btn pri" id="jOk">Entendi</button>
@@ -489,7 +489,7 @@ function telaHtml(){
     '</div>'+
     '<div class="trio"><div><span>Gasto</span><b>'+(A.gasto?'<span data-n="'+A.gasto+'" data-f="brl">'+hBrl(A.gasto)+'</span>':'—')+'</b></div>'+
     '<div><span>Vendas totais pagas</span><b>'+(A.vTot?'<span data-n="'+A.vTot+'" data-f="brl">'+hBrl(A.vTot)+'</span>':'—')+'</b></div>'+
-    '<div><span>Pedidos pagos</span><b>'+(A.pagos?nf(A.pagos,0):'—')+'</b></div></div></section>';
+    '<div><span>Pedidos válidos</span><b>'+(A.pagos?nf(A.pagos,0):'—')+'</b></div></div></section>';
 
   /* métricas */
   var dias=diasDe(P,rs);
@@ -501,7 +501,7 @@ function telaHtml(){
    '<section class="card"><div class="qcab"><span class="ico">'+svg('etiqueta')+'</span><h3>Custo por pedido do ads</h3></div>'+
      '<div>'+valorN('brl',A.cac,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">gasto ÷ pedidos de anúncio</span>'+(est?tagEst('Estimativa'):'')+'</div></div>'+rodMk(mks,'cac',txtBrl)+'</section>'+
    '<section class="card"><div class="qcab"><span class="ico">'+svg('caixa')+'</span><h3>Custo de ads por pedido</h3></div>'+
-     '<div>'+valorN('brl',A.custoG,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">gasto ÷ todos os pedidos pagos</span></div></div>'+rodMk(mks,'custoG',txtBrl)+'</section>'+
+     '<div>'+valorN('brl',A.custoG,'v-quadro')+'<div class="met-rod" style="margin-top:var(--e2)"><span class="suave" style="font-size:13px">gasto ÷ todos os pedidos válidos</span></div></div>'+rodMk(mks,'custoG',txtBrl)+'</section>'+
   '</div>';
 
   /* gráfico + ranking */
