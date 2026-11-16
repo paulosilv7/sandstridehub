@@ -440,24 +440,6 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 /* Rotina da semana (só consulta) */
 .rs-faixa{font-size:13px;color:var(--suave);white-space:nowrap}
 .md-rsem .qcab .rs-faixa{margin-left:auto}
-.rs-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
-.rs-dia{display:flex;gap:var(--e4);align-items:flex-start;padding:var(--e3) var(--e3);border-radius:14px}
-.rs-dia.hoje{background:var(--elevado);box-shadow:inset 3px 0 0 var(--destaque)}
-.rs-d{flex:none;width:40px;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1}
-.rs-d b{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--suave)}
-.rs-d span{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
-.rs-dia.hoje .rs-d b{color:var(--destaque-claro)}
-.rs-dia.passou .rs-d span{color:var(--suave)}
-.rs-itens{list-style:none;margin:0;padding:0;flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding-top:2px}
-.rs-itens li{display:flex;align-items:center;gap:8px;font-size:14px;line-height:20px;min-width:0}
-.rs-itens .tx{min-width:0;overflow-wrap:anywhere}
-.rs-ic{width:18px;height:18px;border-radius:50%;flex:none;display:grid;place-items:center;border:1.5px solid var(--borda-forte,var(--borda))}
-.rs-ic.feito{background:var(--texto);border-color:var(--texto);color:var(--cartao)}
-.rs-ic.falhou{border-color:var(--atencao);color:var(--atencao)}
-.rs-itens li.feita .tx{color:var(--suave)}
-.rs-itens li.falta .tx{color:var(--suave)}
-.rs-nada{margin:0;padding-top:3px;font-size:13px;color:var(--suave)}
-.rs-dica{margin:var(--e3) var(--e3) 0;font-size:12.5px;color:var(--suave)}
 .md-rotli{display:flex;align-items:center;gap:var(--e3)}
 .tag.rot{background:var(--elevado);color:var(--suave)}
 /* Equipe hoje recolhido */
@@ -469,17 +451,6 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .md-eq.on .md-eqbt{margin-bottom:var(--e4)}
 @media (prefers-reduced-motion:reduce){.md-chev{transition:none}}
 
-/* semana em 7 colunas (computador); no celular volta a ser lista */
-@media (min-width:900px){
-  .rs-lista{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--e2)}
-  .rs-dia{flex-direction:column;gap:var(--e3);padding:var(--e3);align-items:stretch}
-  .rs-dia.hoje{box-shadow:inset 0 3px 0 var(--destaque)}
-  .rs-d{width:auto;flex-direction:row;align-items:baseline;gap:6px}
-  .rs-itens li{font-size:13px;line-height:17px;align-items:flex-start}
-  .rs-ic{width:15px;height:15px;margin-top:1px}
-  .rs-ic svg{width:11px;height:11px}
-}
-.rs-ic svg{display:block}
 .md-esq .md-metas{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (min-width:900px){.md-cols{align-items:stretch}}
 @media (max-width:899px){.md-esq .md-metas{grid-template-columns:minmax(0,1fr)}}
@@ -508,3 +479,34 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 @media (max-width:520px){.md-cod .cd-faixa{display:none}}
 /* O código do dia só serve no celular (é onde se usa com o motorista); no computador o cartão não aparece */
 @media (min-width:1000px){.md-cod,.md-cod-w{display:none}}
+
+/* Minha semana: quadro estilo Trello (coluna por dia, cartões dentro) */
+.rs-dica{margin:var(--e3) 0 0;font-size:12.5px;color:var(--suave)}
+.kb{list-style:none;margin:0;padding:0;display:flex;gap:var(--e3);overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.kb::-webkit-scrollbar{display:none}
+.kb-col{flex:0 0 78%;min-width:0;scroll-snap-align:start;display:flex;flex-direction:column;gap:var(--e2);padding:var(--e3);border-radius:18px;background:color-mix(in srgb,var(--texto) 4%,transparent)}
+.kb-col.hoje{box-shadow:inset 0 3px 0 var(--destaque)}
+.kb-cab{display:flex;align-items:baseline;gap:8px;padding:2px 4px 4px}
+.kb-cab b{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--suave)}
+.kb-col.hoje .kb-cab b{color:var(--destaque-claro)}
+.kb-dia{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.kb-col.passou .kb-dia{color:var(--suave)}
+.kb-n{margin-left:auto;font-style:normal;font-size:12px;color:var(--suave);font-variant-numeric:tabular-nums}
+.kb-cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--e2)}
+.kb-card{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:14px;background:var(--elevado);min-width:0}
+.kb-card .md-chk{flex:none;width:100%;padding:0;align-items:flex-start;font-size:14px;line-height:20px}
+.kb-card .md-chk .cx{width:20px;height:20px;border-radius:7px;margin-top:0}
+.kb-card .md-chk .cx svg{width:12px;height:12px}
+.kb-card.feita{background:transparent;box-shadow:inset 0 0 0 1px var(--borda)}
+.kb-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-left:30px;min-height:16px}
+.kb-tipo{font-size:11px;color:var(--suave)}
+.kb-falta{font-size:11px;font-weight:500;color:var(--atencao)}
+.kb-nada{margin:0;padding:6px 4px;font-size:13px;color:var(--suave)}
+@media (min-width:900px){
+  .kb{overflow:visible;scroll-snap-type:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+  .kb-col{flex:none}
+  .kb-card .md-chk{font-size:13px;line-height:18px}
+}
+/* cartões de várias linhas: o risco acompanha o texto em vez de cortar no meio */
+.kb-card .md-chk .tx::after{display:none}
+.kb-card .md-chk.on .tx{text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:var(--suave)}

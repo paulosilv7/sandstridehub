@@ -49,7 +49,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       sb.from('equipe').select('usuario_id, nome, papel, foto_path').order('nome'),
       sb.from('central_rotinas').select('*').eq('ativo', true).order('ordem').order('criado_em'),
       sb.from('central_rotina_feitos').select('rotina_id, dia, usuario_id').gte('dia', segunda).lte('dia', sexta),
-      sb.from('central_tarefas').select('*').or(`feita_em.is.null,feita_em.gte.${hoje}T00:00:00-03:00`).order('prazo', { nullsFirst: false }).order('criado_em'),
+      sb.from('central_tarefas').select('*').or(`feita_em.is.null,feita_em.gte.${hoje}T00:00:00-03:00,and(prazo.gte.${segunda},prazo.lte.${sexta})`).order('prazo', { nullsFirst: false }).order('criado_em'),
       sb.from('central_metas').select('*').eq('mes', mes).order('atualizado_em'),
       sb.from('lojas').select('id, apelido').eq('marketplace', 'mercado_livre').eq('ativa', true).order('apelido'),
       sb.from('ml_codigos_dia').select('loja_id, codigo, recebido_em').eq('dia', hoje),
@@ -117,22 +117,30 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   const fSem = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
   const ABR = ['seg', 'ter', 'qua', 'qui', 'sex'];
   // Rotina da semana: painel só para consultar. Marcar como feita só no dia, pela lista de Tarefas.
+  // "Minha semana": quadro estilo Trello. Uma coluna por dia (segunda a sexta); os cartões são os itens da rotina daquele dia
+  // e as tarefas minhas com data naquele dia. Dá para marcar em qualquer dia (adiantar); a lista de Tarefas mostra o mesmo.
   function qRotina() {
     const mine = E.rotinas.filter((r) => r.usuario_id === user.id);
-    const feito = (id, dia) => (dia === hoje ? E.feitos.has(id) : E.feitosSem.some((x) => x.rotina_id === id && x.dia === dia));
-    const dias = ABR.map((ab, i) => {
-      const dia = soma(segunda, i), itens = mine.filter((r) => (r.dias || []).includes(i + 1)), eHoje = dia === hoje, passou = dia < hoje;
-      const lis = itens.map((r) => {
-        const on = feito(r.id, dia), falta = passou && !on;
-        const ic = on ? `<span class="rs-ic feito" title="Feita">${svg(IC.check, 13)}</span>` : falta ? `<span class="rs-ic falhou" title="Não foi feita">${svg(IC.x, 12)}</span>` : `<span class="rs-ic" aria-hidden="true"></span>`;
-        return `<li class="${on ? 'feita' : falta ? 'falta' : ''}">${ic}<span class="tx">${esc(r.titulo)}</span></li>`;
+    const minhas = E.tarefas.filter((t) => t.responsavel_id === user.id && t.prazo && t.prazo >= segunda && t.prazo <= sexta);
+    const feito = (id, dia) => E.feitosSem.some((x) => x.rotina_id === id && x.dia === dia);
+    const cols = ABR.map((ab, i) => {
+      const dia = soma(segunda, i), eHoje = dia === hoje, passou = dia < hoje;
+      const cards = [
+        ...mine.filter((r) => (r.dias || []).includes(i + 1)).map((r) => ({ tipo: 'Rotina', on: feito(r.id, dia), attr: `data-rot="${r.id}" data-dia="${dia}"`, titulo: r.titulo })),
+        ...minhas.filter((t) => t.prazo === dia).map((t) => ({ tipo: 'Tarefa', on: !!t.feita_em, attr: `data-tar="${t.id}"`, titulo: t.titulo, alta: t.importancia === 'alta' })),
+      ].sort((a, b) => a.on - b.on);
+      const feitas = cards.filter((c) => c.on).length;
+      const lis = cards.map((c) => {
+        const falta = passou && !c.on;
+        return `<li class="kb-card${c.on ? ' feita' : ''}${falta ? ' falta' : ''}"><button type="button" class="md-chk${c.on ? ' on' : ''}" ${c.attr} aria-pressed="${c.on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(c.titulo)}</span></button>` +
+          `<span class="kb-meta"><span class="kb-tipo">${c.tipo}</span>${c.alta && !c.on ? '<span class="tag alta">Alta</span>' : ''}${falta ? '<span class="kb-falta">Não feita</span>' : ''}</span></li>`;
       }).join('');
-      return `<li class="rs-dia${eHoje ? ' hoje' : ''}${passou ? ' passou' : ''}"><div class="rs-d"><b>${ABR[i]}</b><span>${dataDe(dia).getUTCDate()}</span></div>` +
-        (itens.length ? `<ul class="rs-itens">${lis}</ul>` : `<p class="rs-nada">Sem rotina</p>`) + `</li>`;
+      return `<li class="kb-col${eHoje ? ' hoje' : ''}${passou ? ' passou' : ''}" aria-label="${DIAS_N[i + 1]}, ${dataDe(dia).getUTCDate()}"><div class="kb-cab"><b>${ABR[i]}</b><span class="kb-dia">${dataDe(dia).getUTCDate()}</span>${cards.length ? `<em class="kb-n">${feitas}/${cards.length}</em>` : ''}</div>` +
+        (cards.length ? `<ul class="kb-cards">${lis}</ul>` : `<p class="kb-nada">Nada marcado</p>`) + `</li>`;
     }).join('');
     const faixa = `${fSem.format(dataDe(segunda)).replace('.', '')} a ${fSem.format(dataDe(sexta)).replace('.', '')}`;
-    return `<section class="card md-rsem" aria-label="Rotina da semana"><div class="qcab"><span class="ico">${svg(IC.rotina)}</span><h2>Rotina da semana</h2><span class="rs-faixa">${esc(faixa)}</span><button class="ibtn p" type="button" data-editar="${user.id}" aria-label="Editar minha rotina" title="Editar minha rotina">${svg(IC.lapis)}</button></div>` +
-      (mine.length ? `<ol class="rs-lista">${dias}</ol><p class="rs-dica">Para marcar como feita, use a lista de Tarefas no próprio dia.</p>` : `<div class="md-vazio listrado"><p>Você ainda não montou sua rotina.</p><button class="btn sec" type="button" data-editar="${user.id}">Montar rotina</button></div>`) + '</section>';
+    return `<section class="card md-rsem" aria-label="Minha semana"><div class="qcab"><span class="ico">${svg(IC.rotina)}</span><h2>Minha semana</h2><span class="rs-faixa">${esc(faixa)}</span><button class="ibtn p" type="button" data-editar="${user.id}" aria-label="Editar minha rotina" title="Editar minha rotina">${svg(IC.lapis, 18)}</button></div>` +
+      (mine.length || minhas.length ? `<ol class="kb">${cols}</ol><p class="rs-dica">Marque aqui ou na lista de Tarefas, também para adiantar. Tarefas com data entram no dia certo.</p>` : `<div class="md-vazio listrado"><p>Nada para esta semana ainda.</p><button class="btn sec" type="button" data-editar="${user.id}">Montar rotina</button></div>`) + '</section>';
   }
   // Código de autorização do dia (Mercado Livre): chega por e-mail em cada loja e é gravado por ml-codigo-receber.
   // Sólido = código recebido; hachurado = ainda aguardando o e-mail. No fim de semana só aparece se algum código chegou.
@@ -152,7 +160,8 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   function listaTarefas() {
     const sem = soma(hoje, 7);
     const f = { hoje: (t) => t.responsavel_id === user.id && (!t.prazo || t.prazo === hoje), atrasadas: (t) => t.responsavel_id === user.id && atrasada(t), semana: (t) => t.responsavel_id === user.id && t.prazo > hoje && t.prazo <= sem, equipe: (t) => t.responsavel_id !== user.id }[E.filtro];
-    const l = E.tarefas.filter((t) => f(t) && (E.filtro !== 'atrasadas' || !t.feita_em)).sort((a, b) => (!!a.feita_em - !!b.feita_em) || (PESO[b.importancia] || 1) - (PESO[a.importancia] || 1));
+    const ini = new Date(`${hoje}T00:00:00-03:00`).getTime();
+    const l = E.tarefas.filter((t) => f(t) && (!t.feita_em || new Date(t.feita_em).getTime() >= ini) && (E.filtro !== 'atrasadas' || !t.feita_em)).sort((a, b) => (!!a.feita_em - !!b.feita_em) || (PESO[b.importancia] || 1) - (PESO[a.importancia] || 1));
     const rot = E.filtro === 'hoje' ? rotinaDe(user.id).slice().sort((a, b) => E.feitos.has(a.id) - E.feitos.has(b.id)) : [];
     const lr = rot.map((r) => { const on = E.feitos.has(r.id); return `<li class="md-rotli"><button type="button" class="md-chk${on ? ' on' : ''}" data-rot="${r.id}" aria-pressed="${on}"><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(r.titulo)}</span></button><span class="tag rot">${svg(IC.rotina, 12)}Rotina</span></li>`; });
     if (!l.length && !lr.length) return `<div class="md-vazio"><p>${{ hoje: 'Nada para hoje.', atrasadas: 'Nada atrasado.', semana: 'Nada nos próximos 7 dias.', equipe: 'A equipe não tem tarefas abertas.' }[E.filtro]}</p></div>`;
@@ -223,12 +232,15 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   function desenhar() {
     const e = E.primeira ? ' entra' : ''; let n = 0; const o = () => (E.primeira ? ` style="--o:${n++}"` : '');
     const foco = document.activeElement?.id;
+    const kbAntes = el.querySelector('.kb'); const kbX = kbAntes ? kbAntes.scrollLeft : null;
     const pA = `<div class="pg-cab${e}"${o()}><h1>${saudacao()}, ${esc(prim(eu.nome))}.</h1><p class="sub md-data">${esc(fDia.format(dataDe(hoje)))}</p></div>` +
       (E.erro ? `<p class="erro" role="alert">${svg(IC.alerta)}<span>${esc(E.erro)}</span></p>` : '') +
       `<div class="${e.trim()}"${o()}>${palco()}</div>` + (qCodigos() ? `<div class="${e.trim()} md-cod-w"${o()}>${qCodigos()}</div>` : '') + `<div class="${e.trim()}"${o()}>${qRotina()}</div>`;
     const pE = `<div class="${e.trim()}"${o()}>${qTarefas()}</div><div class="${e.trim()}"${o()}>${qMetas()}</div>`;
     const pB = (admin ? `<div class="${e.trim()}"${o()}>${qEquipe()}</div>` : '');
     el.querySelector('#md-a').innerHTML = pA; el.querySelector('#md-e').innerHTML = pE; el.querySelector('#md-b').innerHTML = pB;
+    const kb = el.querySelector('.kb');
+    if (kb && kb.scrollWidth > kb.clientWidth) { const h = kb.querySelector('.kb-col.hoje'); kb.scrollLeft = kbX !== null ? kbX : (h ? h.offsetLeft - kb.offsetLeft : 0); }
     if (foco && el.querySelector('#' + foco)) el.querySelector('#' + foco).focus();
     E.primeira = false; acordar();
   }
@@ -238,12 +250,14 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   el.addEventListener('click', async (ev) => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.dataset.rot) {
-      const id = b.dataset.rot, on = !E.feitos.has(id);
-      if (on) E.feitos.add(id); else E.feitos.delete(id);
-      marcar(b, on); const r = rotinaDe(user.id), f = r.filter((x) => E.feitos.has(x.id)).length;
-      atualizaPalco();
-      const { error } = on ? await sb.from('central_rotina_feitos').insert({ rotina_id: id, dia: hoje, usuario_id: user.id }) : await sb.from('central_rotina_feitos').delete().eq('rotina_id', id).eq('dia', hoje);
-      if (error) { if (on) E.feitos.delete(id); else E.feitos.add(id); falhou('Não consegui salvar a marcação. Tente de novo.'); } else setTimeout(desenhar, 700);
+      const id = b.dataset.rot, dia = b.dataset.dia || hoje, on = !E.feitosSem.some((x) => x.rotina_id === id && x.dia === dia);
+      const aplica = (v) => {
+        E.feitosSem = v ? [...E.feitosSem, { rotina_id: id, dia, usuario_id: user.id }] : E.feitosSem.filter((x) => !(x.rotina_id === id && x.dia === dia));
+        E.feitos = new Set(E.feitosSem.filter((x) => x.dia === hoje).map((x) => x.rotina_id));
+      };
+      aplica(on); marcar(b, on); atualizaPalco();
+      const { error } = on ? await sb.from('central_rotina_feitos').insert({ rotina_id: id, dia, usuario_id: user.id }) : await sb.from('central_rotina_feitos').delete().eq('rotina_id', id).eq('dia', dia);
+      if (error) { aplica(!on); falhou('Não consegui salvar a marcação. Tente de novo.'); } else setTimeout(desenhar, 700);
     } else if (b.dataset.tar) {
       const t = E.tarefas.find((x) => x.id === b.dataset.tar); if (!t) return;
       const antes = t.feita_em; t.feita_em = antes ? null : new Date().toISOString(); marcar(b, !!t.feita_em);
