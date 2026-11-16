@@ -20,6 +20,7 @@ async function config(chave: string): Promise<string | null> {
 }
 
 async function telegram(texto: string) {
+  if ((await config("telegram_devolucoes")) !== "true") return; // Telegram só com o relatório semanal de domingo
   const tok = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
   const { data: cfg } = await supabase.from("configuracoes").select("valor").eq("chave", "telegram_chat_id").maybeSingle();
   if (!tok || !cfg?.valor) return;

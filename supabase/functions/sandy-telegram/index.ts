@@ -11,6 +11,7 @@ const URL_BASE = Deno.env.get("SUPABASE_URL")!;
 const CHAVE_SERVICO = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const OPENAI = Deno.env.get("OPENAI_API_KEY") ?? "";
+const GROQ = Deno.env.get("GROQ_API_KEY") ?? ""; // transcrição de áudio gratuita (Whisper no plano grátis da Groq); sem a chave usa a OpenAI
 const MODELO = Deno.env.get("SANDY_MODELO") ?? "gpt-4.1-mini";
 const SITE = "https://sandstridehub.vercel.app";
 const FUNCAO = `${URL_BASE}/functions/v1/sandy-telegram`;
@@ -199,7 +200,55 @@ async function responderCliente(a: any) {
   return { enviado: true, cliente: c.cliente_nome };
 }
 
+// Tarefas da Central (tela Meu dia): uma linha por responsável, como a tela faz com "Todos".
+const semAcento = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+async function criarTarefa(a: any, quem: string) {
+  const titulo = String(a.titulo ?? "").replace(/\s+/g, " ").trim().slice(0, 160);
+  if (titulo.length < 3) return { erro: "faltou o nome da tarefa" };
+  const descricao = String(a.descricao ?? "").trim().slice(0, 4000) || null;
+  const importancia = ["baixa", "normal", "alta"].includes(a.importancia) ? a.importancia : "normal";
+  let prazo: string | null = null;
+  if (a.prazo) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(a.prazo)) || Number.isNaN(Date.parse(`${a.prazo}T12:00:00Z`))) return { erro: "prazo inválido; use AAAA-MM-DD" };
+    prazo = String(a.prazo);
+  }
+  const { data: eq } = await supabase.from("equipe").select("usuario_id, nome");
+  const pessoas = (eq ?? []).filter((e: any) => semAcento(e.nome) !== "sandy");
+  const primeiro = (n: string) => semAcento(n).split(/\s+/)[0];
+  const pedidos: string[] = (Array.isArray(a.responsaveis) ? a.responsaveis : []).map((x: any) => String(x));
+  let donos: any[] = [];
+  if (pedidos.some((x) => semAcento(x) === "todos")) donos = pessoas;
+  else if (pedidos.length) {
+    for (const nome of pedidos) {
+      const p = pessoas.find((e: any) => primeiro(e.nome) === primeiro(nome));
+      if (!p) return { erro: `não achei "${nome}" na equipe; as pessoas são: ${pessoas.map((e: any) => e.nome).join(", ")}` };
+      if (!donos.includes(p)) donos.push(p);
+    }
+  } else {
+    const eu = pessoas.find((e: any) => primeiro(e.nome) === primeiro(quem));
+    if (!eu) return { erro: `não sei quem é ${quem} na equipe; pergunte para quem é a tarefa (${pessoas.map((e: any) => e.nome).join(", ")})` };
+    donos = [eu];
+  }
+  const criadoPor = await usuarioSandy();
+  const recentes = new Date(Date.now() - 3 * 60_000).toISOString();
+  const { data: ja } = await supabase.from("central_tarefas").select("responsavel_id").eq("titulo", titulo).gte("criado_em", recentes);
+  const jaTem = new Set((ja ?? []).map((t: any) => t.responsavel_id));
+  const novas = donos.filter((d) => !jaTem.has(d.usuario_id));
+  if (!novas.length) return { criada: true, repetida: true, titulo, para: donos.map((d) => d.nome) };
+  const { error } = await supabase.from("central_tarefas").insert(novas.map((d) => ({ titulo, descricao, prazo, importancia, responsavel_id: d.usuario_id, criado_por: criadoPor })));
+  if (error) return { erro: error.message };
+  return { criada: true, titulo, para: novas.map((d) => d.nome), prazo, importancia, onde: "Central > Meu dia" };
+}
+
 const FERRAMENTAS = [
+  { type: "function", function: { name: "criar_tarefa", description: "Cria uma tarefa na Central (tela Meu dia). Use quando a equipe pedir para anotar/criar/adicionar uma tarefa, lembrete ou pendência de trabalho, por texto ou áudio.",
+    parameters: { type: "object", properties: {
+      titulo: { type: "string", description: "Nome curto e claro da tarefa, no imperativo ou como item de lista (ex.: 'Alterar fotos da Vulcstar'). Sem 'Sandy' e sem o pedido em si." },
+      descricao: { type: "string", description: "Detalhes extras ditos pela pessoa; vazio se não houver." },
+      responsaveis: { type: "array", items: { type: "string" }, description: "Primeiros nomes de quem vai fazer (ex.: ['Lucas']); ['todos'] para a equipe toda. Lista vazia = a própria pessoa que pediu." },
+      prazo: { type: "string", description: "Data AAAA-MM-DD (converta 'amanhã', 'sexta' etc. a partir de hoje); vazio se não houver prazo." },
+      importancia: { type: "string", enum: ["baixa", "normal", "alta"] },
+    }, required: ["titulo", "descricao", "responsaveis", "prazo", "importancia"], additionalProperties: false } } },
   { type: "function", function: { name: "resumo_atendimento", description: "Números do atendimento: mensagens de clientes, conversas, respostas, tempo mediano de primeira resposta, pendentes agora, decisões da Sandy.",
     parameters: { type: "object", properties: { periodo: { type: "string", enum: ["hoje", "ontem", "7dias"] } }, required: ["periodo"], additionalProperties: false } } },
   { type: "function", function: { name: "listar_pendentes", description: "Conversas esperando resposta agora, das mais antigas para as mais novas.",
@@ -223,6 +272,7 @@ async function executarFerramenta(nome: string, a: any, quem: string) {
     if (nome === "ensinar") return await ensinar(a, quem);
     if (nome === "listar_conhecimento") return await listarConhecimento();
     if (nome === "esquecer") return await esquecer(a);
+    if (nome === "criar_tarefa") return await criarTarefa(a, quem);
     if (nome === "responder_cliente") {
       const r = await responderCliente(a);
       if ((r as any).erro) await diag(`responder_cliente (${String(a.conversa_id ?? "").slice(0, 8)}): ${(r as any).erro}`);
@@ -252,6 +302,8 @@ function instrucoes(quem: string, contexto: string, lojasTxt = "") {
     "Você também recebe áudios (já transcritos) e imagens (prints, fotos de produto, de etiqueta, de conversa). Use o que vê na imagem para ajudar; se não der para ler, diga.",
     lojasTxt ? `Você atende TODAS estas lojas da empresa (nenhuma é "de outra empresa"): ${lojasTxt}. Uma conversa de qualquer uma delas é sua para responder.` : "",
     "Se responder_cliente voltar com erro, conte à equipe o erro exato que a ferramenta devolveu, sem inventar outro motivo. Não suponha que a conversa seja de outra loja.",
+    `Hoje (formato de data): ${new Date().toLocaleDateString("en-CA", { timeZone: FUSO })}.`,
+    "TAREFAS: quando pedirem para anotar/criar/adicionar uma tarefa (texto ou áudio), use criar_tarefa e confirme em UMA frase curta: o que anotou, para quem e o prazo, se houver. Sem 'responsáveis', a tarefa é de quem pediu; 'para todos' = ['todos']; 'pro Lucas' = ['Lucas']. Se a mensagem trouxer várias tarefas, crie uma por vez, cada uma com sua chamada. Escreva o título limpo (sem 'Sandy, anota tarefa'). Não pergunte nada que dê para deduzir; só pergunte se não der para saber o que é a tarefa.",
     "Assuntos fora do atendimento da loja: responda brevemente que você cuida do atendimento.",
     "Se a equipe responder a um aviso de conversa com o texto a enviar (ex.: 'responda assim: ...', 'manda isso', 'fala isso'), isso é ORDEM EXPLÍCITA: envie exatamente esse texto com responder_cliente na conversa do aviso, sem pedir confirmação nem pedir o texto de novo. Se a pessoa responder 'sim', 'pode', 'manda' ou 'isso' a uma pergunta sua, execute agora o que você propôs, usando o histórico da conversa e o conversa_id já citado; nunca pergunte de novo o que já foi dito.",
     contexto ? `CONTEXTO (mensagem a que estão respondendo): ${contexto}` : "",
@@ -299,6 +351,20 @@ async function baixarArquivo(fileId: string): Promise<Uint8Array> {
   return new Uint8Array(await r.arrayBuffer());
 }
 async function transcrever(bytes: Uint8Array, nome: string): Promise<string> {
+  // Primeiro tenta o Whisper da Groq (plano gratuito); se não houver chave ou falhar, usa a OpenAI.
+  if (GROQ) {
+    try {
+      const g = new FormData();
+      g.append("file", new Blob([bytes]), nome);
+      g.append("model", "whisper-large-v3-turbo");
+      g.append("language", "pt");
+      g.append("response_format", "json");
+      const rg = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", { method: "POST", headers: { Authorization: `Bearer ${GROQ}` }, body: g, signal: AbortSignal.timeout(45_000) });
+      const jg: any = await rg.json().catch(() => ({}));
+      if (rg.ok && String(jg.text ?? "").trim()) return String(jg.text).trim();
+      await diag(`transcrição Groq ${rg.status}: ${String(jg?.error?.message ?? "").slice(0, 160)} (usando OpenAI)`);
+    } catch (e) { await diag(`transcrição Groq falhou: ${e instanceof Error ? e.message : e} (usando OpenAI)`); }
+  }
   const f = new FormData();
   f.append("file", new Blob([bytes]), nome);
   f.append("model", "gpt-4o-mini-transcribe");
@@ -362,13 +428,15 @@ async function processar(u: any) {
   if (!usuarioBot) usuarioBot = (await telegram("getMe")).username ?? "";
   const respondeABot = msg.reply_to_message?.from?.username === usuarioBot;
   const citaSandy = (t: string) => /\bsandy\b/i.test(t) || (!!usuarioBot && t.toLowerCase().includes(`@${usuarioBot.toLowerCase()}`));
+  // Pedido de tarefa dispensa citar a Sandy: "tarefa: ...", "nova tarefa ...", "anota tarefa ...", "criar tarefa ...".
+  const ehTarefa = (t: string) => /^\s*(#\s*)?(nova\s+)?(anota(r)?|cria(r)?|adiciona(r)?|coloca(r)?|registra(r)?)?\s*(uma\s+|a\s+)?tarefa\b/i.test(semAcento(t));
   // Áudio: só transcreve se for resposta a ela ou se o áudio for curto o bastante para valer a pena conferir (até 3 min).
   if (audio && !texto && (respondeABot || Number(audio.duration ?? 0) <= 180) && Number(audio.file_size ?? 0) < 20_000_000) {
     try { texto = await transcrever(await baixarArquivo(audio.file_id), msg.voice ? "audio.ogg" : (audio.file_name ?? "audio.mp3")); }
     catch (e) { await diag(`áudio: ${e instanceof Error ? e.message : e}`); if (respondeABot) texto = "[áudio que não consegui ouvir]"; }
-    if (texto && !respondeABot && !citaSandy(texto)) return; // áudio para outra pessoa do grupo
+    if (texto && !respondeABot && !citaSandy(texto) && !ehTarefa(texto)) return; // áudio para outra pessoa do grupo
   }
-  if (!(respondeABot || citaSandy(texto))) return;
+  if (!(respondeABot || citaSandy(texto) || ehTarefa(texto))) return;
   let imagem: string | undefined;
   if (foto && Number(foto.file_size ?? 0) < 15_000_000) {
     try { imagem = `data:${foto.mime_type ?? "image/jpeg"};base64,${base64(await baixarArquivo(foto.file_id))}`; }
