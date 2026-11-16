@@ -15,6 +15,8 @@ export const IC = {
   relogio: '<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/>',
   alerta: '<path d="M12 4 2.5 20h19zM12 10v4M12 17h.01"/>',
   check: '<path d="M5 12.5 10 17 19 7"/>',
+  caixa: '<path d="M3 8 12 3l9 5v8l-9 5-9-5V8Zm0 0 9 5 9-5M12 13v8"/>',
+  copiar: '<path d="M9 9h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1ZM5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
 };
 export const DIAS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'], DIAS_N = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 export const TZ = 'America/Sao_Paulo';
@@ -33,7 +35,7 @@ function saudacao() {
 
 export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   const admin = eu.papel === 'admin';
-  const E = { equipe: [], rotinas: [], feitos: new Set(), tarefas: [], metas: [], filtro: 'hoje', eqAberta: false, feitosSem: [], primeira: true, erro: '', pop: false, aberta: new Set(), rasc: { titulo: '', resp: user.id, prazo: '', imp: 'normal' } };
+  const E = { lojasML: null, codigos: [], equipe: [], rotinas: [], feitos: new Set(), tarefas: [], metas: [], filtro: 'hoje', eqAberta: false, feitosSem: [], primeira: true, erro: '', pop: false, aberta: new Set(), rasc: { titulo: '', resp: user.id, prazo: '', imp: 'normal' } };
   const hoje = hojeISO(), dsem = dataDe(hoje).getUTCDay(), mes = hoje.slice(0, 8) + '01';
   // semana de trabalho: segunda a sexta (no fim de semana mostra a próxima)
   const segunda = dsem === 0 ? soma(hoje, 1) : dsem === 6 ? soma(hoje, 2) : soma(hoje, 1 - dsem), sexta = soma(segunda, 4);
@@ -43,13 +45,17 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   const prim = (nome) => String(nome || '').split(' ')[0];
 
   async function carregar() {
-    const [eq, ro, fe, ta, me] = await Promise.all([
+    const [eq, ro, fe, ta, me, lj, cd] = await Promise.all([
       sb.from('equipe').select('usuario_id, nome, papel, foto_path').order('nome'),
       sb.from('central_rotinas').select('*').eq('ativo', true).order('ordem').order('criado_em'),
       sb.from('central_rotina_feitos').select('rotina_id, dia, usuario_id').gte('dia', segunda).lte('dia', sexta),
       sb.from('central_tarefas').select('*').or(`feita_em.is.null,feita_em.gte.${hoje}T00:00:00-03:00`).order('prazo', { nullsFirst: false }).order('criado_em'),
       sb.from('central_metas').select('*').eq('mes', mes).order('atualizado_em'),
+      sb.from('lojas').select('id, apelido').eq('marketplace', 'mercado_livre').eq('ativa', true).order('apelido'),
+      sb.from('ml_codigos_dia').select('loja_id, codigo, recebido_em').eq('dia', hoje),
     ]);
+    // o cartão do código do dia é um extra: se não carregar, some em vez de mostrar erro na tela inteira
+    E.lojasML = lj.error || cd.error ? null : (lj.data || []); E.codigos = cd.data || [];
     E.erro = [eq, ro, fe, ta, me].some((r) => r.error) ? 'Não consegui carregar tudo. Atualize a página.' : '';
     E.equipe = eq.data || []; E.rotinas = ro.data || []; E.feitosSem = fe.data || []; E.feitos = new Set(E.feitosSem.filter((x) => x.dia === hoje).map((x) => x.rotina_id));
     E.tarefas = ta.data || []; E.metas = me.data || [];
@@ -128,6 +134,21 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     return `<section class="card md-rsem" aria-label="Rotina da semana"><div class="qcab"><span class="ico">${svg(IC.rotina)}</span><h2>Rotina da semana</h2><span class="rs-faixa">${esc(faixa)}</span><button class="ibtn p" type="button" data-editar="${user.id}" aria-label="Editar minha rotina" title="Editar minha rotina">${svg(IC.lapis)}</button></div>` +
       (mine.length ? `<ol class="rs-lista">${dias}</ol><p class="rs-dica">Para marcar como feita, use a lista de Tarefas no próprio dia.</p>` : `<div class="md-vazio listrado"><p>Você ainda não montou sua rotina.</p><button class="btn sec" type="button" data-editar="${user.id}">Montar rotina</button></div>`) + '</section>';
   }
+  // Código de autorização do dia (Mercado Livre): chega por e-mail em cada loja e é gravado por ml-codigo-receber.
+  // Sólido = código recebido; hachurado = ainda aguardando o e-mail. No fim de semana só aparece se algum código chegou.
+  function qCodigos() {
+    if (!E.lojasML || !E.lojasML.length) return '';
+    const fimSem = dsem === 0 || dsem === 6;
+    if (fimSem && !E.codigos.length) return '';
+    const hora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
+    const itens = E.lojasML.map((l) => {
+      const c = E.codigos.find((x) => x.loja_id === l.id);
+      const nome = esc(String(l.apelido).replace(/^Sandstride\s*/i, 'Loja '));
+      if (!c) return `<li class="cd-it espera"><span class="cd-loja">${nome}</span><span class="cd-esp">Aguardando o e-mail</span></li>`;
+      return `<li class="cd-it"><button type="button" class="cd-bt" data-cod="${esc(c.codigo)}" aria-label="Copiar o código da ${nome}: ${esc(c.codigo)}"><span class="cd-loja">${nome}</span><b class="cd-num">${esc(c.codigo)}</b><span class="cd-dica">${svg(IC.copiar, 14)}<span class="cd-t">Tocar para copiar</span> · chegou às ${esc(hora.format(new Date(c.recebido_em)))}</span></button></li>`;
+    }).join('');
+    return `<section class="card md-cod" aria-label="Código do dia do Mercado Livre"><div class="qcab"><span class="ico">${svg(IC.caixa)}</span><h2>Código do dia</h2><span class="cd-faixa">Coletas e devoluções · Mercado Livre</span></div><ul class="cd-lista">${itens}</ul></section>`;
+  }
   function listaTarefas() {
     const sem = soma(hoje, 7);
     const f = { hoje: (t) => t.responsavel_id === user.id && (!t.prazo || t.prazo === hoje), atrasadas: (t) => t.responsavel_id === user.id && atrasada(t), semana: (t) => t.responsavel_id === user.id && t.prazo > hoje && t.prazo <= sem, equipe: (t) => t.responsavel_id !== user.id }[E.filtro];
@@ -204,7 +225,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     const foco = document.activeElement?.id;
     const pA = `<div class="pg-cab${e}"${o()}><h1>${saudacao()}, ${esc(prim(eu.nome))}.</h1><p class="sub md-data">${esc(fDia.format(dataDe(hoje)))}</p></div>` +
       (E.erro ? `<p class="erro" role="alert">${svg(IC.alerta)}<span>${esc(E.erro)}</span></p>` : '') +
-      `<div class="${e.trim()}"${o()}>${palco()}</div><div class="${e.trim()}"${o()}>${qRotina()}</div>`;
+      `<div class="${e.trim()}"${o()}>${palco()}</div>` + (qCodigos() ? `<div class="${e.trim()}"${o()}>${qCodigos()}</div>` : '') + `<div class="${e.trim()}"${o()}>${qRotina()}</div>`;
     const pE = `<div class="${e.trim()}"${o()}>${qTarefas()}</div><div class="${e.trim()}"${o()}>${qMetas()}</div>`;
     const pB = (admin ? `<div class="${e.trim()}"${o()}>${qEquipe()}</div>` : '');
     el.querySelector('#md-a').innerHTML = pA; el.querySelector('#md-e').innerHTML = pE; el.querySelector('#md-b').innerHTML = pB;
@@ -237,6 +258,12 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     else if (b.dataset.imp) { E.rasc.imp = b.dataset.imp; desenhar(); }
     else if (b.dataset.todas) { const u = b.dataset.todas; if (E.aberta.has(u)) E.aberta.delete(u); else E.aberta.add(u); desenhar(); }
     else if (b.dataset.eq) { E.eqAberta = !E.eqAberta; desenhar(); }
+    else if (b.dataset.cod) {
+      const cod = b.dataset.cod, t = b.querySelector('.cd-t');
+      const ok = () => { if (t) { t.textContent = 'Copiado'; setTimeout(() => { if (t.isConnected) t.textContent = 'Tocar para copiar'; }, 1800); } };
+      const velho = () => { const x = document.createElement('textarea'); x.value = cod; x.setAttribute('readonly', ''); x.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(x); x.select(); try { document.execCommand('copy'); ok(); } catch (_) { /* sem permissão */ } x.remove(); };
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(cod).then(ok, velho); else velho();
+    }
     else if (b.dataset.f) { E.filtro = b.dataset.f; desenhar(); }
     else if (b.dataset.editar) janelaRotina(b.dataset.editar);
     else if (b.dataset.meta) janelaMeta(b.dataset.meta);

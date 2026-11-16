@@ -490,3 +490,19 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .md-tarefas .md-lista li:last-child{border:0}
 .md-tarefas .md-lista li:has(.md-chk.on){background:transparent;box-shadow:inset 0 0 0 1px var(--borda)}
 .md-tarefas .md-lista .md-chk{padding:var(--e3) 0}
+
+/* Código do dia (Mercado Livre): código grande e legível com o motorista na porta; toque copia */
+.md-cod .cd-faixa{margin-left:auto;font-size:12px;color:var(--suave)}
+.cd-lista{list-style:none;margin:0;padding:0;display:grid;gap:12px;grid-template-columns:1fr}
+.cd-it{min-width:0;border-radius:20px;background:var(--elevado)}
+.cd-bt{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:4px;width:100%;padding:14px 18px;border-radius:20px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cd-bt:focus-visible{outline:2px solid var(--destaque,currentColor);outline-offset:2px}
+.cd-bt:active{background:color-mix(in srgb,var(--texto) 8%,transparent)}
+.cd-loja{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--suave)}
+.cd-num{font-size:clamp(28px,9vw,34px);font-weight:600;letter-spacing:.08em;line-height:1.1;font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}
+.cd-dica{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave)}
+.cd-dica .sh-i,.cd-dica svg{flex:none}
+.cd-it.espera{display:flex;flex-direction:column;gap:4px;padding:14px 18px;background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--suave) 22%,transparent) 0 2px,transparent 2px 7px)}
+.cd-esp{align-self:flex-start;font-size:13px;font-weight:500;background:var(--cartao);padding:4px 12px;border-radius:var(--r-pilula,99px)}
+@media (min-width:700px){.cd-lista{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:520px){.md-cod .cd-faixa{display:none}}
