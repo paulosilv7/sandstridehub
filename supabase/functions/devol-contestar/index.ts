@@ -51,7 +51,7 @@ async function opcoesSp(caso: any, c: any) {
   const lista: any[] = Array.isArray(m.j?.response?.dispute_reason_list) ? m.j.response.dispute_reason_list : [];
   const aberto = ["REQUESTED", "PROCESSING", "ACCEPTED"].includes(st) && lista.length > 0;
   return {
-    aberto, situacao: st, pode_aceitar: ["REQUESTED", "PROCESSING", "ACCEPTED"].includes(st),
+    aberto, situacao: st, ja_aceita: st === "ACCEPTED", pode_aceitar: ["REQUESTED", "PROCESSING"].includes(st),
     motivos: lista.map((x: any) => ({ id: String(x.dispute_reason), rotulo: MOTIVO_SP[String(x.dispute_reason)] ?? `Motivo ${x.dispute_reason}`, exige_fotos: (x.evidence_module_list ?? []).some((e: any) => e.is_required), pede: (x.evidence_module_list ?? []).map((e: any) => e.requirement).filter(Boolean).join(" ") || "Não exige fotos.", _bruto: x })),
   };
 }
@@ -103,13 +103,14 @@ function acoesML(claim: any): string[] {
 async function opcoesML(caso: any, tk: string) {
   const c = await ml("GET", `/post-purchase/v1/claims/${caso.solicitacao_id}`, tk);
   const ac = acoesML(c.j);
-  const pode = ac.includes("return_review_fail");
+  const fechado = String(c.j?.status ?? "") === "closed" && String(c.j?.resolution?.closed_by ?? "") === "mediator";
+  const pode = ac.includes("return_review_fail") && !fechado;
   let motivos: any[] = [];
   if (pode) {
     const r = await ml("GET", `/post-purchase/v1/returns/reasons?flow=seller_return_failed&claim_id=${caso.solicitacao_id}`, tk);
     motivos = (Array.isArray(r.j) ? r.j : []).filter((x: any) => (x.apply ?? ["order"]).includes("order") && x.id !== "SRF7").map((x: any) => ({ id: String(x.id), rotulo: ROT_ML[x.id] ?? String(x.detail ?? x.name), exige_fotos: ["SRF2", "SRF4"].includes(String(x.id)), pede: ["SRF2", "SRF4"].includes(String(x.id)) ? "Exige fotos do produto recebido." : "Fotos ajudam, mas não são obrigatórias." }));
   }
-  return { aberto: pode && motivos.length > 0, situacao: String(c.j?.status ?? ""), pode_aceitar: ac.includes("return_review_ok"), motivos, acoes: ac };
+  return { aberto: pode && motivos.length > 0, fechado_ml: fechado, resolucao: c.j?.resolution ?? null, situacao: String(c.j?.status ?? ""), pode_aceitar: ac.includes("return_review_ok"), motivos, acoes: ac };
 }
 async function contestarML(caso: any, tk: string, motivo: any, texto: string, fotos: { blob: Blob; nome: string; mime: string }[]): Promise<Res & { fotos: number }> {
   const nomes: string[] = [];
@@ -192,7 +193,7 @@ Deno.serve(async (req) => {
     const segredo = req.headers.get("x-lucro-token") ?? "";
     if (segredo) {
       const { data: seg } = await admin.from("lucro_segredo").select("valor").limit(1).maybeSingle();
-      if (!seg?.valor || seg.valor !== segredo || !["opcoes", "loja"].includes(modo)) return resp({ ok: false, mensagem: "não autorizado" }, 401);
+      if (!seg?.valor || seg.valor !== segredo || !["opcoes", "loja", "status"].includes(modo)) return resp({ ok: false, mensagem: "não autorizado" }, 401);
     } else {
       const usuario = createClient(URL_, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } }, auth: { persistSession: false } });
       const { data: u } = await usuario.auth.getUser();
@@ -217,6 +218,25 @@ Deno.serve(async (req) => {
     if (!c) return resp({ ok: false, mensagem: `A conexão desta loja com o ${nomeMk} precisa ser refeita.` }, 502);
     const opcoes = () => mk === "shopee" ? opcoesSp(caso, c) : mk === "tiktok_shop" ? opcoesTT(caso, c) : opcoesML(caso, c);
 
+    if (modo === "status") {
+      // Leitura ao vivo (não envia nada): diz se o marketplace ainda oferece ações e atualiza o caso aqui.
+      if (mk === "tiktok_shop") return resp({ ok: true, marketplace: mk, aviso: "" });
+      const o: any = await opcoes();
+      let aviso = "", sit = "";
+      if (mk === "shopee") {
+        if (o.ja_aceita) { aviso = "A Shopee já registra esta devolução como aceita."; sit = "Aceita na Shopee"; }
+        else if (!o.aberto && !o.pode_aceitar) { aviso = `A Shopee já encerrou este caso (${o.situacao || "fechado"}).`; sit = "Encerrada na Shopee"; }
+      } else {
+        if (o.fechado_ml) { aviso = "O Mercado Livre já fechou este caso por decisão do mediador." + (o.resolucao?.applied_coverage ? " A loja está coberta pelo Mercado Livre." : ""); sit = "Fechada pelo Mercado Livre (mediador)"; }
+        else if (!o.aberto && !o.pode_aceitar) { aviso = "O Mercado Livre não oferece mais ação para a loja neste caso."; sit = "Sem ação para a loja no Mercado Livre"; }
+      }
+      const upd: any = { mkt_conferido_em: new Date().toISOString() };
+      if (mk === "mercado_livre") upd.acoes_loja = o.acoes ?? [];
+      if (mk === "shopee" && o.situacao) upd.tipo_origem = o.situacao;
+      if (sit) upd.situacao_mkt = sit;
+      await admin.from("devol_casos").update(upd).eq("id", caso.id);
+      return resp({ ok: true, marketplace: mk, aviso, pode_contestar: !!o.aberto, pode_aceitar: !!o.pode_aceitar, ja_aceita: !!o.ja_aceita, fechado: !!o.fechado_ml });
+    }
     if (modo === "opcoes") { const o: any = await opcoes(); o.motivos = o.motivos.map(({ _bruto, ...m }: any) => m); const cf = await cfg(); return resp({ ok: true, marketplace: mk, email_ok: mk !== "shopee" || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((cf.email_contestacao ?? "").trim()), ...o }); }
     if (!["contestar", "aceitar"].includes(modo)) return resp({ ok: false, mensagem: "Pedido inválido." }, 400);
 
@@ -231,9 +251,12 @@ Deno.serve(async (req) => {
     const op: any = await opcoes();
     if (modo === "aceitar") {
       if (mk === "tiktok_shop") return resp({ ok: false, mensagem: "No TikTok Shop, se a loja não recusar, a devolução é aprovada sozinha no prazo. Toque em Concordo para só encerrar aqui." }, 409);
+      const jaAceita = async () => { await evento(caso.id, "devolucao_aceita", { usuario: usuarioId, acao: "aceitar", http: 200, resposta: "ja_aceita_no_marketplace" }); return resp({ ok: true, mensagem: `A ${nomeMk} já tinha esta devolução aceita. Registrei aqui como aceita.` }); };
+      if (mk === "shopee" && op.ja_aceita) return await jaAceita();
       if (!op.pode_aceitar) return resp({ ok: false, mensagem: `O ${nomeMk} não oferece mais essa ação neste caso.` }, 409);
       await evento(caso.id, "contestacao_tentativa", { usuario: usuarioId, acao: "aceitar" });
       const r = mk === "shopee" ? await aceitarSp(caso, c) : await aceitarML(caso, c);
+      if (!r.ok && mk === "shopee" && /RETURN_ACCEPTED/i.test(r.erro)) return await jaAceita();
       await evento(caso.id, r.ok ? "devolucao_aceita" : "contestacao_erro", { usuario: usuarioId, acao: "aceitar", http: r.status, resposta: r.ok ? "ok" : r.erro });
       if (!r.ok) return resp({ ok: false, mensagem: `O ${nomeMk} recusou: ${r.erro}` }, 502);
       return resp({ ok: true, mensagem: `Devolução aceita no ${nomeMk}.` });
