@@ -341,8 +341,9 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
     }
     // Já acolheu este cliente nas últimas 24 h? Então a equipe acompanha o caso: a Sandy só responde cordialmente ao que não pedir nada novo.
     const { count: acolhimentos } = await supabase.from("sandy_registros").select("id", { count: "exact", head: true })
-      .eq("conversa_id", conversaId).eq("decisao", "respondeu").like("motivo", "[acolhimento]%").gt("criado_em", new Date(Date.now() - 24 * 3600_000).toISOString());
-    const jaAcolheu = (acolhimentos ?? 0) > 0;
+      .eq("conversa_id", conversaId).eq("decisao", "respondeu").like("motivo", "[acolhimento]%").gt("criado_em", new Date(Date.now() - 30 * 24 * 3600_000).toISOString());
+    // Também vale quando o texto de acolhimento já aparece nas mensagens da loja (mesmo sem registro da Sandy).
+    const jaAcolheu = (acolhimentos ?? 0) > 0 || ordem.some((m: any) => m.de === "loja" && /Sentimos muito pela situa[cç][aã]o/i.test(String(m.texto ?? "")));
     const { data: recentes } = await supabase.from("sandy_registros").select("motivo")
       .eq("conversa_id", conversaId).eq("decisao", "respondeu").gt("criado_em", new Date(Date.now() - 24 * 3600_000).toISOString());
     const count = (recentes ?? []).filter((r: any) => !String(r.motivo ?? "").startsWith("[encerramento]")).length;
