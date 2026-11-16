@@ -3,9 +3,9 @@
 //   tarefa     {tarefa_id, acao: nova|alterada, ator}   avisa o responsável
 //   meta       {meta_id}                                meta do mês batida (equipe)
 //   meta_lucro {}                                       meta de lucro do dia batida (equipe, uma vez por dia)
-//   chat       {registro_id}                            a Sandy precisa de uma pessoa (equipe)
-//   resumo     {}                                       resumo das 8h: tarefas e devoluções do dia
+//   resumo     {}                                       resumo das 8h: tarefas do dia
 //   teste      {usuario_id}                             aviso de teste para uma pessoa
+// Os textos vêm da tabela push_textos (editável em Configurações); aqui ficam só os valores que entram neles.
 // As chaves VAPID são criadas aqui na primeira chamada e ficam na tabela push_chaves (só esta função lê).
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -23,6 +23,7 @@ const hojeBR = () => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(n
 const dm = (iso: string) => iso.slice(8, 10) + "/" + iso.slice(5, 7);
 const prim = (n: string) => String(n ?? "").split(" ")[0];
 const dinheiro = (n: number) => "R$ " + Number(n).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const reais = (n: number) => "R$ " + Math.round(Number(n)).toLocaleString("pt-BR");
 const plural = (n: number, s: string, p: string) => `${n} ${n === 1 ? s : p}`;
 
 let pronto = false;
@@ -38,8 +39,18 @@ async function chaves() {
   pronto = true;
 }
 
+
+// textos editáveis: {variavel} é trocada pelo valor; separadores " · " que ficarem soltos são removidos
+async function texto(tipo: string, v: Record<string, string>): Promise<{ titulo: string; corpo: string }> {
+  const { data } = await supabase.from("push_textos").select("titulo, corpo").eq("tipo", tipo).maybeSingle();
+  const r = (t: string) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "").replace(/(\s*·\s*){2,}/g, " · ").replace(/^\s*·\s*|\s*·\s*$/g, "").replace(/\s+/g, " ").trim();
+  return { titulo: r(data?.titulo ?? "") || "Sandstride", corpo: r(data?.corpo ?? "") };
+}
+const amanhaBR = () => new Date(new Date(hojeBR() + "T12:00:00Z").getTime() + 86400_000).toISOString().slice(0, 10);
+const quando = (iso: string | null) => !iso ? "" : iso === hojeBR() ? "vence hoje" : iso === amanhaBR() ? "vence amanhã" : `vence dia ${dm(iso)}`;
+
 type Aviso = { titulo: string; corpo: string; url?: string; tag?: string };
-const CAMPO: Record<string, string> = { tarefa: "tarefas", meta: "metas", meta_lucro: "metas", chat: "chats", resumo: "resumo", devolucoes: "devolucoes" };
+const CAMPO: Record<string, string> = { tarefa: "tarefas", meta: "metas", meta_lucro: "metas", resumo: "resumo" };
 
 // manda para as pessoas indicadas (respeitando a preferência de cada uma); devolve quantos aparelhos receberam
 async function enviar(usuarios: string[], aviso: Aviso, tipo: string | null): Promise<number> {
@@ -69,12 +80,11 @@ async function tarefa(c: any) {
   const { data: t } = await supabase.from("central_tarefas").select("id, titulo, prazo, responsavel_id, importancia").eq("id", c.tarefa_id).maybeSingle();
   if (!t || t.responsavel_id === c.ator) return;
   const eq = await equipe(), ator = eq.find((p) => p.usuario_id === c.ator);
-  const quem = ator ? prim(ator.nome) : "Alguém";
-  const prazo = t.prazo ? ` · ${t.prazo === hojeBR() ? "para hoje" : "até " + dm(t.prazo)}` : "";
-  const alta = t.importancia === "alta" ? " · importância alta" : "";
-  await enviar([t.responsavel_id], c.acao === "alterada"
-    ? { titulo: "Tarefa alterada", corpo: `${quem} alterou “${t.titulo}”${prazo}`, tag: "tarefa-" + t.id }
-    : { titulo: "Nova tarefa para você", corpo: `${quem}: ${t.titulo}${prazo}${alta}`, tag: "tarefa-" + t.id }, "tarefa");
+  const alterada = c.acao === "alterada", q = quando(t.prazo);
+  const tx = await texto(alterada ? "tarefa_alterada" : "tarefa_nova", {
+    quem: ator ? prim(ator.nome) : "Alguém", tarefa: t.titulo, prazo: q, prazo_novo: q ? "agora " + q : "",
+    importancia: t.importancia === "alta" ? "⚡ alta prioridade" : "" });
+  await enviar([t.responsavel_id], { ...tx, tag: "tarefa-" + t.id }, "tarefa");
 }
 
 async function meta(c: any) {
@@ -83,7 +93,8 @@ async function meta(c: any) {
   const chave = `meta:${m.id}:${m.alvo}`;
   if ((await supabase.from("push_enviados").insert({ chave })).error) return; // já avisada
   const f = (n: number) => m.unidade === "reais" ? dinheiro(n) : m.unidade === "pct" ? `${Number(n).toLocaleString("pt-BR")}%` : Number(n).toLocaleString("pt-BR");
-  await enviar((await equipe()).map((p) => p.usuario_id), { titulo: "🎯 Meta batida!", corpo: `${m.titulo}: ${f(m.atual)} de ${f(m.alvo)}`, tag: "meta-" + m.id }, "meta");
+  const tx = await texto("meta_mes", { meta: m.titulo, atual: f(m.atual), alvo: f(m.alvo) });
+  await enviar((await equipe()).map((p) => p.usuario_id), { ...tx, tag: "meta-" + m.id }, "meta");
 }
 
 async function metaLucro() {
@@ -98,46 +109,22 @@ async function metaLucro() {
   const lucro = (res ?? []).reduce((s: number, r: any) => s + Number(r.lucro ?? 0), 0);
   if (!(alvo > 0) || lucro < alvo) return;
   if ((await supabase.from("push_enviados").insert({ chave: "meta_lucro:" + dia })).error) return;
-  await enviar((await equipe()).map((p) => p.usuario_id), { titulo: "🎯 Meta de lucro do dia batida!", corpo: `${dinheiro(lucro)} de ${dinheiro(alvo)} até agora`, url: SITE + "/lucro/", tag: "meta-lucro" }, "meta_lucro");
-}
-
-async function chat(c: any) {
-  const { data: r } = await supabase.from("sandy_registros").select("id, conversa_id, decisao, motivo").eq("id", c.registro_id).maybeSingle();
-  if (!r || !["escalou", "erro"].includes(r.decisao)) return;
-  // um aviso só por necessidade: se já avisamos desta conversa e a loja não respondeu depois, não repete
-  const { data: antes } = await supabase.from("sandy_registros").select("id, criado_em, decisao")
-    .eq("conversa_id", r.conversa_id).lt("id", r.id).gt("criado_em", new Date(Date.now() - 24 * 3600_000).toISOString()).order("id", { ascending: false }).limit(10);
-  const ant = (antes ?? []).find((x: any) => x.decisao === "escalou" || x.decisao === "erro");
-  if (ant) {
-    const { count } = await supabase.from("mensagens").select("id", { count: "exact", head: true }).eq("conversa_id", r.conversa_id).eq("de", "loja").gt("enviada_em", ant.criado_em);
-    if (!count) return;
-  }
-  const { data: cv } = await supabase.from("conversas").select("id, cliente_nome, lojas(nome)").eq("id", r.conversa_id).maybeSingle();
-  if (!cv) return;
-  const loja: any = Array.isArray(cv.lojas) ? cv.lojas[0] : cv.lojas;
-  const motivo = String(r.motivo ?? "").replace(/^\[acolhimento\]\s*/, "").slice(0, 110);
-  const erro = r.decisao === "erro";
-  await enviar((await equipe()).map((p) => p.usuario_id), {
-    titulo: erro ? "Chat: problema com a Sandy" : "Chat: cliente espera uma pessoa",
-    corpo: `${cv.cliente_nome || "Cliente"}${loja?.nome ? " · " + loja.nome : ""}${motivo ? " — " + motivo : ""}`,
-    url: `${SITE}/chat/?c=${cv.id}`, tag: "chat-" + cv.id }, "chat");
+  const tx = await texto("meta_lucro", { lucro: reais(lucro), meta: reais(alvo) });
+  await enviar((await equipe()).map((p) => p.usuario_id), { ...tx, url: SITE + "/lucro/", tag: "meta-lucro" }, "meta_lucro");
 }
 
 async function resumo() {
-  const dia = hojeBR(), ini = new Date(dia + "T00:00:00-03:00"), fim = new Date(ini.getTime() + 86400_000);
-  const [eq, { data: ab }, { data: dv }] = await Promise.all([equipe(),
-    supabase.from("central_tarefas").select("responsavel_id, prazo").is("feita_em", null).not("prazo", "is", null).lte("prazo", dia),
-    supabase.from("devol_casos").select("id").is("resolvido_em", null).is("arquivado_em", null).gte("prazo_em", ini.toISOString()).lt("prazo_em", fim.toISOString())]);
-  const nDev = (dv ?? []).length;
+  const dia = hojeBR();
+  const [eq, { data: ab }] = await Promise.all([equipe(),
+    supabase.from("central_tarefas").select("responsavel_id, prazo").is("feita_em", null).not("prazo", "is", null).lte("prazo", dia)]);
   for (const p of eq) {
     if ((await supabase.from("push_enviados").insert({ chave: `resumo:${dia}:${p.usuario_id}` })).error) continue;
     const minhas = (ab ?? []).filter((t: any) => t.responsavel_id === p.usuario_id);
     const hoje = minhas.filter((t: any) => t.prazo === dia).length, atr = minhas.filter((t: any) => t.prazo < dia).length;
-    const { data: pf } = await supabase.from("push_preferencias").select("devolucoes").eq("usuario_id", p.usuario_id).maybeSingle();
-    const dev = (pf?.devolucoes ?? true) ? nDev : 0;
-    const partes = [hoje ? `${plural(hoje, "tarefa vence", "tarefas vencem")} hoje` : "", atr ? plural(atr, "atrasada", "atrasadas") : "", dev ? `${plural(dev, "devolução vence", "devoluções vencem")} hoje` : ""].filter(Boolean);
+    const partes = [hoje ? `${plural(hoje, "tarefa", "tarefas")} para fechar` : "", atr ? plural(atr, "atrasada", "atrasadas") : ""].filter(Boolean);
     if (!partes.length) continue;
-    await enviar([p.usuario_id], { titulo: `Bom dia, ${prim(p.nome)}`, corpo: partes.join(" · "), tag: "resumo-" + dia }, "resumo");
+    const tx = await texto("resumo", { nome: prim(p.nome), itens: partes.join(" e ") });
+    await enviar([p.usuario_id], { ...tx, tag: "resumo-" + dia }, "resumo");
   }
 }
 
@@ -151,7 +138,6 @@ Deno.serve(async (req) => {
       if (c.tipo === "tarefa") await tarefa(c);
       else if (c.tipo === "meta") await meta(c);
       else if (c.tipo === "meta_lucro") await metaLucro();
-      else if (c.tipo === "chat") await chat(c);
       else if (c.tipo === "resumo") await resumo();
       else if (c.tipo === "teste") {
         const n = await enviar([String(c.usuario_id)], { titulo: "Avisos funcionando ✅", corpo: "Este aparelho vai receber os avisos do Sandstride.", tag: "teste" }, null);
