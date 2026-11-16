@@ -534,3 +534,27 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .kb-card{position:relative;overflow:hidden}
 .kb-card.tar::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--destaque-claro)}
 .kb-card.tar:not(.feita) .kb-tipo{color:var(--destaque-claro)}
+
+/* Caixa de ideias: cada ideia vira um cartão compacto (texto, situação e ações juntos) */
+.id-stream{gap:var(--e3)}
+.id-it,.id-it.meu{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"tx tx" "meta ac" "slot slot";align-items:center;column-gap:var(--e3);row-gap:6px;padding:10px 12px;border-radius:14px;background:var(--elevado);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--texto) 10%,transparent)}
+.id-bolha,.id-it.meu .id-bolha{grid-area:tx;max-width:none;padding:0;border-radius:0;background:none;color:var(--texto);font-size:14px;line-height:20px;font-weight:500}
+.id-meta{grid-area:meta;padding:0;gap:6px;min-width:0;flex-wrap:wrap}
+.id-meta .tag{font-size:11px;height:20px;padding:0 8px}
+.id-it.meu .id-meta{justify-content:flex-start}
+.id-ac,.id-it.meu .id-ac{grid-area:ac;justify-content:flex-end;gap:2px;flex-wrap:nowrap}
+.id-ac button{height:26px;padding:0 9px;font-size:12px;white-space:nowrap}
+.id-slot{grid-area:slot;min-width:0}
+.id-slot:empty{display:none}
+.id-chat{font-size:14px;line-height:20px;gap:8px}
+@media (max-width:640px){
+  .id-it,.id-it.meu{grid-template-columns:minmax(0,1fr);grid-template-areas:"tx" "meta" "ac" "slot"}
+  .id-ac,.id-it.meu .id-ac{justify-content:flex-start;flex-wrap:wrap;margin:0 -4px}
+  .id-qd{display:inline}
+}
+/* a coluna é estreita também no desktop: sempre empilhado, ações em uma linha */
+.id-it,.id-it.meu{grid-template-columns:minmax(0,1fr);grid-template-areas:"tx" "meta" "ac" "slot";row-gap:8px}
+.id-ac,.id-it.meu .id-ac{justify-content:flex-start;flex-wrap:wrap;gap:2px;margin:0 -6px}
+.id-ac button{padding:0 8px}
+.id-meta .tag{flex:none}
+@media (max-width:640px){.id-ac [data-ac=descartar]{font-size:0;width:28px;padding:0;margin-left:auto}.id-ac [data-ac=descartar]::before{content:"✕";font-size:12px}}

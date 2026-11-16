@@ -77,7 +77,7 @@ export async function montarCaixaIdeias(ctx) {
     const TAG = { nova: '<span class="tag listrado">Nova</span>', guardada: '<span class="tag">Guardada</span>', resolvida: `<span class="tag rec">${svg(IC.check)}Resolvida</span>`, descartada: '<span class="tag">Descartada</span>' };
     no.querySelector('.id-meta').innerHTML = (s === 'aprovar' ? `<span class="tag ate">${pend(i)} para aprovar</span>` : TAG[s]) +
       `<span class="id-qd">${meu ? '' : esc(prim(p?.nome)) + ' · '}${esc(i.criado_em ? fData.format(new Date(i.criado_em)).replace('.', '') : 'agora')}</span>`;
-    const A = (a, t, pri) => `<button type="button" data-ac="${a}"${pri ? ' class="pri"' : ''}>${t}</button>`;
+    const A = (a, t, pri) => `<button type="button" data-ac="${a}" aria-label="${t}"${pri ? ' class="pri"' : ''}>${t}</button>`;
     no.querySelector('.id-ac').innerHTML = !pode ? '' : s === 'descartada' ? A('reabrir', 'Reabrir') :
       (i.proposta?.resumo ? A('proposta', aberto ? 'Fechar proposta' : 'Ver proposta', s === 'aprovar') + A('organizar', 'Organizar de novo') : A('organizar', 'Organizar com IA', s === 'nova')) +
       (s === 'resolvida' ? '' : A('tarefa', 'Virar tarefa')) + (s === 'resolvida' || s === 'guardada' ? '' : A('guardar', 'Guardar')) + A('descartar', 'Descartar');
