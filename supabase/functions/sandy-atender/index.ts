@@ -152,8 +152,9 @@ const ESQUEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["acao", "resposta", "motivo", "tom", "nome", "sem_problema", "nao_serviu", "varios_produtos", "duvida_politica"],
+    required: ["acao", "resposta", "motivo", "tom", "nome", "sem_problema", "nao_serviu", "varios_produtos", "duvida_politica", "anotar_obs"],
     properties: {
+      anotar_obs: { type: "string", description: "Preencha SOMENTE quando o cliente pede troca/alteração de tamanho, cor ou modelo de um pedido que AINDA NÃO FOI DESPACHADO (você avisou que vai colocar na observação do pedido). Escreva a observação curta para a equipe, ex.: \"Trocar para o tamanho 40\". Vazio em qualquer outro caso." },
       duvida_politica: { type: "boolean", description: "true SOMENTE se o cliente faz uma pergunta informativa sobre como funciona devolução, troca ou reembolso (para onde vai o dinheiro, quando cai, se pode devolver só um item do kit) E a BASE DE CONHECIMENTO tem a resposta. Vale também para perguntas sobre o andamento ou os próximos passos de uma devolução, reembolso ou cancelamento já em curso. false se a base não responde ou ele pede uma decisão que só uma pessoa toma." },
       varios_produtos: { type: "boolean", description: "true se o cliente comprou mais de um produto (ele diz que comprou dois ou mais itens, ou os dados do pedido mostram mais de um). false se for um produto só ou não der para saber." },
       nao_serviu: { type: "boolean", description: "true SOMENTE se o cliente recebeu o produto que pediu (mesmo modelo, cor e tamanho do pedido, sem defeito) mas ele não serviu: ficou grande, pequeno ou apertado, ou quer trocar de número ou devolver por isso. false se disser que veio tamanho/modelo diferente do pedido, defeito, produto errado ou danificado." },
@@ -187,11 +188,12 @@ function instrucoes(ctx: any): string {
     "15. DÚVIDA SOBRE COMO FUNCIONA (devolução, troca, reembolso): se o cliente apenas pergunta como funciona (para onde vai o reembolso, quando cai, se pode trocar ou devolver só um par de um kit) e a BASE DE CONHECIMENTO responde, marque duvida_politica=true e use acao=responder, seguindo a base. Se a base não responder, ou o cliente pedir uma decisão que só uma pessoa toma (exceção, reembolso parcial, indenização), duvida_politica=false e escale ou acolha conforme as regras acima.",
     "16. ACOMPANHAMENTO: se a loja já acolheu o cliente ou ele já iniciou uma devolução, reembolso ou cancelamento, continue ao lado dele. Responda dúvidas sobre andamento, prazos, etiqueta, postagem e reembolso usando a base (marque duvida_politica=true), com empatia e sem repetir o que já foi dito. Se ele estiver irritado, reconheça o incômodo antes de orientar. Escale só se ele pedir algo que só uma pessoa decide ou se a base não tiver a resposta.",
     "17. DEVOLUÇÃO, REEMBOLSO OU TROCA NO APP DO MARKETPLACE (cliente diz que tentou e o app negou, deu erro, o prazo acabou, só aparece reembolso mas ele quer troca, a solicitação foi recusada): isso é decidido e processado pelo próprio marketplace, e a loja não tem controle. Se a BASE DE CONHECIMENTO tiver orientação para esse caso (ex.: direcionar ao atendimento do marketplace com passo a passo), use acao=responder, marque duvida_politica=true e siga a base: empatia, explicar que o processo é do marketplace e orientar a falar com o atendimento dele. Isto vale mesmo que a regra 3 cite troca. Não prometa troca, reembolso nem exceção de prazo. Escale só se ele pedir uma decisão que só uma pessoa da loja toma.",
+    "18. TROCA DE TAMANHO, COR OU MODELO DEPOIS DA COMPRA (pedido feito, o cliente quer outro número, cor ou modelo): olhe \"Pedido já despachado\" nos dados. Se SIM: tranquilize e oriente a devolução pelo marketplace, seguindo a base (a troca direta não existe; ele devolve e, se quiser, compra de novo) e marque duvida_politica=true. Se NÃO (ainda não enviado): diga com simpatia que vamos colocar a alteração na observação do pedido, que a equipe fará o possível para separar já com a mudança, e preencha anotar_obs com a alteração pedida (ex.: \"Trocar tamanho para 40\"). Só preencha anotar_obs se o cliente disse claramente o que quer (número/cor/modelo); se faltar, pergunte qual. Se for \"desconhecido\", pergunte nada de prazo e escale. Nunca prometa que a troca será feita. Em kit, vale a regra da base sobre kits.",
     "11. Se os dados disserem que a loja JÁ acolheu o cliente, nunca use acao=acolher de novo e nunca repita o texto de acolhimento. Se a mensagem nova não trouxer pedido novo, responda breve e cordialmente (ex.: informar que, se decidirem seguir com a devolução, é só avisar por aqui que a equipe ajuda). Se houver dúvida nova sobre devolução, reembolso ou cancelamento, responda com a base (regras 15 e 16); escale (acao=escalar) apenas se a base não responder ou se ele pedir uma decisão que só uma pessoa toma.",
   ].join("\n");
 }
 
-async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: string; motivo: string; tom: string; nome: string; sem_problema: boolean; nao_serviu: boolean; varios_produtos: boolean; duvida_politica: boolean }> {
+async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: string; motivo: string; tom: string; nome: string; sem_problema: boolean; nao_serviu: boolean; varios_produtos: boolean; duvida_politica: boolean; anotar_obs: string }> {
   if (!OPENAI) throw new Error("OPENAI_API_KEY não cadastrada nos Segredos do Supabase");
   const base = ctx.conhecimento.length
     ? ctx.conhecimento.map((k: any) => `### ${k.titulo}\n${k.texto}`).join("\n\n")
@@ -204,6 +206,8 @@ async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: st
     ctx.situacao ? `Situação: ${ctx.situacao}` : null,
     `A loja já respondeu nesta conversa: ${ctx.jaRespondeu ? "sim" : "não"}`,
     ctx.temAnexo ? "O cliente anexou foto ou arquivo (você NÃO consegue ver a imagem; baseie-se somente no texto)." : null,
+    `Pedido já despachado: ${ctx.despachado}`,
+    ctx.proibirAcolher ? "ATENÇÃO: a loja JÁ acolheu este cliente. É PROIBIDO usar acao=acolher. Responda com a base de conhecimento (acao=responder) ou, se a base não tiver a resposta ou ele pedir uma decisão só humana, acao=escalar." : null,
     ctx.jaAcolheu ? "A loja JÁ acolheu este cliente (pedido errado/cancelamento/devolução) e a equipe acompanha o caso." : null,
   ].filter(Boolean).join("\n");
   const linha = (m: any) => `${m.de === "cliente" ? "CLIENTE" : "LOJA"}: ${m.texto}`;
@@ -234,7 +238,7 @@ async function perguntarAoModelo(ctx: any): Promise<{ acao: string; resposta: st
   const bruto = j?.choices?.[0]?.message?.content;
   const d = JSON.parse(bruto ?? "{}");
   if (!["responder", "acolher", "escalar"].includes(d.acao)) throw new Error("resposta do modelo fora do formato");
-  return { acao: d.acao, resposta: String(d.resposta ?? "").trim(), motivo: String(d.motivo ?? "").trim(), tom: d.tom === "irritado" ? "irritado" : "calmo", nome: String(d.nome ?? "").trim(), sem_problema: d.sem_problema === true, nao_serviu: d.nao_serviu === true, varios_produtos: d.varios_produtos === true, duvida_politica: d.duvida_politica === true };
+  return { acao: d.acao, resposta: String(d.resposta ?? "").trim(), motivo: String(d.motivo ?? "").trim(), tom: d.tom === "irritado" ? "irritado" : "calmo", nome: String(d.nome ?? "").trim(), sem_problema: d.sem_problema === true, nao_serviu: d.nao_serviu === true, varios_produtos: d.varios_produtos === true, duvida_politica: d.duvida_politica === true, anotar_obs: String(d.anotar_obs ?? "").trim().slice(0, 300) };
 }
 
 // ---------------------------------------------------------------------
@@ -248,6 +252,14 @@ async function escalar(conversaId: string, motivo: string, simular: boolean) {
   if (simular) return;
   await supabase.from("conversas").update({ escalada_motivo: motivo.slice(0, 300), atendida_por_ia: false }).eq("id", conversaId);
   await registrar(conversaId, "escalou", motivo, null, false);
+}
+
+// Pedido já saiu da loja? (shipped/entregue = sim; pendente/pronto para envio = não; sem dado = desconhecido)
+function despachadoDe(de: any): string {
+  const st = norm(String(de?.envio?.status ?? "")), pst = norm(String(de?.status ?? ""));
+  if (/shipped|enviado|delivered|entregue|a caminho|out_for|completed|to_confirm/.test(st) || /shipped|completed|delivered|to_confirm/.test(pst)) return "sim";
+  if (/pending|ready_to_ship|preparado|processed|buffered/.test(st) || /^(paid|unpaid|ready_to_ship|processed|pending)$/.test(pst)) return "não";
+  return "desconhecido";
 }
 
 // Verifica se o texto da Sandy é seguro de enviar.
@@ -365,6 +377,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       loja: loja.nome, marketplace: rotulo[loja.marketplace] ?? loja.marketplace,
       primeiroNome: String(conv.cliente_nome ?? "").trim().split(/\s+/)[0] || "cliente",
       produto: conv.produto_titulo, pedido, situacao: conv.situacao, jaRespondeu: !!ultimaLoja, jaAcolheu, temAnexo, conhecimento,
+      despachado: despachadoDe(de), proibirAcolher: false,
       conversaId, origemUso: simular ? "simulacao" : "atendimento",
       mensagens: ordem.filter((m: any) => m.texto).map((m: any) => ({ de: m.de, texto: String(m.texto).slice(0, 600), nova: novas.includes(m) })),
     };
@@ -392,6 +405,10 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       await registrar(conversaId, "erro", msg, null, simular);
       if (!simular) await escalar(conversaId, "A Sandy não conseguiu analisar esta conversa. Uma pessoa precisa responder.", false);
       return { ...saida, decisao: "erro", motivo: msg };
+    }
+    // Já acolheu e o modelo quis acolher de novo: pergunta mais uma vez, proibindo o acolhimento (responde com a base ou escala).
+    if (jaAcolheu && d.acao === "acolher") {
+      try { d = await perguntarAoModelo({ ...ctx, proibirAcolher: true }); } catch (_) { /* cai na regra abaixo */ }
     }
     saida.modelo = d;
     if (simular) saida.ficha = ficha ? JSON.stringify(ficha).slice(0, 700) : null;
@@ -426,7 +443,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       const motivo = `A resposta da Sandy foi barrada (${problema}). Uma pessoa precisa responder.`;
       await escalar(conversaId, motivo, simular); return { ...saida, decisao: "escalou", motivo, bloqueada: d.resposta };
     }
-    if (simular) return { ...saida, decisao: acolhendo ? "acolheria" : "responderia", resposta: d.resposta, motivo: d.motivo };
+    if (simular) return { ...saida, decisao: acolhendo ? "acolheria" : "responderia", resposta: d.resposta, motivo: d.motivo, obs: d.anotar_obs || undefined, despachado: ctx.despachado };
 
     // 3. Confere de novo antes de enviar: alguém pode ter assumido nesse meio tempo.
     const { data: agora } = await supabase.from("conversas").select("atendente_id, ultima_mensagem_de, ultima_mensagem_em").eq("id", conversaId).maybeSingle();
@@ -459,6 +476,12 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
       return { ...saida, decisao: "acolheu", resposta: d.resposta };
     }
     await supabase.from("conversas").update({ atendente_id: null, atendida_por_ia: true, escalada_motivo: null }).eq("id", conversaId);
+    // Observação do pedido (troca de tamanho/cor antes do envio): fica visível para a equipe na conversa.
+    if (d.anotar_obs && ctx.despachado !== "sim") {
+      await supabase.from("mensagens").insert({ conversa_id: conversaId, id_externo: `obs-${crypto.randomUUID()}`, de: "sistema", texto: `📝 OBS DO PEDIDO (anotada pela Sandy): ${d.anotar_obs}. Anote no pedido antes de separar.`, enviada_em: new Date().toISOString() });
+      await registrar(conversaId, "respondeu", `[obs do pedido] ${d.anotar_obs}`, d.resposta, false);
+      return { ...saida, decisao: "respondeu", resposta: d.resposta, obs: d.anotar_obs };
+    }
     await registrar(conversaId, "respondeu", d.motivo, d.resposta, false);
     return { ...saida, decisao: "respondeu", resposta: d.resposta };
   } finally {
