@@ -370,6 +370,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       `<div class="campo"><span class="rot">Responsáveis</span><div id="md-resp">${chipsResp(E.equipe, user.id, est, prim, esc)}</div></div>` +
       `<div class="td-lin"><label class="campo"><span class="rot">Data</span><input class="md-in" id="md-prazo" type="date" min="${hoje}"></label>` +
       `<div class="campo"><span class="rot">Importância</span><div class="md-imp" role="group" aria-label="Importância">${imp('baixa', 'Baixa')}${imp('normal', 'Normal')}${imp('alta', 'Alta')}</div></div></div>` +
+      `<label class="campo"><span class="rot">Descrição</span><textarea class="md-in td-desc" id="md-desc" rows="3" maxlength="4000" placeholder="Adicione uma descrição mais detalhada..."></textarea></label>` +
       `<p class="erro" role="alert" id="md-erro-n" hidden></p>` +
       `<div class="md-acoes"><button class="btn" type="button" data-fecha>Cancelar</button><button class="btn pri" type="submit" id="md-criar">Criar tarefa</button></div></form>`);
     const tit = d.querySelector('#md-titulo'), dp = d.querySelector('#md-prazo'), erro = d.querySelector('#md-erro-n'), box = d.querySelector('#md-resp');
@@ -387,7 +388,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       erro.hidden = true;
       criar.rodar(async () => {
         const donos = donosDe(est, E.equipe);
-        const linhas = donos.map((u) => ({ titulo, responsavel_id: u, prazo: R.prazo || null, importancia: R.imp, criado_por: user.id }));
+        const linhas = donos.map((u) => ({ titulo, responsavel_id: u, prazo: R.prazo || null, importancia: R.imp, descricao: d.querySelector('#md-desc').value.trim() || null, criado_por: user.id }));
         const { data: criadas, error } = await sb.from('central_tarefas').insert(linhas).select();
         if (error || !criadas?.length) { erro.hidden = false; erro.textContent = 'Não consegui criar a tarefa. Tente de novo.'; return false; }
         E.tarefas.push(...criadas); E.filtro = filtroDe(criadas.find((t) => t.responsavel_id === user.id) || criadas[0]);
