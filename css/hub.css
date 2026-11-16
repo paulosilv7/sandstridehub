@@ -633,3 +633,8 @@ body.kb-arrastando,body.kb-arrastando *{cursor:grabbing!important;-webkit-user-s
 .rs-chip{height:34px;padding:0 14px;border:0;border-radius:var(--r-pilula);background:var(--elevado);color:var(--suave);font:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background var(--t-medio),color var(--t-medio)}
 .rs-chip:hover{color:var(--texto)}.rs-chip.on{background:var(--texto);color:var(--cartao)}
 .md-dlg form#md-nova{gap:var(--e3)}
+
+/* tarefas da equipe: abrir e editar (admin) */
+.md-pend .md-pt{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;min-width:0}
+.md-pend .md-pt:hover{text-decoration:underline;text-underline-offset:3px}
+.md-pend li .md-ed{opacity:.6}.md-pend li:hover .md-ed,.md-pend li .md-ed:focus-visible{opacity:1}
