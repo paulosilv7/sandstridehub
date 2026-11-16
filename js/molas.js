@@ -105,9 +105,9 @@ export function botaoAcao(btn, { ok = 'Salvo', carregando = 'Salvando…' } = {}
       btn.disabled = true; btn.setAttribute('aria-busy', 'true'); sr.textContent = carregando; alvo('carregando');
       const ini = performance.now(); let certo = false;
       try { certo = (await fn()) !== false; } catch (e) { certo = false; }
-      const falta = 280 - (performance.now() - ini); if (falta > 0) await new Promise((res) => setTimeout(res, falta));
+      const falta = 650 - (performance.now() - ini); if (falta > 0) await new Promise((res) => setTimeout(res, falta));
       btn.removeAttribute('aria-busy');
-      if (certo) { sr.textContent = ok; alvo('sucesso'); volta = setTimeout(() => { alvo('parado'); btn.disabled = false; ocupado = false; sr.textContent = ''; }, 1800); }
+      if (certo) { sr.textContent = ok; alvo('sucesso'); volta = setTimeout(() => { alvo('parado'); btn.disabled = false; ocupado = false; sr.textContent = ''; }, 2800); }
       else { sr.textContent = ''; alvo('parado'); btn.disabled = false; ocupado = false; }
       return certo;
     },

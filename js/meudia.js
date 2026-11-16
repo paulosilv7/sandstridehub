@@ -392,7 +392,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
         const { data: criadas, error } = await sb.from('central_tarefas').insert(linhas).select();
         if (error || !criadas?.length) { erro.hidden = false; erro.textContent = 'Não consegui criar a tarefa. Tente de novo.'; return false; }
         E.tarefas.push(...criadas); E.filtro = filtroDe(criadas.find((t) => t.responsavel_id === user.id) || criadas[0]);
-        setTimeout(() => d.close(), 900); return true;
+        setTimeout(() => d.close(), 2600); return true;
       });
     });
   }
