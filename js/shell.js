@@ -99,6 +99,7 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   document.body.prepend(app);
   document.body.insertAdjacentHTML('beforeend', barra);
   document.body.insertAdjacentHTML('beforeend', folha);
+  document.body.classList.add('sh-com');
   {
     const fl = document.getElementById('shFolha'), bt = document.getElementById('shMais'), pn = fl.querySelector('.sh-painel');
     const abre = (v) => {

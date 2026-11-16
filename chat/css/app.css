@@ -415,3 +415,9 @@ select.bt2{border:0;width:auto;max-width:100%;background-image:none}
 .seg-b{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;min-height:60px;padding:8px 16px}
 .seg-n{font-size:20px;line-height:1.2;font-weight:600}
 .seg-l{font-size:12px;max-width:100%;text-overflow:clip}
+/* Celular: "Respondidos hoje" empilha rótulo e número (em linha o número escapava da borda do cartão estreito) */
+@media (max-width:700px){
+  .met{flex-direction:column;align-items:flex-start;justify-content:center;gap:10px;padding:20px}
+  .met .mh{flex:none;min-width:0}
+  .met .mv{font-size:40px;line-height:1}
+}
