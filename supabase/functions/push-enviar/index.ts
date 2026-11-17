@@ -64,6 +64,7 @@ async function enviar(usuarios: string[], aviso: Aviso, tipo: string | null): Pr
       else await diag(`falha ao enviar (${e?.statusCode ?? "?"}): ${String(e?.body ?? e?.message ?? e).slice(0, 200)}`);
     }
   }));
+  await diag(`aviso ${tipo ?? "teste"}: aceito por ${ok} de ${(subs ?? []).length} aparelho(s)`);
   return ok;
 }
 const equipe = async () => ((await supabase.from("equipe").select("usuario_id, nome")).data ?? []) as any[];
