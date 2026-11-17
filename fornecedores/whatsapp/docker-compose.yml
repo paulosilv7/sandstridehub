@@ -1,0 +1,18 @@
+# WAHA em modo SOMENTE LEITURA para os grupos de fornecedores (PC Windows da empresa, Docker Desktop).
+# O PC só faz chamadas de SAÍDA (para o Supabase). Nenhuma porta é aberta para a rede.
+# Versão do WAHA: 2026.6.1 ou mais nova (a partir dela tudo é grátis e sem limite de sessões/mídia).
+services:
+  waha:
+    image: devlikeapro/waha:latest
+    container_name: waha-fornecedores
+    restart: always                       # volta sozinho depois de queda ou reinício do Windows (com o Docker Desktop abrindo junto)
+    ports:
+      - "127.0.0.1:3000:3000"             # painel/API só neste PC (localhost)
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: NOWEB      # sem navegador: leve. Se a leitura de grupos falhar no teste, trocar por WEBJS
+      WHATSAPP_API_KEY: ${WAHA_API_KEY}   # senha da API do WAHA (arquivo .env, nunca no repositório)
+      WHATSAPP_HOOK_URL: https://imlgfmaqmzfonvbmlwpd.supabase.co/functions/v1/wa-receber
+      WHATSAPP_HOOK_EVENTS: message,message.edited,message.revoked
+      WHATSAPP_HOOK_HMAC_KEY: ${WAHA_HMAC_KEY}   # assinatura de cada envio; o Supabase confere
+    volumes:
+      - ./waha-sessions:/app/.sessions    # guarda o login do WhatsApp (não precisa ler o QR de novo ao reiniciar)
