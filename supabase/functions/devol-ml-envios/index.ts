@@ -1,4 +1,4 @@
-// Devoluções (SOMENTE LEITURA): guarda, em cada caso do Mercado Livre com revisão pendente, o número do envio da devolução
+// Devoluções (SOMENTE LEITURA): guarda, em todo caso recente (90 dias) do Mercado Livre, em qualquer situação, o número do envio da devolução
 // (o número de 11 dígitos que vai impresso na etiqueta do pacote), para a Sandy ligar o lote de fotos ao caso certo.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -29,7 +29,7 @@ async function executar() {
     const { data: cred } = await supabase.from("credenciais_lojas").select("token_acesso, expira_em").eq("loja_id", l.id).maybeSingle();
     if (!cred?.token_acesso || !cred.expira_em || new Date(cred.expira_em).getTime() - Date.now() < 60_000) continue;
     const { data: casos } = await supabase.from("devol_casos").select("id, solicitacao_id").eq("loja_id", l.id).is("envio_devolucao_id", null)
-      .not("status", "in", "(ENCERRADO,CONCILIADO)").contains("acoes_loja", ["return_review_ok"]).limit(80);
+      .gt("criado_em", new Date(Date.now() - 90 * 86_400_000).toISOString()).order("criado_em", { ascending: false }).limit(80);
     const lista = casos ?? [];
     for (let i = 0; i < lista.length; i += 6) {
       if (Date.now() - inicio > 100_000) return;
