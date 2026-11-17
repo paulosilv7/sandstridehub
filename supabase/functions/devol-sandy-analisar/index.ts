@@ -17,7 +17,7 @@ const BUCKET = "devol-provas";
 const OPENAI = Deno.env.get("OPENAI_API_KEY") ?? "";
 const MODELO = Deno.env.get("DEVOL_SANDY_MODELO") ?? "gpt-4.1";
 const MAX_FOTOS = 6;
-const ETIQUETA_V = 3;
+const ETIQUETA_V = 4;
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false, autoRefreshToken: false } });
 
 // Nomes da equipe/loja: aparecem na etiqueta como destinatário e nunca podem identificar o cliente.
@@ -67,7 +67,7 @@ const S_ETIQUETA = {
       legivel: { type: "boolean", description: "true se há etiqueta ou documento com texto legível nas fotos" },
       identificadores: { type: "array", items: { type: "object", additionalProperties: false, required: ["tipo", "valor", "confianca"],
         properties: {
-          tipo: { type: "string", enum: ["pedido", "rastreio", "solicitacao", "nome", "outro"] },
+          tipo: { type: "string", enum: ["ref_id", "pedido", "rastreio", "solicitacao", "nome", "outro"] },
           valor: { type: "string", description: "Exatamente como está impresso, sem inventar dígitos. Para tipo nome: SOMENTE o nome completo da pessoa no campo REMETENTE (quem envia o pacote de volta, o cliente). Nunca o destinatário." },
           confianca: { type: "string", enum: ["alta", "media", "baixa"] },
         } } },
@@ -201,7 +201,7 @@ async function processar(rec: any) {
       if (ident.length) resumo.etiqueta_reaproveitada = true;
       else if (imagens.length) {
         const et = await perguntar("devolucao_etiqueta", S_ETIQUETA, [
-          { role: "system", content: "Você lê etiquetas de devolução de marketplaces. Transcreva SOMENTE o que está impresso e legível nas fotos: números (pedido, rastreio, solicitação) e o NOME do CLIENTE (tipo nome). Atenção: numa etiqueta de devolução, o CLIENTE é quem aparece no campo REMETENTE (quem está enviando o pacote de volta). O campo DESTINATÁRIO é a loja que recebe: NUNCA transcreva o destinatário como nome. Os nomes Paulo Silva, Lucas Felix (Félix), Lucima Felix (Félix) e Sandstride são da loja e jamais devem ser transcritos como nome. Se não houver remetente legível, não inclua nenhum nome. Se não estiver legível, não inclua. Nunca complete nem invente dígitos ou letras." },
+          { role: "system", content: "Você lê etiquetas de devolução de marketplaces. Transcreva SOMENTE o que está impresso e legível nas fotos: números (ref_id, pedido, rastreio, solicitação). REGRA PRINCIPAL: nas etiquetas do Mercado Livre há uma linha escrita Ref. ID: seguida de um número de 11 dígitos (perto do topo, abaixo do endereço do remetente). Transcreva esse número SEMPRE, com tipo ref_id, dígito por dígito. O número impresso logo abaixo do código de barras é o rastreio. CEP, IP, códigos de rota (SJP1, XPE1, SMG10) e datas NÃO são pedido: não transcreva. Transcreva também o NOME do CLIENTE (tipo nome). Atenção: numa etiqueta de devolução, o CLIENTE é quem aparece no campo REMETENTE (quem está enviando o pacote de volta). O campo DESTINATÁRIO é a loja que recebe: NUNCA transcreva o destinatário como nome. Os nomes Paulo Silva, Lucas Felix (Félix), Lucima Felix (Félix) e Sandstride são da loja e jamais devem ser transcritos como nome. Se não houver remetente legível, não inclua nenhum nome. Se não estiver legível, não inclua. Nunca complete nem invente dígitos ou letras." },
           { role: "user", content: [{ type: "text", text: "Leia os identificadores e o nome do REMETENTE (cliente) das etiquetas e documentos nestas fotos." }, ...imagens] },
         ], 450);
         ident = (et.identificadores ?? []).map((i: any) => ({ tipo: i.tipo, valor: i.valor, confianca: i.confianca }));

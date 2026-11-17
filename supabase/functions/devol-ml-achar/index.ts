@@ -50,7 +50,7 @@ async function procurar(num: string) {
 }
 
 async function varrer() {
-  const res = { analisados: 0, dispensados: 0, fotos_apagadas: 0, com_reclamacao: 0 };
+  const res = { analisados: 0, dispensados: 0, fotos_apagadas: 0, com_reclamacao: 0, ligados: 0 };
   const { data: lotes } = await admin.from("devol_recebimentos").select("id, analise_resumo").is("caso_id", null).is("dispensado_em", null).eq("analise", "concluida")
     .gt("criado_em", new Date(Date.now() - 45 * 86_400_000).toISOString()).order("criado_em", { ascending: false }).limit(25);
   for (const r of lotes ?? []) {
@@ -62,7 +62,13 @@ async function varrer() {
     for (const n of nums) {
       const x: any = await procurar(n);
       if (!x.achou) continue;
-      if (x.reclamacoes.length || x.caso_no_hub) { res.com_reclamacao++; break; }
+      if (x.caso_no_hub) {
+        // o número era o Ref ID (envio da venda): acha o caso pelo pedido e liga o lote sozinho
+        const { error } = await admin.from("devol_recebimentos").update({ pedido_lido: x.pedido, fonte_identificacao: "Ref ID da etiqueta (pedido do envio da venda)", analise: "pendente", analise_erro: null }).eq("id", r.id).is("caso_id", null).neq("analise", "processando");
+        if (!error) res.ligados++;
+        res.com_reclamacao++; break;
+      }
+      if (x.reclamacoes.length) { res.com_reclamacao++; break; }
       const devolvido = /returned|not_delivered/.test(`${x.envio?.status ?? ""} ${x.envio?.substatus ?? ""}`);
       if (!devolvido) break;
       await admin.from("devol_recebimentos").update({ dispensado_em: new Date().toISOString(), dispensado_motivo: `Pacote devolvido pela transportadora, sem reclamação (pedido ${x.pedido}, ${x.loja})` }).eq("id", r.id).is("caso_id", null);
