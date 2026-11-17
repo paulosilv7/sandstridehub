@@ -624,7 +624,7 @@ async function carregarLotes(){
   var r=await SB.from('devol_recebimentos').select('id,criado_em,descricao_equipe,rastreio,pedido_lido,identificacao,analise,analise_erro,devol_anexos(count)').order('criado_em',{ascending:false}).limit(8);
   S.lotes=r.data||[];
   try{
-    var o=await SB.from('devol_recebimentos').select('id,criado_em,descricao_equipe,analise_resumo,devol_anexos(caminho,tipo,estado)').is('caso_id',null).eq('analise','concluida').order('criado_em',{ascending:false}).limit(150);
+    var o=await SB.from('devol_recebimentos').select('id,criado_em,descricao_equipe,analise_resumo,devol_anexos(caminho,tipo,estado)').is('caso_id',null).is('dispensado_em',null).eq('analise','concluida').order('criado_em',{ascending:false}).limit(150);
     S.orfaos=o.data||[];
     var caminhos=[];S.orfaos.forEach(function(x){var f=(x.devol_anexos||[]).filter(function(a){return a.tipo!=='video'&&a.estado!=='excluido';})[0];x._foto=f?f.caminho:null;if(f)caminhos.push(f.caminho);});
     S.orfUrls={};
@@ -1523,8 +1523,29 @@ async function ligarLote(id){
     if(S.ligar)delete S.ligar[id];
     toast('Ligado ao pedido '+r.data+'. A Sandy analisa em instantes.');
     await carregarLotes();
-  }catch(e){toast((e&&e.message)||'Não consegui ligar');}
+  }catch(e){
+    var msg=(e&&e.message)||'Não consegui ligar';
+    if(/Nenhum caso/i.test(msg)){await buscarNoML(id,num);}else toast(msg);
+  }
   finally{S.ligando=false;}
+}
+async function buscarNoML(id,num){
+  toast('Não achei no hub. Procurando no Mercado Livre…');
+  var d=null;
+  try{var r=await SB.functions.invoke('devol-ml-achar',{body:{numero:num}});d=r.data||null;}catch(e){d=null;}
+  if(!d||!d.ok||!d.achou){toast('Não achei esse número nem no hub nem no Mercado Livre. Confira o número.');return;}
+  var env=d.envio||{},rec=d.reclamacoes||[];
+  var devolvido=/returned|not_delivered/.test(env.status+' '+env.substatus);
+  var txt='Achei no Mercado Livre ('+esc(d.loja)+'): pedido <b>'+esc(d.pedido)+'</b>'+(env.status?', envio '+esc(env.status+(env.substatus?' / '+env.substatus:'')):'')+'. ';
+  if(rec.length)txt+='Há reclamação aberta no ML ('+rec.map(function(x){return esc(x.id+' · '+x.status);}).join(', ')+'), mas o hub ainda não importou. Ela entra na próxima leitura (até 15 min).';
+  else txt+='<b>Não existe reclamação para este pedido</b>'+(devolvido?': o pacote foi devolvido pela transportadora (não entregue), então não há o que contestar.':'.');
+  var bt='<div class="row" style="gap:10px;justify-content:flex-end;margin-top:14px"><button type="button" class="btn ghost" data-r="0">Fechar</button>'+(rec.length?'':'<button type="button" class="btn" data-r="1">Tirar da lista</button>')+'</div>';
+  modalMk('<h3>Este número não é um caso</h3><p>'+txt+'</p>'+(rec.length?'':'<p>Posso tirar este lote da lista de pendentes.</p>')+bt,async function(b,m,fim){
+    b.disabled=true;
+    var x=await SB.rpc('devol_dispensar_lote',{p_rec:id,p_motivo:'Sem reclamação no ML (pedido '+d.pedido+'; envio '+(env.status||'?')+')'});
+    if(x.error){toast(x.error.message);b.disabled=false;return;}
+    fim();toast('Lote tirado da lista.');await carregarLotes();
+  });
 }
 
 /* ---------- foto ampliada ---------- */
