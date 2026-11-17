@@ -1,0 +1,30 @@
+/* Tela Pendentes do WhatsApp: segue o mesmo visual dos cartões e tabelas de Fornecedores. */
+#nav button[data-n]::after{content:attr(data-n);margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#bdcaf6;color:#1b2440;font-size:11px;font-weight:750;display:inline-flex;align-items:center;justify-content:center}
+#nav button.active[data-n]::after{background:#191a19;color:#fff}
+.wa-pagina{display:grid;gap:18px}.wa-pagina>h1,.wa-pagina>p{margin-bottom:0}
+.wa-card{background:#fff;border-radius:26px;padding:26px 28px;display:grid;gap:18px}
+.wa-card>header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.wa-card>header h2{margin:4px 0 2px}.wa-card>header small{color:#777a73}
+.wa-badge{padding:7px 12px;border-radius:999px;background:#eef1e7;color:#5c6651;font-size:11px;font-weight:700}.wa-badge.edit{background:#fff0d5;color:#79581d}
+.wa-aviso{padding:13px 16px;border-radius:14px;background:#fff0d5;color:#79581d;font-size:13px;line-height:1.55;margin:0}
+.wa-tabela{overflow:auto;border:1px solid #eeefeb;border-radius:18px}
+.wa-tabela table{width:100%;border-collapse:collapse}.wa-tabela th{background:#f8f9f6;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#93968e;padding:14px}
+.wa-tabela td{padding:12px 14px;border-top:1px solid #eeefeb;vertical-align:middle}
+.wa-tabela select{min-width:210px;min-height:44px;width:100%}.wa-tabela input{width:96px;min-height:44px;text-align:right;font-variant-numeric:tabular-nums}
+.wa-veio{color:#6c6f68;font-size:13px}
+.wa-tipo{padding:6px 10px;border-radius:999px;font-size:10px;font-weight:700;background:#e7efff;color:#1e468c}.wa-tipo.abate{background:#fff0d5;color:#79581d}
+.wa-resumo{display:grid;gap:10px}.wa-resumo p{margin:0}
+.wa-total{display:flex;gap:14px;flex-wrap:wrap}.wa-total>div{flex:1;min-width:200px;padding:14px 18px;border-radius:16px;background:#eef1e7}
+.wa-total span{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:#80857b;margin-bottom:6px}.wa-total strong{font-size:20px;font-variant-numeric:tabular-nums}
+.wa-ok{color:#247b58;font-size:13px;font-weight:650}.wa-diverge{color:#942c35;font-size:13px;font-weight:650}.wa-nota{color:#777a73;font-size:12px}
+.wa-final{list-style:none;margin:0;padding:0;display:grid;gap:2px}.wa-final li{display:grid;grid-template-columns:1fr auto auto;gap:18px;padding:9px 0;border-bottom:1px solid #eeefeb;font-size:13px;font-variant-numeric:tabular-nums}.wa-final small{color:#777a73}
+.wa-problemas{margin:0;padding:12px 16px 12px 32px;border-radius:14px;background:#fff5f4;color:#913b3a;font-size:13px;line-height:1.6}
+.wa-msgs summary,.wa-recentes summary{cursor:pointer;font-weight:650;font-size:13px;color:#555a52}
+.wa-msg{margin-top:10px;padding:12px 14px;border-radius:14px;background:#f6f7f3}.wa-msg.revisao{background:#fff8e6}.wa-msg.apagada{opacity:.6}.wa-msg small{color:#80857b;font-size:11px}
+.wa-msg pre{margin:6px 0 0;white-space:pre-wrap;font:inherit;font-size:13px;line-height:1.5}
+.wa-card>footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;border-top:1px solid #eeefeb;padding-top:18px}
+.wa-vazio{display:grid;gap:6px;padding:40px;border-radius:26px;background:#fff;color:#777a73;text-align:center}.wa-vazio strong{color:#252723}
+.wa-revisao{background:#fff;border-radius:26px;padding:24px 28px}.wa-revisao h2{margin:0 0 6px}
+.wa-recentes{background:#fff;border-radius:26px;padding:20px 28px}.wa-recentes .table{margin-top:12px;padding:0;box-shadow:none}
+body.wa-ocupado .wa-card button,body.wa-ocupado .wa-card select,body.wa-ocupado .wa-card input{pointer-events:none;opacity:.6}
+@media(max-width:700px){.wa-card{padding:20px 16px;border-radius:22px}.wa-tabela select{min-width:150px}.wa-card>footer button{flex:1}.wa-final li{grid-template-columns:1fr auto}.wa-final li b{grid-column:1/-1;text-align:right}}
