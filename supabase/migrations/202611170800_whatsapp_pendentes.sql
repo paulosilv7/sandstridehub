@@ -125,6 +125,8 @@ declare g record;m record;e jsonb;v_dia date:=coalesce(p_dia,(now() at time zone
  v_id uuid;v_st text;v_edit boolean;v_n integer:=0;v_ord integer;v_total bigint;v_soma integer;
 begin
  for g in select * from public.wa_grupos where ativo and (p_fornecedor is null or fornecedor=p_fornecedor) loop
+  -- Trava por fornecedor e dia: duas mensagens chegando juntas não disputam o mesmo pendente.
+  perform pg_advisory_xact_lock(hashtext('wa_fechar_dia:'||g.fornecedor||':'||v_dia::text));
   if not exists(select 1 from public.wa_mensagens where grupo=g.jid and dia=v_dia and status='valida') then
    -- Se as mensagens foram apagadas no WhatsApp, o pendente aberto avisa em vez de ficar com números velhos.
    update public.wa_pendentes set aviso='As mensagens deste dia foram apagadas no WhatsApp. Confira antes de aprovar.',atualizado_em=now()
