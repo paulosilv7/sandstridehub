@@ -12,7 +12,7 @@
  function status(message,kind=''){notice.textContent=message;notice.dataset.kind=kind;notice.setAttribute('role',kind==='error'?'alert':'status');}
  function lock(){generation++;ready=false;db=empty();backupStatus?.stop();backupStatus=null;window.FinanceAttachments?.reset();document.body.classList.remove('finance-ready','finance-busy');document.getElementById('nav').hidden=true;app.hidden=true;authPanel.hidden=false;modal.close();}
  function setBusy(value){document.body.classList.toggle('finance-busy',value);if(value){savedControls=[...document.querySelectorAll('#form input,#form select,#form button')].map(control=>[control,control.disabled]);savedControls.forEach(([control])=>control.disabled=true)}else{savedControls.forEach(([control,disabled])=>{if(control.isConnected)control.disabled=disabled});savedControls=[]}const saveButton=document.querySelector('#form footer .primary');if(saveButton)saveButton.setAttribute('aria-busy',String(value));updateButton.disabled=value;logout.disabled=value;}
- function showState(){db=structuredClone(store.state);ready=true;document.body.classList.add('finance-ready');authPanel.hidden=true;app.hidden=false;document.getElementById('nav').hidden=false;render();backupStatus?.refresh();}
+ function showState(){db=structuredClone(store.state);ready=true;document.body.classList.add('finance-ready');authPanel.hidden=true;app.hidden=false;document.getElementById('nav').hidden=false;render();backupStatus?.refresh();Promise.resolve(window.__foShell).finally(()=>requestAnimationFrame(()=>document.documentElement.classList.add('fo-pronto')));}
  function failure(error){let message=error?.code==='40001'?'Outra pessoa atualizou os dados. A lista foi atualizada; confira os campos e salve novamente.':error?.code==='42501'?'Seu usuário não tem acesso ao financeiro.':error?.message&&/vigência|histórico|cancelado|total|quantidade|duplicado|limite|precisão/i.test(error.message)?error.message:'Não foi possível confirmar a gravação. Os campos foram mantidos; confira os dados antes de tentar novamente.';status(message,'error');return message;}
  render=function(){if(!ready)return;originalRender();try{window.PainelUI?.depois({db,page,app,fornecedor:window.currentWorkspaceSupplier?.()})}catch(e){console.error('painel',e)}};
  openForm=function(type,id){if(ready&&!store.busy&&!window.FinanceAttachments?.busy)originalOpen(type,id)};
@@ -30,7 +30,7 @@
  updateButton.onclick=refresh;
  logout.onclick=async()=>{if(store?.busy||window.FinanceAttachments?.busy)return;try{const{error}=await client.auth.signOut({scope:'local'});if(error)throw error;lock();loginView()}catch(e){status('Não foi possível sair. Confira sua conexão e tente novamente.','error')}};
  function loginView(){location.replace('/?next=%2Ffornecedores%2F')}
- function unavailable(message){lock();authPanel.replaceChildren();const title=document.createElement('h2');title.textContent='Financeiro indisponível';const text=document.createElement('p');text.textContent=message;const back=document.createElement('a');back.href='/';back.textContent='Voltar à central';const retry=document.createElement('button');retry.textContent='Tentar novamente';retry.onclick=()=>location.reload();authPanel.append(title,text,back,document.createElement('br'),retry);status('Não foi possível carregar os dados.','error');}
+ function unavailable(message){document.documentElement.classList.add('fo-pronto');lock();authPanel.replaceChildren();const title=document.createElement('h2');title.textContent='Financeiro indisponível';const text=document.createElement('p');text.textContent=message;const back=document.createElement('a');back.href='/';back.textContent='Voltar à central';const retry=document.createElement('button');retry.textContent='Tentar novamente';retry.onclick=()=>location.reload();authPanel.append(title,text,back,document.createElement('br'),retry);status('Não foi possível carregar os dados.','error');}
  lock();status('Conectando ao financeiro…');authPanel.textContent='Carregando seus dados…';const config=window.SANDSTRIDE_SUPABASE;
  if(!config?.url||!config?.publishableKey){unavailable('A conexão com o banco não foi configurada.');return}
  try{
@@ -41,7 +41,7 @@
   window.FinanceReceipts=new ReceiptStore(client);window.FinanceReceipts.validate=validateReceipt;
   const navBtn=t=>[...document.querySelectorAll('#nav button')].find(b=>b.textContent.trim()===t);
   const mk=(t,rotulo,d)=>({rotulo,d,ao:()=>navBtn(t)?.click(),ativo:()=>!!navBtn(t)?.classList.contains('active')});
-  import('../js/shell.js').then(({montarShell})=>montarShell({ativo:'fornecedores',raiz:'../',subs:[
+  window.__foShell=import('../js/shell.js').then(({montarShell})=>montarShell({ativo:'fornecedores',raiz:'../',subs:[
    mk('Painel','Painel','<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>'),
    mk('Saldos a pagar','Saldos a pagar','<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>'),
    mk('Compras','Compras','<path d="M3 8 12 3l9 5v8l-9 5-9-5V8Zm0 0 9 5 9-5M12 13v8"/>'),
