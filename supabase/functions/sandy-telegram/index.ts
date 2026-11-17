@@ -1,4 +1,4 @@
-// Sandy no grupo do Telegram: conversa com a equipe (resumo do dia, pendentes, pedidos, aprender, responder cliente).
+// Sandy no grupo do Telegram: conversa com a equipe (resumo do dia, pendentes, pedidos, aprender, responder cliente, criar tarefas).
 // Recebe as mensagens do grupo pelo webhook do Telegram (cabeçalho X-Telegram-Bot-Api-Secret-Token).
 // Só responde quando citam "Sandy", marcam o bot ou respondem a uma mensagem dela, e só no grupo conectado.
 // Uso interno (x-lucro-token): {registrar: true} liga o webhook.
@@ -201,7 +201,7 @@ async function responderCliente(a: any) {
 }
 
 // Tarefas da Central (tela Meu dia): uma linha por responsável, como a tela faz com "Todos".
-const semAcento = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 async function criarTarefa(a: any, quem: string) {
   const titulo = String(a.titulo ?? "").replace(/\s+/g, " ").trim().slice(0, 160);
   if (titulo.length < 3) return { erro: "faltou o nome da tarefa" };

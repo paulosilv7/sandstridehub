@@ -1,5 +1,6 @@
 // Gestor de Ads > coleta o dado bruto dos anúncios (nada estimado) e guarda para sempre.
-// ML (Product Ads): total do dia por loja.  Shopee (CPC): total do dia por loja, por campanha e pedidos criados por dia.
+// ML (Product Ads): total do dia por loja, somado por ANÚNCIO (inclui campanhas excluídas, igual ao painel do ML).
+// Shopee (CPC): total do dia por loja, por campanha e pedidos criados por dia.
 // Quem chama: agendador do banco (x-fin-token) ou pessoa logada com acesso (Paulo e Lucas).
 // Corpo (tudo opcional): { dias: 7, de: "2026-10-26", ate: "2026-11-16", nivel: ["loja","campanha","pedidos"], mkt: "ml"|"shopee", loja: "parte do apelido" }
 // deno-lint-ignore-file no-explicit-any
@@ -94,7 +95,7 @@ const hojeSP = () => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 
 const somaDias = (d: string, n: number) => new Date(Date.parse(d + "T12:00:00Z") + n * 86400_000).toISOString().slice(0, 10);
 const dmy = (iso: string) => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
 const dmyParaIso = (d: string) => /^\d{2}-\d{2}-\d{4}$/.test(d) ? `${d.slice(6)}-${d.slice(3, 5)}-${d.slice(0, 2)}` : "";
-const num = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : null);
+const num = (v: any) => (v === null || v === undefined || v === "" ? null : Number.isFinite(Number(v)) ? Number(v) : null);
 const r2 = (v: any) => { const n = num(v); return n === null ? null : Math.round(n * 100) / 100; };
 const agora = () => new Date().toISOString();
 async function gravar(tabela: string, linhas: any[], conflito: string) {
@@ -115,6 +116,8 @@ Deno.serve(async (req) => {
   const saida: any[] = [];
 
   // ---------- Mercado Livre: total do dia por loja ----------
+  // Fonte: resumo por ANÚNCIO (ads/search com metrics_summary), um dia por consulta. Ele inclui o gasto de campanhas
+  // excluídas e fecha com o painel do ML; o total por campanha deixa essas campanhas de fora.
   if (corpo.mkt !== "shopee" && niveis.includes("loja")) {
     const { data: lojas } = await supabase.from("lojas").select("id, apelido").eq("marketplace", "mercado_livre").eq("ativa", true);
     for (const l of (lojas ?? []).filter((x: any) => !filtroLoja || x.apelido.toLowerCase().includes(filtroLoja))) {
@@ -124,13 +127,28 @@ Deno.serve(async (req) => {
         const adv = await ml("/advertising/advertisers?product_id=PADS", token, "1");
         const id = adv?.advertisers?.[0]?.advertiser_id;
         if (!id) { saida.push({ mkt: "ml", loja: l.apelido, erro: "sem conta de anúncios" }); continue; }
-        // a API aceita no máximo 90 dias por consulta
         const iniMl = ini < somaDias(fim, -89) ? somaDias(fim, -89) : ini;
-        const m = await ml(`/advertising/MLB/advertisers/${id}/product_ads/campaigns/search?date_from=${iniMl}&date_to=${fim}&metrics=cost,clicks,prints,direct_amount,total_amount,units_quantity,organic_units_quantity&aggregation_type=DAILY&limit=1`, token, "2");
-        const linhas = (m.results ?? []).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r.date)) && num(r.cost) !== null)
-          .map((r: any) => ({ loja_id: l.id, dia: r.date, gasto: r2(r.cost), impressoes: num(r.prints), cliques: num(r.clicks), receita_mkt: r2(r.total_amount), receita_direta: r2(r.direct_amount), unidades_mkt: num(r.units_quantity), unidades_organicas: num(r.organic_units_quantity), atualizado_em: agora() }));
+        const dias: string[] = [];
+        for (let d = iniMl; d <= fim; d = somaDias(d, 1)) dias.push(d);
+        const linhas: any[] = [];
+        const falhas: string[] = [];
+        const resumoDia = async (d: string) => {
+          const base = `/advertising/MLB/advertisers/${id}/product_ads/ads/search?date_from=${d}&date_to=${d}&metrics_summary=true&limit=1&metrics=`;
+          let m: any;
+          try { m = await ml(base + "cost,clicks,prints,direct_amount,total_amount,units_quantity,organic_units_quantity", token, "2"); }
+          catch (_) {
+            try { m = await ml(base + "cost,clicks,direct_amount,total_amount,units_quantity", token, "2"); }
+            catch (e) { falhas.push(`${d}: ${(e as Error).message.slice(0, 80)}`); return; }
+          }
+          const s = m?.metrics_summary;
+          if (!s || num(s.cost) === null) return;
+          linhas.push({ loja_id: l.id, dia: d, gasto: r2(s.cost), impressoes: num(s.prints), cliques: num(s.clicks), receita_mkt: r2(s.total_amount), receita_direta: r2(s.direct_amount), unidades_mkt: num(s.units_quantity), unidades_organicas: num(s.organic_units_quantity), atualizado_em: agora() });
+        };
+        for (let i = 0; i < dias.length; i += 8) await Promise.all(dias.slice(i, i + 8).map(resumoDia));
         await gravar("ads_loja_dia", linhas, "loja_id,dia");
-        saida.push({ mkt: "ml", loja: l.apelido, dias: linhas.length, gasto: Math.round(linhas.reduce((s: number, r: any) => s + (r.gasto ?? 0), 0) * 100) / 100 });
+        const it: any = { mkt: "ml", loja: l.apelido, dias: linhas.length, gasto: Math.round(linhas.reduce((s: number, r: any) => s + (r.gasto ?? 0), 0) * 100) / 100 };
+        if (falhas.length) it.falhas = falhas.slice(0, 5);
+        saida.push(it);
       } catch (e) { saida.push({ mkt: "ml", loja: l.apelido, erro: (e as Error).message.slice(0, 250) }); }
     }
   }

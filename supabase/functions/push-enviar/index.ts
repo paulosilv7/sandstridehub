@@ -1,12 +1,5 @@
-// Envia avisos no aparelho (Web Push) para a equipe.
-// Chamada pelo banco (gatilhos e agenda) com o cabeçalho x-lucro-token. Tipos:
-//   tarefa     {tarefa_id, acao: nova|alterada, ator}   avisa o responsável
-//   meta       {meta_id}                                meta do mês batida (equipe)
-//   meta_lucro {}                                       meta de lucro do dia batida (equipe, uma vez por dia)
-//   resumo     {}                                       resumo das 8h: tarefas do dia
-//   teste      {usuario_id}                             aviso de teste para uma pessoa
+// Envia avisos no aparelho (Web Push) para a equipe. Código-fonte completo em supabase/functions/push-enviar/index.ts
 // Os textos vêm da tabela push_textos (editável em Configurações); aqui ficam só os valores que entram neles.
-// As chaves VAPID são criadas aqui na primeira chamada e ficam na tabela push_chaves (só esta função lê).
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
@@ -39,7 +32,6 @@ async function chaves() {
   pronto = true;
 }
 
-
 // textos editáveis: {variavel} é trocada pelo valor; separadores " · " soltos são removidos e cada trecho começa com maiúscula
 async function texto(tipo: string, v: Record<string, string>): Promise<{ titulo: string; corpo: string }> {
   const { data } = await supabase.from("push_textos").select("titulo, corpo").eq("tipo", tipo).maybeSingle();
@@ -53,7 +45,6 @@ const quando = (iso: string | null) => !iso ? "" : iso === hojeBR() ? "vence hoj
 type Aviso = { titulo: string; corpo: string; url?: string; tag?: string };
 const CAMPO: Record<string, string> = { tarefa: "tarefas", meta: "metas", meta_lucro: "metas", resumo: "resumo" };
 
-// manda para as pessoas indicadas (respeitando a preferência de cada uma); devolve quantos aparelhos receberam
 async function enviar(usuarios: string[], aviso: Aviso, tipo: string | null): Promise<number> {
   if (!usuarios.length) return 0;
   await chaves();
