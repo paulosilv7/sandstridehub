@@ -58,6 +58,9 @@
   const jaTxt=ja?'<p class="wa-aviso">Esta compra já foi gravada no financeiro. Ao aprovar, o pendente só será marcado como aprovado, sem duplicar.</p>':'';
   return `<div class="wa-total"><div><span>Quantidade</span><strong>${r.quantidade} pares</strong></div><div><span>Total calculado pelo preço do dia</span><strong>${money(r.total)}</strong></div></div><p>${compara}</p>${itens}${probs}${jaTxt}`;
  }
+const ICO={ok:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',atencao:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9"/></svg>'};
+ ICO.diverge=ICO.atencao;
+ const tagEstado=st=>ICO[st.cls]+'<span>'+st.txt+'</span>';
  function situacao(p){
   const r=resolver(p);
   if(!r.ok)return{r,cls:'atencao',txt:'Precisa de atenção'};
@@ -66,7 +69,7 @@
  }
  function itemHtml(p){
   const msgs=mensagensDe(p),editado=alterados.has(p.id)||p.editado,st=situacao(p),aberto=abertosUI.has(p.id);
-  return `<details class="wa-item" data-id="${esc(p.id)}" ${aberto?'open':''}><summary><span class="wa-quem"><strong>${esc(p.fornecedor)}</strong><small>Compra do dia ${br(p.data)}</small></span><span class="wa-num"><b>${st.r.quantidade} pares</b><small>${money(st.r.total)}</small></span><span class="wa-estado ${st.cls}">${st.txt}</span><span class="wa-abrir" aria-hidden="true">Conferir e aprovar</span></summary>
+  return `<details class="wa-item" data-id="${esc(p.id)}" ${aberto?'open':''}><summary><span class="wa-quem"><strong>${esc(p.fornecedor)}</strong><small>Compra do dia ${br(p.data)}</small></span><span class="wa-num"><b>${st.r.quantidade} pares</b><small>${money(st.r.total)}</small></span><span class="wa-estado ${st.cls}">${tagEstado(st)}</span><span class="wa-abrir" aria-hidden="true"><span>Conferir e aprovar</span></span></summary>
   <div class="wa-corpo"><div class="wa-topo"><span class="wa-badge ${editado?'edit':''}">${editado?'Corrigido por você':'Lido da mensagem'}</span></div>
   ${p.aviso?`<p class="wa-aviso">${esc(p.aviso)}</p>`:''}
   <div class="wa-tabela"><table><thead><tr><th></th><th>Como veio na mensagem</th><th>Modelo</th><th>Pares</th></tr></thead><tbody>${linhasHtml(p)}</tbody></table></div>
@@ -97,9 +100,10 @@
   if(estado.erro)corpo=`<div class="form-error" role="alert">${esc(estado.erro)}</div>`;
   else corpo=abertos.map(itemHtml).join('')+revisao+(abertos.length?recentesHtml():'');
   const n=abertos.length;
-  const html=`<div class="wa-cab"><div><span class="supplier-eyebrow">PENDENTES DO WHATSAPP</span><h2>${n?(n===1?'1 pedido aguardando aprovação':n+' pedidos aguardando aprovação'):'Nada aguardando aprovação'}</h2></div><p class="wa-nota">Pares lidos nos grupos dos fornecedores. Nada entra no financeiro até você aprovar.</p></div>${aviso?`<div class="wa-aviso" role="status">${esc(aviso)}</div>`:''}${corpo}`;
+  const html=`<div class="wa-cab"><div class="wa-tit"><span class="wa-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1.3-4A8 8 0 1 1 8.2 18.8z"/></svg></span><div><span class="wa-rot">Pendentes do WhatsApp</span><h2>${n?(n===1?'1 pedido aguardando aprovação':n+' pedidos aguardando aprovação'):'Nada aguardando aprovação'}</h2></div></div><p class="wa-nota">Pares lidos nos grupos dos fornecedores. Nada entra no financeiro até você aprovar.</p></div>${aviso?`<div class="wa-aviso" role="status">${esc(aviso)}</div>`:''}${corpo}`;
   if(!q){q=document.createElement('section');q.id=QID;q.className='wa-quadro';q.setAttribute('aria-label','Pendentes do WhatsApp')}
   q.innerHTML=html;
+  if(typeof window.enhanceFinanceUI==='function')window.enhanceFinanceUI(q);
   if(q.previousElementSibling!==hero)hero.after(q);
  }
 
@@ -109,7 +113,7 @@
   card.querySelector('.wa-resumo').innerHTML=resumoHtml(p);
   const badge=card.querySelector('.wa-badge');badge.textContent='Corrigido por você';badge.classList.add('edit');
   const st=situacao(p),e=card.querySelector('.wa-estado'),n=card.querySelector('.wa-num');
-  e.className='wa-estado '+st.cls;e.textContent=st.txt;n.innerHTML=`<b>${st.r.quantidade} pares</b><small>${money(st.r.total)}</small>`;
+  e.className='wa-estado '+st.cls;e.innerHTML=tagEstado(st);n.innerHTML=`<b>${st.r.quantidade} pares</b><small>${money(st.r.total)}</small>`;
  }
 
  /* ---------- gravação ---------- */

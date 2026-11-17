@@ -274,3 +274,17 @@ main tbody tr{transition:background 120ms}
 :root:root .purchase-order-totals i,:root:root .purchase-month-totals i{border-color:var(--mut)!important}
 :root:root .purchase-order .table{background:transparent!important;border-top:1px solid var(--line)!important}
 :root:root[data-theme="light"] .purchase-order{background:#F3F4F0!important}
+
+/* ===== Menu suspenso do briefing =====
+   Campo: 44 px, raio 16, fundo elevado. Menu: cartão com borda de 1 px, raio 16, itens de 40 px (raio 12), sombra só porque flutua.
+   Item marcado = um degrau acima (ativo) + ✓. Peso 500/600, nunca 650. */
+:root:root button.select-trigger{height:44px;min-height:44px;padding:0 16px!important;gap:12px;font-size:13px!important;font-weight:500!important;box-shadow:none!important;transition:background 120ms var(--ease),box-shadow 120ms var(--ease)}
+:root:root button.select-trigger:hover{background:var(--ativo)!important}
+:root:root button.select-trigger[aria-expanded=true]{background:var(--soft)!important;box-shadow:0 0 0 2px var(--destaque)!important}
+:root:root button.select-trigger:disabled{opacity:.5;color:var(--mut)!important}
+:root:root .select-chevron{width:16px;height:16px;color:var(--mut)!important;transition:transform 200ms var(--ease)}
+:root:root .select-menu{padding:6px!important;max-height:min(320px,60vh);box-shadow:0 12px 32px rgba(0,0,0,.14)!important;animation:abre 160ms var(--ease)}
+:root[data-theme=dark] .select-menu{box-shadow:0 12px 32px rgba(0,0,0,.55)!important}
+:root:root .select-menu button.select-option{min-height:40px;height:40px;padding:0 12px!important;gap:12px;border-radius:12px!important;font-size:13px!important;font-weight:500!important;line-height:1.4;transition:background 120ms var(--ease)}
+:root:root .select-menu button.select-option[aria-selected=true]{font-weight:600!important}
+:root:root .select-menu button.select-option svg{width:16px;height:16px;flex:none;color:var(--ink)!important;stroke:currentColor}
