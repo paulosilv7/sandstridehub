@@ -631,6 +631,7 @@ async function carregarLotes(){
     S.orfThumb={};
     if(caminhos.length){var su=await assinar(caminhos.concat(caminhos.map(function(c){return c+'.t.jpg';})));caminhos.forEach(function(c){S.orfUrls[c]=su[c]||null;if(su[c+'.t.jpg'])S.orfThumb[c]=su[c+'.t.jpg'];});garantirMiniaturas(caminhos.filter(function(c){return S.orfUrls[c]&&!S.orfThumb[c];}).map(function(c){return {caminho:c,url:S.orfUrls[c]};}));}
   }catch(e){S.orfaos=S.orfaos||[];}
+  try{var dv=await SB.from('devol_recebimentos').select('id,criado_em,dispensado_em,dispensado_motivo').not('dispensado_em','is',null).order('dispensado_em',{ascending:false}).limit(30);S.devolvidos=dv.data||[];}catch(e){S.devolvidos=S.devolvidos||[];}
   if(S.tela==='receber')render(true,false);
 }
 function hex(buf){return Array.prototype.map.call(new Uint8Array(buf),function(b){return ('0'+b.toString(16)).slice(-2);}).join('');}
@@ -1048,7 +1049,12 @@ function receber(){
     '<div class="row" style="align-items:flex-start;gap:16px"><label class="field" style="flex:2 1 280px"><span>Descrição (guardada como você escrever)</span><textarea id="f-texto" rows="3" data-in="texto" placeholder="Ex.: Completo">'+esc(L.texto)+'</textarea></label><label class="field" style="flex:1 1 200px"><span>Pedido (se souber)</span><input id="f-pedido" type="text" data-in="pedido" value="'+esc(L.pedido)+'" placeholder="Número do pedido" autocomplete="off"></label><label class="field" style="flex:1 1 200px"><span>Rastreio (opcional)</span><input id="f-rastreio" type="text" data-in="rastreio" value="'+esc(L.rastreio)+'" placeholder="Se estiver legível" autocomplete="off"></label></div>'+
     '<div class="row" style="gap:16px"><button type="button" class="btn lg'+(podeEnv?'':' off')+'" data-a="enviarLote">'+(L.enviando?'Enviando…':'Enviar lote')+'</button><span class="sub">'+dica+'</span></div></section>'+
     '<section class="card" style="flex:1 1 320px" aria-label="O que acontece depois"><h2 class="sech">O que acontece depois</h2>'+passos+'</section></div>'+
-    '<section class="card" style="gap:12px"><h2 class="sech">Lotes recebidos recentemente</h2>'+(rec||'<div class="empty">Nenhum lote enviado ainda.</div>')+'</section>'+orfaosHtml();
+    '<section class="card" style="gap:12px"><h2 class="sech">Lotes recebidos recentemente</h2>'+(rec||'<div class="empty">Nenhum lote enviado ainda.</div>')+'</section>'+orfaosHtml()+devolvidosHtml();
+}
+function devolvidosHtml(){
+  var l=S.devolvidos||[];if(!l.length)return '';
+  var it=l.map(function(x){return '<div class="idrow"><span class="a">'+new Date(x.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span><span class="b">'+esc(x.dispensado_motivo||'Sem reclamação')+'</span></div>';}).join('');
+  return '<section class="card" style="gap:12px"><h2 class="sech">Pacotes devolvidos, sem reclamação ('+l.length+')</h2><p class="sub">Pacotes que a transportadora trouxe de volta sem o cliente abrir reclamação. Não há o que aprovar ou contestar, e as fotos deles são apagadas para não ocupar espaço.</p>'+it+'</section>';
 }
 function orfaosHtml(){
   var l=S.orfaos||[];S.ligar=S.ligar||{};
