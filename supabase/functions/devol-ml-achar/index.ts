@@ -49,19 +49,82 @@ async function procurar(num: string) {
   return { achou: false };
 }
 
+function dist(a: string, b: string): number {
+  const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+}
+
+// guarda em cada caso do ML o envio da venda (= Ref ID da etiqueta), para a comparação por aproximação
+async function preencherEnviosVenda() {
+  const lojas = await lojasML();
+  if (!lojas.length) return 0;
+  const { data: casos } = await admin.from("devol_casos").select("id, pedido, loja_id").is("envio_venda_id", null).is("arquivado_em", null).not("pedido", "is", null)
+    .in("loja_id", lojas.map((l) => l.id)).gt("criado_em", new Date(Date.now() - 75 * 86_400_000).toISOString()).order("criado_em", { ascending: false }).limit(30);
+  let n = 0;
+  for (const c of casos ?? []) {
+    const tk = lojas.find((l) => l.id === c.loja_id)?.tk; if (!tk) continue;
+    const o = await get(`/orders/${String(c.pedido).replace(/\D/g, "")}`, tk);
+    const ship = o.ok ? o.j?.shipping?.id : null;
+    await admin.from("devol_casos").update({ envio_venda_id: ship ? String(ship) : "-" }).eq("id", c.id);
+    n++;
+  }
+  return n;
+}
+
+async function ligarPorAproximacao(r: any, nums: string[]) {
+  const { data: casos } = await admin.from("devol_casos").select("id, loja_id, pedido, envio_venda_id, envio_devolucao_id").is("arquivado_em", null)
+    .gt("criado_em", new Date(Date.now() - 75 * 86_400_000).toISOString());
+  const { data: usados } = await admin.from("devol_recebimentos").select("caso_id").not("caso_id", "is", null);
+  const jaTem = new Set((usados ?? []).map((u: any) => u.caso_id));
+  const cand: { c: any; d: number; n: string; campo: string }[] = [];
+  for (const c of casos ?? []) {
+    if (jaTem.has(c.id)) continue;
+    let melhor: { d: number; n: string; campo: string } | null = null;
+    for (const n of nums) {
+      if (n.length < 9 || n.length > 13) continue;
+      for (const [campo, alvo] of [["Ref ID", c.envio_venda_id], ["rastreio", c.envio_devolucao_id]] as [string, string | null][]) {
+        if (!alvo || alvo === "-" || alvo.length < 9) continue;
+        const d = dist(n, alvo);
+        if (d > 0 && d <= 2 && (!melhor || d < melhor.d)) melhor = { d, n, campo };
+      }
+    }
+    if (melhor) cand.push({ c, ...melhor });
+  }
+  cand.sort((a, b) => a.d - b.d);
+  if (cand.length !== 1 && !(cand.length > 1 && cand[1].d - cand[0].d >= 2)) return false;
+  const { c, n, campo } = cand[0];
+  const esperado = campo === "Ref ID" ? c.envio_venda_id : c.envio_devolucao_id;
+  const detalhe = `Número lido na etiqueta: ${n}. Número do caso (${campo}): ${esperado}. Pedido ${c.pedido}.`;
+  const { error } = await admin.from("devol_recebimentos").update({ caso_id: c.id, identificacao: "identificado", fonte_identificacao: `APROXIMAÇÃO pelo ${campo} (conferir)`, loja_id: c.loja_id, ligacao_aproximada: true, ligacao_detalhe: detalhe, analise: "pendente", analise_erro: null })
+    .eq("id", r.id).is("caso_id", null).neq("analise", "processando");
+  if (error) return false;
+  await admin.from("devol_anexos").update({ caso_id: c.id }).eq("recebimento_id", r.id);
+  return true;
+}
+
 async function varrer() {
-  const res = { analisados: 0, dispensados: 0, fotos_apagadas: 0, com_reclamacao: 0, ligados: 0 };
+  const res = { analisados: 0, dispensados: 0, fotos_apagadas: 0, com_reclamacao: 0, ligados: 0, aproximados: 0, envios_preenchidos: 0 };
+  try { res.envios_preenchidos = await preencherEnviosVenda(); } catch (_) { /* não atrapalha */ }
   const { data: lotes } = await admin.from("devol_recebimentos").select("id, analise_resumo").is("caso_id", null).is("dispensado_em", null).eq("analise", "concluida")
     .gt("criado_em", new Date(Date.now() - 45 * 86_400_000).toISOString()).order("criado_em", { ascending: false }).limit(25);
   for (const r of lotes ?? []) {
     const nums = [...new Set((r.analise_resumo?.etiqueta ?? []).filter((e: any) => e?.tipo !== "nome" && (e?.confianca === "alta" || (e?.tipo === "ref_id" && String(e.valor ?? "").replace(/\D/g, "").length === 11))).map((e: any) => String(e.valor ?? "").replace(/\D/g, "")).filter((n: string) => n.length >= 8 && n.length <= 16))] as string[];
-    if (!nums.length) continue;
+    const numsAprox = [...new Set((r.analise_resumo?.etiqueta ?? []).filter((e: any) => e?.tipo === "ref_id" || e?.tipo === "rastreio").map((e: any) => String(e.valor ?? "").replace(/\D/g, "")).filter((n: string) => n.length >= 9 && n.length <= 13))] as string[];
+    if (!nums.length && !numsAprox.length) continue;
     res.analisados++;
+    let resolvido = false;
     const { data: a } = await admin.rpc("devol_achar_caso", { p_numeros: nums, p_nomes: [] });
     if ((a?.[0]?.n ?? 0) > 0) continue; // já existe caso: a ligação automática cuida
     for (const n of nums) {
       const x: any = await procurar(n);
       if (!x.achou) continue;
+      resolvido = true;
       if (x.caso_no_hub) {
         // o número era o Ref ID (envio da venda): acha o caso pelo pedido e liga o lote sozinho
         const { error } = await admin.from("devol_recebimentos").update({ pedido_lido: x.pedido, fonte_identificacao: "Ref ID da etiqueta (pedido do envio da venda)", analise: "pendente", analise_erro: null }).eq("id", r.id).is("caso_id", null).neq("analise", "processando");
@@ -75,6 +138,7 @@ async function varrer() {
       res.dispensados++;
       break;
     }
+    if (!resolvido && numsAprox.length && (await ligarPorAproximacao(r, numsAprox))) res.aproximados++;
   }
   // fotos dos lotes dispensados (manual ou automático) saem do armazenamento
   const { data: desp } = await admin.from("devol_recebimentos").select("id").not("dispensado_em", "is", null).limit(40);

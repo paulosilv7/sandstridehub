@@ -544,6 +544,10 @@ function inicioMes(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMont
 /* Casos: a primeira carga traz todos; as seguintes trazem só os abertos e os arquivados que mudaram desde a última carga
    (o banco atualiza atualizado_em a cada alteração). Os arquivados que não mudaram ficam guardados na memória. */
 var RAWCASOS={},WM_CASOS=null;
+var APROX={};
+function aproxAviso(id,grande){var a=APROX[id];if(!a)return '';return '<span class="tag bad" style="white-space:normal;text-align:left;line-height:1.35;'+(grande?'font-size:14px;padding:10px 12px':'')+'">⚠ LIGADO POR APROXIMAÇÃO: o número da etiqueta não bateu exato. Confira se este lote é mesmo deste caso.</span>';}
+function aproxCaso(id){var a=APROX[id];if(!a)return '';return '<section class="card" style="gap:10px;border:2px solid var(--bad,#D64545)"><h2 class="sech">⚠ Confira a ligação deste lote</h2><div class="sub" style="font-size:14px;line-height:1.5">O sistema ligou este lote a este caso por aproximação, porque o número lido na etiqueta ficou parecido com o do caso, mas não igual. '+esc(a.det)+'</div><div class="sub">Compare a foto da etiqueta com o número do pedido e confirme. Se não for este caso, desfaça.</div><div class="row" style="gap:8px"><button type="button" class="btn" data-a="confirmarLig" data-v="'+a.rec+'">Confirmar: está certo</button><button type="button" class="btn ghost" data-a="desfazerLig" data-v="'+a.rec+'">Desfazer ligação</button></div></section>';}
+async function ligacaoAcao(rec,acao){if(S.decidindo)return;S.decidindo=true;try{var r=await SB.rpc(acao==='c'?'devol_confirmar_ligacao':'devol_desfazer_ligacao',{p_rec:rec});if(r.error)throw new Error(r.error.message);toast(acao==='c'?'Ligação confirmada.':'Ligação desfeita. O lote voltou para Lotes sem caso.');await carregar();if(S.tela==='caso'&&S.casoId&&!APROX[S.casoId]&&acao==='d'){S.tela='aprov';}render(true,false);}catch(e){toast('Não consegui: '+((e&&e.message)||'erro'));}finally{S.decidindo=false;}}
 async function carregar(){S.supCarregado=false;carregarMotivos();
   var qCasos=SB.from('devol_casos').select('id,loja_id,solicitacao_id,pedido,produto,motivo_original,status,prazo_em,valor_em_risco,valor_revertido,valor_conciliado,protocolo,atualizado_em,tipo_origem,etapa_origem,situacao_mkt,acoes_loja,desfecho,valor_reembolsado,valor_pedido,cobertura_ml,custo_frete,frete_lido,arquivado_em,decidido_em,etapa_fisica,etapa_fisica_em,enviado_mkt_em').order('atualizado_em',{ascending:false}).limit(1000);
   if(WM_CASOS)qCasos=qCasos.or('arquivado_em.is.null,atualizado_em.gt.'+WM_CASOS);
@@ -561,7 +565,8 @@ async function carregar(){S.supCarregado=false;carregarMotivos();
     SB.from('devol_mensagens').select('caso_id,chave,origem,texto,anexos,enviado_em').order('enviado_em',{ascending:false}).limit(600),
     SB.from('devol_eventos').select('caso_id,criado_em,dados').eq('tipo','resposta_ml_enviada').order('criado_em',{ascending:false}).limit(200),
     SB.from('devol_sugestoes').select('caso_id,recomendada,situacao,pct_ml,valor_pedido,motivo,comparacao,alerta'),
-    SB.from('devol_resumo_mensal').select('*')
+    SB.from('devol_resumo_mensal').select('*'),
+    SB.from('devol_recebimentos').select('id,caso_id,ligacao_detalhe').eq('ligacao_aproximada',true).not('caso_id','is',null)
   ]);
   var falha=q.filter(function(x){return x.error;})[0];
   if(falha)throw new Error(falha.error.message);
@@ -572,6 +577,7 @@ async function carregar(){S.supCarregado=false;carregarMotivos();
   REC={};(q[9].data||[]).forEach(function(x){if(!REC[x.caso_id])REC[x.caso_id]=x.recomendacao==='pedir_informacao'?'nao_contestar':x.recomendacao;});
   MSG={};THR={};var _msgs=(q[10].data||[]);var _reais=_msgs.filter(function(x){return x.origem==='loja'&&String(x.chave).indexOf('loja-local:')!==0;});_msgs=_msgs.filter(function(x){if(String(x.chave).indexOf('loja-local:')!==0)return true;var t=new Date(x.enviado_em).getTime();return !_reais.some(function(y){return y.caso_id===x.caso_id&&Math.abs(new Date(y.enviado_em).getTime()-t)<180000;});});_msgs.forEach(function(x){if(x.origem==='mediador'&&!MSG[x.caso_id])MSG[x.caso_id]=x;(THR[x.caso_id]=THR[x.caso_id]||[]);if(THR[x.caso_id].length<6)THR[x.caso_id].push(x);});
   ENV={};(q[11].data||[]).forEach(function(x){if(!ENV[x.caso_id])ENV[x.caso_id]=x;});SUG={};(q[12].data||[]).forEach(function(x){SUG[x.caso_id]=x;});
+  APROX={};(q[14].data||[]).forEach(function(x){APROX[x.caso_id]={rec:x.id,det:x.ligacao_detalhe||''};});
   S.resumo=(q[13].data||[]).map(function(r){var lj=LOJAID[r.loja_id]||{};r.mk=MKS[lj.marketplace]||'ml';r.loja=lj.apelido||'—';return r;});
   var _bruto=WM_CASOS?(function(){var k={};Object.keys(RAWCASOS).forEach(function(i){if(RAWCASOS[i].arquivado_em)k[i]=RAWCASOS[i];});return k;})():{};
   (q[1].data||[]).forEach(function(r){_bruto[r.id]=r;});
@@ -1085,6 +1091,7 @@ function detalhe(){
   return head()+'<div><button type="button" class="pbk" data-a="voltar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Voltar para '+TITULOS[destino]+'</button></div>'+
   '<section class="stage"><div style="min-width:0;flex:1 1 360px"><div class="lbl">'+mk(c.mk)+esc(MK[c.mk].nome+' · '+c.loja)+'</div><div class="tt">'+esc(c.problema)+'</div><div class="sub" style="color:var(--on-dark-muted);margin-top:6px">'+esc(c.pedido+' · solicitação '+c.solicitacao)+'</div></div><div class="sr"><div class="k">Prazo</div><div class="pv">'+(c.st>=6?'Encerrado':(c.semPrazo?'—':(c.prazo<=0?'Vencido':c.prazo+' h')))+'</div></div>'+proxPasso(c)+'</section>'+
   '<div class="cols"><div style="flex:1 1 440px">'+
+    aproxCaso(c.id)+
     itensHtml(S.cx&&S.cx.id===c.id?S.cx.itens:null)+
     equipeHtml(cx.equipe,cx.carregando)+
     '<section class="card" style="gap:12px"><h2 class="sech">Situação no marketplace</h2>'+
@@ -1207,7 +1214,7 @@ function regras(){
 
 function aprov(){
   var l=aplicar(S.casos.filter(function(c){return c.st===3;}),S.f.aprov);
-  var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span></span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(c.pedirInfo?'<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar mais fotos</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+c.id+'">'+ICO.enviar+'Aceitar a devolução</button><button type="button" class="btn ghost dl" data-a="forcar" data-v="'+c.id+'">Pedir contestação à Sandy<small>Não envia nada</small></button>':c.decidir?'<button type="button" class="btn dl" data-a="concordar" data-v="'+c.id+'">Encerrar sem contestar<small>Não envia nada</small></button><button type="button" class="btn ghost dl" data-a="forcar" data-v="'+c.id+'">Pedir contestação à Sandy<small>Não envia nada</small></button>':(/^Fechada/.test(c.mkt||'')?'<span class="tag warn">O Mercado Livre já decidiu este caso</span>':'<button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">'+ICO.enviar+'Aprovar e enviar</button>'))+'</div></section>';}).join('');
+  var linhas=l.map(function(c){var p=prazoInfo(c);return '<section class="cardrow"><div class="cr-top">'+mk(c.mk,true)+'<span class="m"><b>'+esc(c.produto)+'</b><span class="sub">'+esc(c.pedido+' · '+c.loja)+'</span><span class="why">'+esc(c.problema)+'</span>'+aproxAviso(c.id)+'</span></div><div class="cr-mid"><span class="tag '+p.cls+'">'+p.t+'</span></div><div class="cr-act"><button type="button" class="btn ghost" data-a="caso" data-v="'+c.id+'">Ver caso</button>'+(c.pedirInfo?'<button type="button" class="btn" data-a="fotosCaso" data-v="'+c.id+'">Enviar mais fotos</button><button type="button" class="btn ghost" data-a="aceitarDev" data-v="'+c.id+'">'+ICO.enviar+'Aceitar a devolução</button><button type="button" class="btn ghost dl" data-a="forcar" data-v="'+c.id+'">Pedir contestação à Sandy<small>Não envia nada</small></button>':c.decidir?'<button type="button" class="btn dl" data-a="concordar" data-v="'+c.id+'">Encerrar sem contestar<small>Não envia nada</small></button><button type="button" class="btn ghost dl" data-a="forcar" data-v="'+c.id+'">Pedir contestação à Sandy<small>Não envia nada</small></button>':(/^Fechada/.test(c.mkt||'')?'<span class="tag warn">O Mercado Livre já decidiu este caso</span>':APROX[c.id]?'<button type="button" class="btn" data-a="confirmarLig" data-v="'+APROX[c.id].rec+'">Confirmar ligação</button><button type="button" class="btn ghost" data-a="desfazerLig" data-v="'+APROX[c.id].rec+'">Desfazer</button>':'<button type="button" class="btn" data-a="aprovar" data-v="'+c.id+'">'+ICO.enviar+'Aprovar e enviar</button>'))+'</div></section>';}).join('');
   var vazio=S.casos.filter(function(c){return c.st===3;}).length===0?'Nada aguardando a sua aprovação agora.':'Nenhum caso com esses filtros.';
   return head()+blocoSuporte()+'<section class="card tight">'+toolbar('aprov','Buscar por produto ou pedido')+'</section>'+(linhas||'<div class="empty">'+vazio+'</div>');
 }
@@ -1695,6 +1702,8 @@ document.addEventListener('click',function(e){
   else if(a==='mlOfertas'){mlOfertas(v);}
   else if(a==='mlAtualizar'){mlAtualizar(v);}
   else if(a==='mlAgir'){mlAgir(v);}
+  else if(a==='confirmarLig'){ligacaoAcao(v,'c');}
+  else if(a==='desfazerLig'){ligacaoAcao(v,'d');}
   else if(a==='concordar'){decidirCaso(v,'concordar_nao_contestar');}
   else if(a==='forcar'){pedirContestacao(v);}
   else if(a==='chip'){var ch=S.lote.chips,i=ch.indexOf(v);if(i===-1)ch.push(v);else ch.splice(i,1);render(true,false);}
