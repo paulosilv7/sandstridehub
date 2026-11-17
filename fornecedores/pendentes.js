@@ -1,14 +1,13 @@
-// Tela "Pendentes": lançamentos que a Sandy montou a partir dos grupos do WhatsApp.
+// Quadro "Pendentes do WhatsApp" no Painel de Fornecedores, logo abaixo do saldo devedor total: lançamentos que a Sandy montou a partir dos grupos.
 // Nada vira compra sozinho: a pessoa confere, corrige e aprova; a gravação usa o mesmo save()/fin_commit das outras telas.
 (function(){
- const C=PendentesCore,F=FinanceCore,NAV='Pendentes';
+ const C=PendentesCore,F=FinanceCore,QID='wa-quadro';
  const css=document.createElement('link');css.rel='stylesheet';css.href='pendentes.css';document.head.append(css);
- const ICON='<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/><path d="m9 12 2 2 4-4"/></svg>';
  const br=iso=>String(iso).split('-').reverse().join('/');
  const hora=iso=>new Date(iso).toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'});
  const client=()=>window.SandstrideClient;
  let estado={carregado:false,carregando:false,erro:'',em:0,pendentes:[],itens:{},originais:{},mensagens:[],grupos:[],n:0,nEm:0};
- let alterados=new Set(),ocupado=false,aviso='';
+ let alterados=new Set(),ocupado=false,aviso='',abertosUI=new Set();
 
  function ativos(fornecedor){return db.products.filter(p=>p.supplier===fornecedor&&p.active!==false)}
  function itensDe(p){return estado.itens[p.id]||[]}
@@ -59,39 +58,58 @@
   const jaTxt=ja?'<p class="wa-aviso">Esta compra já foi gravada no financeiro. Ao aprovar, o pendente só será marcado como aprovado, sem duplicar.</p>':'';
   return `<div class="wa-total"><div><span>Quantidade</span><strong>${r.quantidade} pares</strong></div><div><span>Total calculado pelo preço do dia</span><strong>${money(r.total)}</strong></div></div><p>${compara}</p>${itens}${probs}${jaTxt}`;
  }
- function cardHtml(p){
-  const msgs=mensagensDe(p),editado=alterados.has(p.id)||p.editado;
-  return `<article class="wa-card" data-id="${esc(p.id)}"><header><div><span class="supplier-eyebrow">PENDENTE DO WHATSAPP</span><h2>${esc(p.fornecedor)}</h2><small>Compra do dia ${br(p.data)}</small></div><span class="wa-badge ${editado?'edit':''}">${editado?'Corrigido por você':'Lido da mensagem'}</span></header>
+ function situacao(p){
+  const r=resolver(p);
+  if(!r.ok)return{r,cls:'atencao',txt:'Precisa de atenção'};
+  if(r.declarado!==null&&r.diferenca!==0)return{r,cls:'diverge',txt:'Total diferente'};
+  return{r,cls:'ok',txt:r.declarado===null?'Pronto para conferir':'Confere'};
+ }
+ function itemHtml(p){
+  const msgs=mensagensDe(p),editado=alterados.has(p.id)||p.editado,st=situacao(p),aberto=abertosUI.has(p.id);
+  return `<details class="wa-item" data-id="${esc(p.id)}" ${aberto?'open':''}><summary><span class="wa-quem"><strong>${esc(p.fornecedor)}</strong><small>Compra do dia ${br(p.data)}</small></span><span class="wa-num"><b>${st.r.quantidade} pares</b><small>${money(st.r.total)}</small></span><span class="wa-estado ${st.cls}">${st.txt}</span><span class="wa-abrir" aria-hidden="true">Conferir e aprovar</span></summary>
+  <div class="wa-corpo"><div class="wa-topo"><span class="wa-badge ${editado?'edit':''}">${editado?'Corrigido por você':'Lido da mensagem'}</span></div>
   ${p.aviso?`<p class="wa-aviso">${esc(p.aviso)}</p>`:''}
   <div class="wa-tabela"><table><thead><tr><th></th><th>Como veio na mensagem</th><th>Modelo</th><th>Pares</th></tr></thead><tbody>${linhasHtml(p)}</tbody></table></div>
   <div class="wa-resumo">${resumoHtml(p)}</div>
   <details class="wa-msgs"><summary>Mensagens lidas (${msgs.length})</summary>${msgs.map(m=>`<div class="wa-msg ${m.status}"><small>${hora(m.enviada_em)}${m.status==='apagada'?' · apagada':''}${m.status==='revisao'?' · não entendida':''}</small><pre>${esc(m.texto)}</pre></div>`).join('')||'<p class="wa-nota">Nenhuma mensagem guardada para este dia.</p>'}</details>
-  <footer><button type="button" data-acao="descartar">Descartar</button><button type="button" data-acao="salvar">Salvar correções</button><button type="button" class="primary" data-acao="aprovar">Aprovar e lançar compra</button></footer></article>`;
+  <footer><button type="button" data-acao="descartar">Descartar</button><button type="button" data-acao="salvar">Salvar correções</button><button type="button" class="primary" data-acao="aprovar">Aprovar e lançar compra</button></footer></div></details>`;
  }
  function revisaoHtml(){
   const abertos=new Set(estado.pendentes.filter(p=>p.status==='aberto').map(p=>p.fornecedor+'|'+p.data));
   const lista=estado.mensagens.filter(m=>m.status==='revisao').map(m=>({m,g:estado.grupos.find(g=>g.jid===m.grupo)})).filter(({m,g})=>g&&!abertos.has(g.fornecedor+'|'+m.dia));
   if(!lista.length)return '';
-  return `<section class="wa-revisao"><h2>Mensagens que o sistema não entendeu</h2><p class="muted">Nenhum pendente foi criado a partir delas. Veja o texto e lance a compra manualmente em <a href="#" data-ir="Retiradas">Compras</a>.</p>${lista.map(({m,g})=>`<div class="wa-msg revisao"><small>${esc(g.fornecedor)} · ${br(m.dia)} ${hora(m.enviada_em)}</small><pre>${esc(m.texto)}</pre></div>`).join('')}</section>`;
+  return `<details class="wa-sec"><summary>Mensagens que o sistema não entendeu (${lista.length})</summary><p class="wa-nota">Nenhum pendente foi criado a partir delas. Veja o texto e lance a compra manualmente em <a href="#" data-ir="Compras">Compras</a>.</p>${lista.map(({m,g})=>`<div class="wa-msg revisao"><small>${esc(g.fornecedor)} · ${br(m.dia)} ${hora(m.enviada_em)}</small><pre>${esc(m.texto)}</pre></div>`).join('')}</details>`;
  }
  function recentesHtml(){
   const lista=estado.pendentes.filter(p=>p.status!=='aberto');if(!lista.length)return '';
-  return `<details class="wa-recentes"><summary>Já resolvidos nos últimos 14 dias (${lista.length})</summary><div class="table"><table><thead><tr><th>Dia</th><th>Fornecedor</th><th>Situação</th><th>Ordem de compra</th></tr></thead><tbody>${lista.map(p=>`<tr><td>${br(p.data)}</td><td>${esc(p.fornecedor)}</td><td>${p.status==='aprovado'?'Aprovado':'Descartado'}</td><td>${esc(p.order_id||'—')}</td></tr>`).join('')}</tbody></table></div></details>`;
+  return `<details class="wa-sec"><summary>Já resolvidos nos últimos 14 dias (${lista.length})</summary><div class="wa-tabela"><table><thead><tr><th>Dia</th><th>Fornecedor</th><th>Situação</th><th>Ordem de compra</th></tr></thead><tbody>${lista.map(p=>`<tr><td>${br(p.data)}</td><td>${esc(p.fornecedor)}</td><td>${p.status==='aprovado'?'Aprovado':'Descartado'}</td><td>${esc(p.order_id||'—')}</td></tr>`).join('')}</tbody></table></div></details>`;
  }
+ // Desenha o quadro logo depois do saldo devedor total. Sem nada para decidir (ou sem acesso), não aparece.
  function paint(){
-  if(page!==NAV)return;
+  if(page!=='Painel')return;
+  const hero=app.querySelector('.hero');let q=document.getElementById(QID);
+  if(!hero){q?.remove();return}
   const abertos=estado.pendentes.filter(p=>p.status==='aberto');
+  const revisao=estado.carregado&&!estado.erro?revisaoHtml():'';
+  const semAcesso=/não tem acesso/.test(estado.erro);
+  if(!estado.carregado&&!estado.erro||semAcesso||(estado.carregado&&!abertos.length&&!revisao&&!aviso)){q?.remove();return}
   let corpo;
   if(estado.erro)corpo=`<div class="form-error" role="alert">${esc(estado.erro)}</div>`;
-  else if(!estado.carregado)corpo='<div class="wa-vazio">Carregando pendentes…</div>';
-  else if(!estado.grupos.length)corpo='<div class="wa-vazio"><strong>Nenhum grupo de fornecedor cadastrado ainda.</strong><span>Quando os grupos forem cadastrados, os pendentes aparecem aqui.</span></div>';
-  else corpo=(abertos.length?abertos.map(cardHtml).join(''):'<div class="wa-vazio"><strong>Nenhum pendente aberto.</strong><span>O fechamento do dia acontece às 17h. Pendentes novos aparecem aqui.</span></div>')+revisaoHtml()+recentesHtml();
-  app.innerHTML=`<div class="wa-pagina"><h1>Pendentes do WhatsApp</h1><p class="muted">Pares lidos nos grupos dos fornecedores. Confira, corrija o que precisar e aprove para lançar a compra.</p>${aviso?`<div class="wa-aviso" role="status">${esc(aviso)}</div>`:''}${corpo}</div>`;
+  else corpo=abertos.map(itemHtml).join('')+revisao+(abertos.length?recentesHtml():'');
+  const n=abertos.length;
+  const html=`<div class="wa-cab"><div><span class="supplier-eyebrow">PENDENTES DO WHATSAPP</span><h2>${n?(n===1?'1 pedido aguardando aprovação':n+' pedidos aguardando aprovação'):'Nada aguardando aprovação'}</h2></div><p class="wa-nota">Pares lidos nos grupos dos fornecedores. Nada entra no financeiro até você aprovar.</p></div>${aviso?`<div class="wa-aviso" role="status">${esc(aviso)}</div>`:''}${corpo}`;
+  if(!q){q=document.createElement('section');q.id=QID;q.className='wa-quadro';q.setAttribute('aria-label','Pendentes do WhatsApp')}
+  q.innerHTML=html;
+  if(q.previousElementSibling!==hero)hero.after(q);
  }
+
+ // Troca de modelo ou quantidade: refaz só o resumo, a etiqueta de situação e o total da linha do pedido.
  function atualizarCard(card){
   const p=estado.pendentes.find(x=>x.id===card.dataset.id);if(!p)return;
   card.querySelector('.wa-resumo').innerHTML=resumoHtml(p);
   const badge=card.querySelector('.wa-badge');badge.textContent='Corrigido por você';badge.classList.add('edit');
+  const st=situacao(p),e=card.querySelector('.wa-estado'),n=card.querySelector('.wa-num');
+  e.className='wa-estado '+st.cls;e.textContent=st.txt;n.innerHTML=`<b>${st.r.quantidade} pares</b><small>${money(st.r.total)}</small>`;
  }
 
  /* ---------- gravação ---------- */
@@ -155,37 +173,34 @@
  }
 
  /* ---------- eventos ---------- */
+ const dentro=el=>!!el?.closest?.('#'+QID);
  app.addEventListener('click',ev=>{
-  const ir=ev.target.closest('[data-ir]');if(ir&&page===NAV){ev.preventDefault();navTo(ir.dataset.ir);return}
-  const botao=ev.target.closest('[data-acao]');if(!botao||page!==NAV||ocupado)return;
-  const card=botao.closest('.wa-card'),p=estado.pendentes.find(x=>x.id===card?.dataset.id);if(!p)return;
+  if(!dentro(ev.target))return;
+  const ir=ev.target.closest('[data-ir]');if(ir){ev.preventDefault();navTo(ir.dataset.ir);return}
+  const botao=ev.target.closest('[data-acao]');if(!botao||ocupado)return;
+  const card=botao.closest('.wa-item'),p=estado.pendentes.find(x=>x.id===card?.dataset.id);if(!p)return;
   if(botao.dataset.acao==='aprovar')aprovar(p);else if(botao.dataset.acao==='salvar')salvar(p);else if(botao.dataset.acao==='descartar')descartar(p);
  });
+ // Lembra quais pedidos estão abertos: a tela é refeita a cada gravação.
+ app.addEventListener('toggle',ev=>{
+  const d=ev.target;if(!d.classList?.contains('wa-item'))return;
+  if(d.open)abertosUI.add(d.dataset.id);else abertosUI.delete(d.dataset.id);
+ },true);
  function mudou(ev){
-  const campo=ev.target.dataset?.campo;if(!campo||page!==NAV)return;
-  const card=ev.target.closest('.wa-card'),linha=ev.target.closest('tr[data-item]');if(!card||!linha)return;
+  const campo=ev.target.dataset?.campo;if(!campo||!dentro(ev.target))return;
+  const card=ev.target.closest('.wa-item'),linha=ev.target.closest('tr[data-item]');if(!card||!linha)return;
   const p=estado.pendentes.find(x=>x.id===card.dataset.id),item=itensDe(p).find(i=>i.id===linha.dataset.item);if(!item)return;
   if(campo==='produto')item.produto_id=ev.target.value||null;else item.qtd=ev.target.value.trim();
   alterados.add(p.id);atualizarCard(card);
  }
  app.addEventListener('input',mudou);app.addEventListener('change',mudou);
 
- /* ---------- menu e contador ---------- */
- function marcarMenu(){
-  const nav=document.getElementById('nav');if(!nav||nav.querySelector('[data-pend]'))return;
-  const b=document.createElement('button');b.type='button';b.dataset.pend='1';b.className=page===NAV?'active':'';b.onclick=()=>navTo(NAV);b.innerHTML='<span>'+ICON+'</span>'+NAV;
-  if(estado.n)b.dataset.n=String(estado.n);
-  const primeiro=nav.firstElementChild;if(primeiro)primeiro.after(b);else nav.append(b);
- }
- async function contador(){
-  if(!client()||Date.now()-estado.nEm<20000)return;estado.nEm=Date.now();
-  try{const r=await client().from('wa_pendentes').select('id',{count:'exact',head:true}).eq('status','aberto');if(r.error)return;estado.n=r.count||0;const b=document.querySelector('#nav [data-pend]');if(b){if(estado.n)b.dataset.n=String(estado.n);else delete b.dataset.n}}catch{}
- }
+ /* ---------- ligação com o Painel ---------- */
  const anterior=render;
  render=function(){
-  anterior();marcarMenu();
-  if(page===NAV){paint();if(!estado.carregando&&Date.now()-estado.em>4000)carregar().then(paint)}
-  else{aviso='';contador()}
+  anterior();
+  if(page==='Painel'){paint();if(!estado.carregando&&Date.now()-estado.em>4000)carregar().then(paint)}
+  else aviso='';
  };
  render();
 })();

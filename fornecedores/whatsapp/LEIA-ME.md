@@ -16,7 +16,7 @@ Pôr o chip dedicado nos grupos da W-Box e da Pechincha Livre. Ele só lê; não
 
 ## 4. Conferir
 - `docker compose ps` deve mostrar `waha-fornecedores` como `running`.
-- Mandar uma mensagem de teste no formato de lançamento e ver aparecer em Fornecedores > Pendentes (depois do fechamento das 17h, ou na hora se já passou das 17h).
+- Mandar uma mensagem de teste no formato de lançamento e ver aparecer no quadro "Pendentes do WhatsApp", no Painel de Fornecedores, logo abaixo do saldo devedor total (depois do fechamento das 17h, ou na hora se já passou das 17h).
 
 ## Atualizar / reiniciar
 `docker compose pull` e `docker compose up -d`. O login do WhatsApp fica em `waha-sessions` e não se perde.

@@ -227,7 +227,7 @@ window.PainelUI = {
   depois({ db, page, app, fornecedor }) {
     if (page === 'Painel' && db.entries.length) {
       const hero = app.querySelector('.hero');
-      if (hero && !app.querySelector('#pn')) hero.after(montar(db));
+      if (hero && !app.querySelector('#pn')) (app.querySelector('#wa-quadro') || hero).after(montar(db));
     }
     rolarTotais(app);
     entrada(app, page + '|' + (fornecedor || ''));

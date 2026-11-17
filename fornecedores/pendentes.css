@@ -1,30 +1,77 @@
-/* Tela Pendentes do WhatsApp: segue o mesmo visual dos cartões e tabelas de Fornecedores. */
-#nav button[data-n]::after{content:attr(data-n);margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#bdcaf6;color:#1b2440;font-size:11px;font-weight:750;display:inline-flex;align-items:center;justify-content:center}
-#nav button.active[data-n]::after{background:#191a19;color:#fff}
-.wa-pagina{display:grid;gap:18px}.wa-pagina>h1,.wa-pagina>p{margin-bottom:0}
-.wa-card{background:#fff;border-radius:26px;padding:26px 28px;display:grid;gap:18px}
-.wa-card>header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
-.wa-card>header h2{margin:4px 0 2px}.wa-card>header small{color:#777a73}
-.wa-badge{padding:7px 12px;border-radius:999px;background:#eef1e7;color:#5c6651;font-size:11px;font-weight:700}.wa-badge.edit{background:#fff0d5;color:#79581d}
-.wa-aviso{padding:13px 16px;border-radius:14px;background:#fff0d5;color:#79581d;font-size:13px;line-height:1.55;margin:0}
-.wa-tabela{overflow:auto;border:1px solid #eeefeb;border-radius:18px}
-.wa-tabela table{width:100%;border-collapse:collapse}.wa-tabela th{background:#f8f9f6;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#93968e;padding:14px}
-.wa-tabela td{padding:12px 14px;border-top:1px solid #eeefeb;vertical-align:middle}
-.wa-tabela select{min-width:210px;min-height:44px;width:100%}.wa-tabela input{width:96px;min-height:44px;text-align:right;font-variant-numeric:tabular-nums}
-.wa-veio{color:#6c6f68;font-size:13px}
-.wa-tipo{padding:6px 10px;border-radius:999px;font-size:10px;font-weight:700;background:#e7efff;color:#1e468c}.wa-tipo.abate{background:#fff0d5;color:#79581d}
+/* Quadro "Pendentes do WhatsApp" no Painel de Fornecedores.
+   Só usa os tokens do tema (fo.css): muda sozinho entre claro e escuro, sem cor fixa. */
+.wa-quadro{background:var(--card);border-radius:24px;padding:24px 26px;margin:14px 0;display:grid;gap:14px;color:var(--ink)}
+.wa-cab{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.wa-cab h2{margin:4px 0 0}
+.wa-nota{color:var(--mut);font-size:12px;margin:0;line-height:1.5}
+.wa-nota a{color:var(--rec)}
+
+/* um pedido = uma linha que abre */
+.wa-item{background:var(--soft);border-radius:18px;overflow:hidden}
+.wa-item>summary{display:grid;grid-template-columns:minmax(150px,1.4fr) minmax(110px,1fr) auto auto;gap:16px;align-items:center;padding:16px 20px;cursor:pointer;list-style:none;min-height:64px}
+.wa-item>summary::-webkit-details-marker{display:none}
+.wa-item>summary:focus-visible{outline:2px solid var(--rec);outline-offset:-2px;border-radius:18px}
+.wa-quem strong,.wa-num b{display:block;font-weight:700;color:var(--ink)}
+.wa-quem small,.wa-num small{display:block;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
+.wa-num b{font-variant-numeric:tabular-nums}
+.wa-estado{padding:6px 12px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.wa-estado.ok{background:var(--pago-bg);color:var(--pago)}
+.wa-estado.diverge{background:var(--sai-bg);color:var(--sai)}
+.wa-estado.atencao{background:var(--disp-bg);color:var(--disp)}
+.wa-abrir{color:var(--rec);font-size:13px;font-weight:650;white-space:nowrap}
+.wa-abrir::after{content:"";display:inline-block;width:7px;height:7px;margin-left:9px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .18s}
+.wa-item[open]>summary .wa-abrir::after{transform:rotate(-135deg) translateY(-2px)}
+
+.wa-corpo{padding:6px 20px 20px;display:grid;gap:16px;border-top:1px solid var(--line)}
+.wa-topo{display:flex;justify-content:flex-end;padding-top:10px}
+.wa-badge{padding:6px 12px;border-radius:999px;background:var(--rec-bg);color:var(--rec);font-size:11px;font-weight:700}
+.wa-badge.edit{background:var(--disp-bg);color:var(--disp)}
+.wa-aviso{padding:12px 16px;border-radius:14px;background:var(--disp-bg);color:var(--disp);font-size:13px;line-height:1.55;margin:0}
+
+.wa-tabela{overflow:auto;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.wa-tabela table{width:100%;border-collapse:collapse}
+.wa-tabela th{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);padding:13px 14px;text-align:left;font-weight:700}
+.wa-tabela td{padding:12px 14px;border-top:1px solid var(--line);vertical-align:middle}
+.wa-tabela select{min-width:210px;min-height:44px;width:100%}
+.wa-tabela input{width:96px;min-height:44px;text-align:right;font-variant-numeric:tabular-nums}
+.wa-veio{color:var(--mut);font-size:13px}
+.wa-tabela td:first-child{width:1%;white-space:nowrap}
+.wa-tipo{display:inline-block;width:max-content;padding:5px 10px;border-radius:999px;font-size:10px;font-weight:700;background:var(--rec-bg);color:var(--rec)}
+.wa-tipo.abate{background:var(--disp-bg);color:var(--disp)}
+
 .wa-resumo{display:grid;gap:10px}.wa-resumo p{margin:0}
-.wa-total{display:flex;gap:14px;flex-wrap:wrap}.wa-total>div{flex:1;min-width:200px;padding:14px 18px;border-radius:16px;background:#eef1e7}
-.wa-total span{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:#80857b;margin-bottom:6px}.wa-total strong{font-size:20px;font-variant-numeric:tabular-nums}
-.wa-ok{color:#247b58;font-size:13px;font-weight:650}.wa-diverge{color:#942c35;font-size:13px;font-weight:650}.wa-nota{color:#777a73;font-size:12px}
-.wa-final{list-style:none;margin:0;padding:0;display:grid;gap:2px}.wa-final li{display:grid;grid-template-columns:1fr auto auto;gap:18px;padding:9px 0;border-bottom:1px solid #eeefeb;font-size:13px;font-variant-numeric:tabular-nums}.wa-final small{color:#777a73}
-.wa-problemas{margin:0;padding:12px 16px 12px 32px;border-radius:14px;background:#fff5f4;color:#913b3a;font-size:13px;line-height:1.6}
-.wa-msgs summary,.wa-recentes summary{cursor:pointer;font-weight:650;font-size:13px;color:#555a52}
-.wa-msg{margin-top:10px;padding:12px 14px;border-radius:14px;background:#f6f7f3}.wa-msg.revisao{background:#fff8e6}.wa-msg.apagada{opacity:.6}.wa-msg small{color:#80857b;font-size:11px}
-.wa-msg pre{margin:6px 0 0;white-space:pre-wrap;font:inherit;font-size:13px;line-height:1.5}
-.wa-card>footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;border-top:1px solid #eeefeb;padding-top:18px}
-.wa-vazio{display:grid;gap:6px;padding:40px;border-radius:26px;background:#fff;color:#777a73;text-align:center}.wa-vazio strong{color:#252723}
-.wa-revisao{background:#fff;border-radius:26px;padding:24px 28px}.wa-revisao h2{margin:0 0 6px}
-.wa-recentes{background:#fff;border-radius:26px;padding:20px 28px}.wa-recentes .table{margin-top:12px;padding:0;box-shadow:none}
-body.wa-ocupado .wa-card button,body.wa-ocupado .wa-card select,body.wa-ocupado .wa-card input{pointer-events:none;opacity:.6}
-@media(max-width:700px){.wa-card{padding:20px 16px;border-radius:22px}.wa-tabela select{min-width:150px}.wa-card>footer button{flex:1}.wa-final li{grid-template-columns:1fr auto}.wa-final li b{grid-column:1/-1;text-align:right}}
+.wa-total{display:flex;gap:12px;flex-wrap:wrap}
+.wa-total>div{flex:1;min-width:200px;padding:14px 18px;border-radius:16px;background:var(--card)}
+.wa-total span{display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+.wa-total strong{font-size:20px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.wa-ok{color:var(--pago);font-size:13px;font-weight:650}
+.wa-diverge{color:var(--sai);font-size:13px;font-weight:650}
+.wa-final{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.wa-final li{display:grid;grid-template-columns:1fr auto auto;gap:18px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;font-variant-numeric:tabular-nums}
+.wa-final small{color:var(--mut)}
+.wa-problemas{margin:0;padding:12px 16px 12px 32px;border-radius:14px;background:var(--sai-bg);color:var(--sai);font-size:13px;line-height:1.6}
+
+.wa-msgs summary,.wa-sec>summary{cursor:pointer;font-weight:650;font-size:13px;color:var(--mut)}
+.wa-msg{margin-top:10px;padding:12px 14px;border-radius:14px;background:var(--card)}
+.wa-msg.revisao{background:var(--disp-bg)}
+.wa-msg.apagada{opacity:.6}
+.wa-msg small{color:var(--mut);font-size:11px}
+.wa-msg pre{margin:6px 0 0;white-space:pre-wrap;font:inherit;font-size:13px;line-height:1.5;color:var(--ink)}
+
+.wa-corpo>footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:16px}
+.wa-quadro .wa-corpo>footer button{min-height:44px;padding:0 20px;border-radius:999px;font-weight:600;font-size:13px;cursor:pointer}
+.wa-quadro .wa-corpo>footer button:not(.primary){background:var(--card)!important;color:var(--ink)!important;border:1px solid var(--line)!important}
+
+.wa-sec{background:var(--soft);border-radius:18px;padding:14px 20px}
+.wa-sec .wa-tabela{margin-top:12px}.wa-sec>.wa-nota{margin:10px 0 0}
+
+body.wa-ocupado .wa-quadro button,body.wa-ocupado .wa-quadro select,body.wa-ocupado .wa-quadro input{pointer-events:none;opacity:.6}
+@media(max-width:700px){
+ .wa-quadro{padding:18px 14px;border-radius:20px}
+ .wa-item>summary{grid-template-columns:1fr auto;gap:8px 12px;padding:14px 16px}
+ .wa-estado{justify-self:start}.wa-abrir{justify-self:end}
+ .wa-corpo{padding:4px 14px 16px}.wa-tabela select{min-width:130px}
+ .wa-tabela th:nth-child(2),.wa-tabela td:nth-child(2){display:none}.wa-tabela input{width:80px}
+ .wa-corpo>footer button{flex:1}.wa-final li{grid-template-columns:1fr auto}.wa-final li b{grid-column:1/-1;text-align:right}
+}
+@media(prefers-reduced-motion:reduce){.wa-abrir::after{transition:none}}
