@@ -96,7 +96,8 @@ export async function montarShell({ ativo, raiz = '../', subs = [] } = {}) {
   const col = document.createElement('div'); col.className = 'sh-col';
   let rec = false; try { rec = localStorage.getItem(MENU_CH) === '1'; } catch (e) { /* sem armazenamento */ }
   if (rec) app.classList.add('sh-rec');
-  const filhos = [...document.body.childNodes].filter((n) => !(n.nodeName === 'SCRIPT'));
+  // <link>/<style> ficam onde estão: mover um <link> faz o navegador descartar e baixar o CSS de novo (tela sem estilo por um instante)
+  const filhos = [...document.body.childNodes].filter((n) => !['SCRIPT', 'LINK', 'STYLE'].includes(n.nodeName));
   app.insertAdjacentHTML('afterbegin', lat);
   col.insertAdjacentHTML('afterbegin', topo);
   filhos.forEach((n) => col.appendChild(n));
