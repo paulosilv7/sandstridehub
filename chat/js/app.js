@@ -552,13 +552,16 @@ function vistaRapidas() {
 }
 const PALAVRAS_PADRAO = '';
 async function carregarSandy() {
-  const [c, b, g] = await Promise.all([
+  const [c, b, g, pr, hi] = await Promise.all([
     sb.from('configuracoes').select('chave, valor').in('chave', ['sandy_ativa', 'sandy_escalar_palavras']),
     sb.from('sandy_conhecimento').select('id, titulo, texto, escopo, ativo').order('titulo'),
     sb.from('sandy_registros').select('id, conversa_id, decisao, motivo, resposta, criado_em').order('criado_em', { ascending: false }).limit(25),
+    // Só administradores enxergam estas duas (o banco devolve vazio para os demais).
+    sb.from('sandy_propostas').select('id, titulo, texto, escopo, origem, evidencia, conhecimento_id, criado_em').eq('status', 'pendente').order('criado_em'),
+    sb.from('sandy_conhecimento_hist').select('id, acao, antes, depois, em').order('em', { ascending: false }).limit(15),
   ]);
   const m = Object.fromEntries((c.data || []).map((x) => [x.chave, x.valor]));
-  S.sandy = { ativa: m.sandy_ativa === 'true', palavras: m.sandy_escalar_palavras ?? PALAVRAS_PADRAO, base: b.data || [], reg: g.data || [] };
+  S.sandy = { ativa: m.sandy_ativa === 'true', palavras: m.sandy_escalar_palavras ?? PALAVRAS_PADRAO, base: b.data || [], reg: g.data || [], props: pr.data || [], hist: hi.data || [] };
 }
 function formBase(b) {
   b = b || { titulo: '', texto: '', escopo: 'todas' };
@@ -567,6 +570,35 @@ function formBase(b) {
     `<label class="campo"><span class="eyebrow">Vale para</span><select id="sb-escopo">${Object.keys(ESCOPO).map((k) => `<option value="${k}"${b.escopo === k ? ' selected' : ''}>${ESCOPO[k]}</option>`).join('')}</select></label></div>` +
     `<label class="campo"><span class="eyebrow">O que a Sandy deve saber e dizer</span><textarea id="sb-texto" maxlength="4000" placeholder="Escreva como você explicaria para um cliente. Ex.: Enviamos em até 2 dias úteis depois da aprovação do pagamento.">${esc(b.texto)}</textarea></label>` +
     `<div class="acoes"><button type="button" class="btn" data-act="sandy-salvar-base" data-id="${esc(b.id || '')}">Salvar</button><button type="button" class="bt2" data-act="sandy-cancelar">Cancelar</button></div></div>`;
+}
+const ORIGEM_PROP = { correcao_chat: 'Correção no chat', telegram: 'Telegram', devolucao: 'Devoluções', manual: 'Manual', sandy: 'Sandy', ads: 'Ads', fornecedores: 'Fornecedores' };
+const ACAO_HIST = { criou: 'Adicionou', editou: 'Alterou', desativou: 'Desativou', ativou: 'Reativou', apagou: 'Apagou' };
+function blocoAprendizados(y) {
+  let h = '<div class="box"><h2>O que a Sandy aprendeu</h2><div class="txt">Quando a equipe corrige uma resposta ou ensina algo novo, o aprendizado chega aqui como sugestão. Só vale para a Sandy depois que um administrador aprova.</div></div>';
+  if (!y.props.length) h += '<p class="mut">Nenhuma sugestão esperando aprovação.</p>';
+  h += '<div class="grade">' + y.props.map((p) => {
+    if (S.editProp === p.id) {
+      return `<div class="box"><h2>Editar antes de aprovar</h2><div class="form2"><label class="campo"><span class="eyebrow">Assunto</span><input id="sp-titulo" type="text" maxlength="120" value="${esc(p.titulo)}"></label>` +
+        `<label class="campo"><span class="eyebrow">Vale para</span><select id="sp-escopo">${Object.keys(ESCOPO).map((k) => `<option value="${k}"${p.escopo === k ? ' selected' : ''}>${ESCOPO[k]}</option>`).join('')}</select></label></div>` +
+        `<label class="campo"><span class="eyebrow">Texto</span><textarea id="sp-texto" maxlength="4000">${esc(p.texto)}</textarea></label>` +
+        `<div class="acoes"><button type="button" class="btn" data-act="prop-aprovar-edit" data-id="${p.id}">Aprovar com esta edição</button><button type="button" class="bt2" data-act="prop-cancelar">Cancelar</button></div></div>`;
+    }
+    const rec = S.recProp === p.id;
+    const ap = !souAdmin() ? '' : rec
+      ? `<input id="sp-motivo" type="text" maxlength="300" placeholder="Motivo (opcional)" aria-label="Motivo da recusa"><button type="button" class="bt2 perigo" data-act="prop-recusar" data-id="${p.id}">Recusar</button><button type="button" class="bt2" data-act="prop-cancelar">Voltar</button>`
+      : `<button type="button" class="btn" data-act="prop-aprovar" data-id="${p.id}">Aprovar</button><button type="button" class="bt2" data-act="prop-editar" data-id="${p.id}">Editar e aprovar</button><button type="button" class="bt2" data-act="prop-pedir-recusar" data-id="${p.id}">Recusar</button>`;
+    const rev = p.conhecimento_id ? '<span class="tg2 warn">Muda algo que ela já sabe</span>' : '<span class="tg2 info">Novo</span>';
+    return `<div class="box"><div class="lin"><h2>${esc(p.titulo)}</h2><span class="sp"></span>${rev}<span class="tg2 info">${ESCOPO[p.escopo]}</span></div><div class="txt">${esc(p.texto)}</div>` +
+      `<div class="mut" style="white-space:normal">${esc(ORIGEM_PROP[p.origem] || p.origem)} · ${esc(quando(p.criado_em))}${p.evidencia ? ' · ' + esc(p.evidencia) : ''}</div><div class="acoes">${ap}</div></div>`;
+  }).join('') + '</div>';
+  if (y.hist.length) {
+    h += '<div class="box"><h2>Mudanças recentes</h2>' + y.hist.map((x) => {
+      const d = x.depois || x.antes || {};
+      const bt = souAdmin() ? `<button type="button" class="bt2" data-act="hist-desfazer" data-id="${x.id}">Desfazer</button>` : '';
+      return `<div class="lin"><div style="flex:1;min-width:160px"><div class="nm" style="white-space:normal">${ACAO_HIST[x.acao] || x.acao}: ${esc(d.titulo || '')}</div><div class="mut">${esc(quando(x.em))}</div></div>${bt}</div>`;
+    }).join('') + '</div>';
+  }
+  return h;
 }
 const DECISAO = { respondeu: ['Respondeu', 'info'], escalou: ['Passou para a equipe', 'warn'], ignorou: ['Não atuou', 'info'], erro: ['Erro', 'warn'] };
 function vistaSandy() {
@@ -579,6 +611,7 @@ function vistaSandy() {
     `<label class="campo"><span class="eyebrow">Assuntos que sempre vão para uma pessoa (palavras separadas por vírgula)</span><textarea id="sy-palavras" maxlength="3000"${dis}>${esc(y.palavras)}</textarea></label>` +
     '<p class="mut" style="margin:0">Se a mensagem do cliente tiver qualquer uma dessas palavras, a Sandy nem tenta responder: marca a conversa como "Precisa de uma pessoa". Pedido errado, defeito, cancelamento, devolução e reembolso têm tratamento próprio: ela acolhe o cliente com um texto padrão e passa para a equipe. Assuntos graves (Procon, golpe etc.) ficam numa lista à parte.</p>' +
     (ad ? '<div class="acoes"><button type="button" class="btn" data-act="sandy-salvar-geral">Salvar</button></div>' : '') + '</div>';
+  h += blocoAprendizados(y);
   h += '<div class="box"><h2>O que a Sandy sabe</h2><div class="txt">Ela só responde com o que estiver aqui. Se a resposta não estiver nestas informações, ela passa a conversa para a equipe em vez de inventar.</div></div>';
   if (S.novaBase || S.editBase) h += formBase(y.base.find((x) => x.id === S.editBase));
   else if (ad) h += '<div class="acoes"><button type="button" class="btn" data-act="sandy-nova">Nova informação</button></div>';
@@ -1069,6 +1102,25 @@ document.addEventListener('click', async (ev) => {
       const ok = id ? await guardar(sb.from('sandy_conhecimento').update({ titulo: t, texto: x, escopo: e, atualizado_em: new Date().toISOString() }).eq('id', id), 'Informação salva.')
         : await guardar(sb.from('sandy_conhecimento').insert({ titulo: t, texto: x, escopo: e, criado_por: S.user.id }), 'Informação salva.');
       if (ok) { S.novaBase = false; S.editBase = null; await carregarSandy(); }
+      renderView(); break;
+    }
+    case 'prop-editar': S.editProp = id; S.recProp = null; S.msg = ''; renderView(); break;
+    case 'prop-pedir-recusar': S.recProp = id; S.editProp = null; renderView(); break;
+    case 'prop-cancelar': S.editProp = null; S.recProp = null; renderView(); break;
+    case 'prop-aprovar':
+    case 'prop-aprovar-edit':
+    case 'prop-recusar': {
+      const a = act === 'prop-recusar' ? 'recusar' : 'aprovar', ed = act === 'prop-aprovar-edit';
+      if (ed && (!val('sp-titulo').trim() || !val('sp-texto').trim())) { S.msg = 'Preencha o assunto e o texto.'; renderView(); break; }
+      const args = { p_id: id, p_acao: a, p_titulo: ed ? val('sp-titulo').trim() : null, p_texto: ed ? val('sp-texto').trim() : null,
+        p_escopo: ed ? val('sp-escopo') : null, p_motivo: a === 'recusar' ? (val('sp-motivo') || '').trim() || null : null };
+      const ok = await guardar(sb.rpc('sandy_decidir', args), a === 'recusar' ? 'Sugestão recusada.' : 'Aprovado. A Sandy já usa isso nas próximas respostas.');
+      if (ok) { S.editProp = null; S.recProp = null; }
+      await carregarSandy(); renderView(); break;
+    }
+    case 'hist-desfazer': {
+      const ok = await guardar(sb.rpc('sandy_restaurar', { p_hist: Number(id) }), 'Mudança desfeita.');
+      if (ok) await carregarSandy();
       renderView(); break;
     }
     case 'sandy-salvar-geral': {
