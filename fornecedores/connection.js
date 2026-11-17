@@ -39,7 +39,6 @@
   client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'){lock();loginView()}});
   const{data:{session},error}=await client.auth.getSession();if(error)throw error;if(!session){loginView();return}
   window.FinanceReceipts=new ReceiptStore(client);window.FinanceReceipts.validate=validateReceipt;
-  try{const{createBackupStatus}=await import('./backup-ui.mjs');const backupCss=document.createElement('link');backupCss.rel='stylesheet';backupCss.href='backup.css';document.head.append(backupCss);backupStatus=createBackupStatus(client,main)}catch{const warning=document.createElement('p');warning.className='backup-status';warning.textContent='Não foi possível carregar o indicador do backup. Confira a cópia no Google antes de continuar.';main.append(warning)}
   const navBtn=t=>[...document.querySelectorAll('#nav button')].find(b=>b.textContent.trim()===t);
   const mk=(t,rotulo,d)=>({rotulo,d,ao:()=>navBtn(t)?.click(),ativo:()=>!!navBtn(t)?.classList.contains('active')});
   import('../js/shell.js').then(({montarShell})=>montarShell({ativo:'fornecedores',raiz:'../',subs:[
@@ -51,6 +50,7 @@
    mk('Produtos e preços','Produtos e preços','<path d="M3 12V4h8l10 10-8 8L3 12Z"/><circle cx="7.5" cy="8.5" r="1.2"/>'),
    mk('Relatórios','Relatórios','<path d="M4 20V10m6 10V4m6 16v-7m5 7H3"/>')
   ]})).catch(e=>console.error('menu lateral',e));
+  try{const{createBackupStatus}=await import('./backup-ui.mjs');const backupCss=document.createElement('link');backupCss.rel='stylesheet';backupCss.href='backup.css';document.head.append(backupCss);backupStatus=createBackupStatus(client,main)}catch{const warning=document.createElement('p');warning.className='backup-status';warning.textContent='Não foi possível carregar o indicador do backup. Confira a cópia no Google antes de continuar.';main.append(warning)}
   name.textContent=session.user.email.slice(0,1).toLocaleUpperCase('pt-BR');name.dataset.tooltip=session.user.email+' · Administrador';name.setAttribute('aria-label',name.dataset.tooltip);await refresh();
   if(!ready)unavailable('Não foi possível carregar o financeiro. Confira sua conexão e o acesso do seu usuário.');
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&ready&&!store.busy&&!modal.open)refresh()});
