@@ -54,7 +54,7 @@ async function varrer() {
   const { data: lotes } = await admin.from("devol_recebimentos").select("id, analise_resumo").is("caso_id", null).is("dispensado_em", null).eq("analise", "concluida")
     .gt("criado_em", new Date(Date.now() - 45 * 86_400_000).toISOString()).order("criado_em", { ascending: false }).limit(25);
   for (const r of lotes ?? []) {
-    const nums = [...new Set((r.analise_resumo?.etiqueta ?? []).filter((e: any) => e?.tipo !== "nome" && e?.confianca === "alta").map((e: any) => String(e.valor ?? "").replace(/\D/g, "")).filter((n: string) => n.length >= 8 && n.length <= 16))] as string[];
+    const nums = [...new Set((r.analise_resumo?.etiqueta ?? []).filter((e: any) => e?.tipo !== "nome" && (e?.confianca === "alta" || (e?.tipo === "ref_id" && String(e.valor ?? "").replace(/\D/g, "").length === 11))).map((e: any) => String(e.valor ?? "").replace(/\D/g, "")).filter((n: string) => n.length >= 8 && n.length <= 16))] as string[];
     if (!nums.length) continue;
     res.analisados++;
     const { data: a } = await admin.rpc("devol_achar_caso", { p_numeros: nums, p_nomes: [] });

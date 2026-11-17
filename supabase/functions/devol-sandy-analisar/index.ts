@@ -17,7 +17,7 @@ const BUCKET = "devol-provas";
 const OPENAI = Deno.env.get("OPENAI_API_KEY") ?? "";
 const MODELO = Deno.env.get("DEVOL_SANDY_MODELO") ?? "gpt-4.1";
 const MAX_FOTOS = 6;
-const ETIQUETA_V = 4;
+const ETIQUETA_V = 5;
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false, autoRefreshToken: false } });
 
 // Nomes da equipe/loja: aparecem na etiqueta como destinatário e nunca podem identificar o cliente.
@@ -73,6 +73,11 @@ const S_ETIQUETA = {
         } } },
     },
   },
+};
+
+const S_REFID = {
+  name: "leitura_ref_id", strict: true,
+  schema: { type: "object", additionalProperties: false, required: ["digitos"], properties: { digitos: { type: "array", items: { type: "string" }, description: "Cada dígito do Ref. ID como um item separado, da esquerda para a direita. Lista vazia se não houver Ref. ID legível." } } },
 };
 
 function esquemaEstado(ids: string[]) {
@@ -171,6 +176,8 @@ async function processar(rec: any) {
   if (lista.some((a: any) => a.tipo === "video")) resumo.passos.push("vídeo guardado, mas não analisado");
 
   const imagens = urls.map((u) => ({ type: "image_url", image_url: { url: u, detail: "auto" } }));
+  // a etiqueta é lida em alta resolução (as 3 primeiras fotos; a regra da equipe é que a 1ª seja a etiqueta)
+  const imagensEtq = urls.slice(0, 3).map((u) => ({ type: "image_url", image_url: { url: u, detail: "high" } }));
 
   let caso: any = null;
   const colunas = "id, loja_id, solicitacao_id, pedido, status, categoria, motivo_original, tipo_origem, itens_pedido";
@@ -202,9 +209,28 @@ async function processar(rec: any) {
       else if (imagens.length) {
         const et = await perguntar("devolucao_etiqueta", S_ETIQUETA, [
           { role: "system", content: "Você lê etiquetas de devolução de marketplaces. Transcreva SOMENTE o que está impresso e legível nas fotos: números (ref_id, pedido, rastreio, solicitação). REGRA PRINCIPAL: nas etiquetas do Mercado Livre há uma linha escrita Ref. ID: seguida de um número de 11 dígitos (perto do topo, abaixo do endereço do remetente). Transcreva esse número SEMPRE, com tipo ref_id, dígito por dígito. O número impresso logo abaixo do código de barras é o rastreio. CEP, IP, códigos de rota (SJP1, XPE1, SMG10) e datas NÃO são pedido: não transcreva. Transcreva também o NOME do CLIENTE (tipo nome). Atenção: numa etiqueta de devolução, o CLIENTE é quem aparece no campo REMETENTE (quem está enviando o pacote de volta). O campo DESTINATÁRIO é a loja que recebe: NUNCA transcreva o destinatário como nome. Os nomes Paulo Silva, Lucas Felix (Félix), Lucima Felix (Félix) e Sandstride são da loja e jamais devem ser transcritos como nome. Se não houver remetente legível, não inclua nenhum nome. Se não estiver legível, não inclua. Nunca complete nem invente dígitos ou letras." },
-          { role: "user", content: [{ type: "text", text: "Leia os identificadores e o nome do REMETENTE (cliente) das etiquetas e documentos nestas fotos." }, ...imagens] },
+          { role: "user", content: [{ type: "text", text: "Leia os identificadores e o nome do REMETENTE (cliente) das etiquetas e documentos nestas fotos." }, ...imagensEtq] },
         ], 450);
         ident = (et.identificadores ?? []).map((i: any) => ({ tipo: i.tipo, valor: i.valor, confianca: i.confianca }));
+        // Ref ID: tem sempre 11 dígitos; confere com uma segunda leitura, dígito por dígito. Se divergir ou o tamanho for outro, fica com confiança média
+        // (a rotina devol-ml-achar ainda tenta os dois números no Mercado Livre, que confirma qual existe).
+        const refs = ident.filter((i: any) => i.tipo === "ref_id");
+        if (refs.length) {
+          let lido2 = "";
+          try {
+            const r2 = await perguntar("devolucao_refid", S_REFID, [
+              { role: "system", content: "Na etiqueta de envio do Mercado Livre, ache a linha escrita Ref. ID: e leia o número que vem depois dela, dígito por dígito, da esquerda para a direita, devolvendo cada dígito como um item separado da lista. O Ref ID tem exatamente 11 dígitos. Se não achar a linha ou algum dígito não estiver legível, devolva a lista vazia. Nunca invente nem complete dígitos." },
+              { role: "user", content: [{ type: "text", text: "Qual é o Ref. ID desta etiqueta? Um dígito por item." }, ...imagensEtq] },
+            ], 120);
+            lido2 = (r2.digitos ?? []).join("").replace(/\D/g, "");
+          } catch (_) { /* segue só com a primeira leitura */ }
+          for (const i of refs) {
+            i.valor = String(i.valor ?? "").replace(/\D/g, "");
+            if (i.valor.length !== 11 || (lido2 && lido2 !== i.valor)) i.confianca = "media";
+          }
+          if (lido2.length === 11 && !refs.some((i: any) => i.valor === lido2)) ident.push({ tipo: "ref_id", valor: lido2, confianca: "media" });
+          if (refs.some((i: any) => i.confianca === "media")) resumo.passos.push("Ref ID lido com dúvida (duas leituras diferentes ou tamanho errado)");
+        }
         resumo.etiqueta_v = ETIQUETA_V;
       } else if (Array.isArray(prev.etiqueta)) ident = prev.etiqueta;
       // descarta nomes da loja/equipe, mesmo que a leitura os traga
