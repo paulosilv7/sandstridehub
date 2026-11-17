@@ -126,25 +126,6 @@ async function tabelaAcessos() {
   };
 }
 
-async function textosAvisos() {
-  const el = $('textos-corpo'); if (!el) return;
-  const { data, error } = await sb.from('push_textos').select('*').order('tipo');
-  if (error || !data) { el.innerHTML = '<p class="sub">Não consegui carregar os textos.</p>'; return; }
-  const ordem = ['tarefa_nova', 'tarefa_alterada', 'resumo', 'meta_mes', 'meta_lucro'];
-  data.sort((a, b) => ordem.indexOf(a.tipo) - ordem.indexOf(b.tipo));
-  el.innerHTML = '<div class="tx-lista">' + data.map((t) => `<form class="tx-item" data-tipo="${esc(t.tipo)}"><b>${esc(t.nome)}</b>` +
-    `<label class="campo"><span class="rot">Título</span><input class="md-in" name="titulo" maxlength="80" value="${esc(t.titulo)}"></label>` +
-    `<label class="campo"><span class="rot">Mensagem</span><textarea class="md-in" name="corpo" rows="2" maxlength="200">${esc(t.corpo)}</textarea></label>` +
-    `<p class="sub">Pode usar: ${esc(t.variaveis)}</p><div class="acoes"><button class="btn sec" type="submit">Salvar</button></div></form>`).join('') + '</div>';
-  el.querySelectorAll('form').forEach((f) => {
-    const ba = botaoAcao(f.querySelector('button'), { ok: 'Salvo', carregando: 'Salvando…' });
-    f.addEventListener('submit', (ev) => { ev.preventDefault(); ba.rodar(async () => {
-      const titulo = f.elements.titulo.value.trim(), corpo = f.elements.corpo.value.trim(); if (!titulo) { f.elements.titulo.focus(); return false; }
-      const { error: e } = await sb.from('push_textos').update({ titulo, corpo, atualizado_em: new Date().toISOString(), atualizado_por: user.id }).eq('tipo', f.dataset.tipo);
-      return !e; }); });
-  });
-}
-
 async function montarAvisos() {
   const el = $('avisos-corpo'); if (!el) return;
   const sup = suporte(), sub = sup.ok ? await inscricaoAtual() : null, perm = 'Notification' in window ? Notification.permission : 'denied';
@@ -204,7 +185,6 @@ async function montarAvisos() {
   h += card('aparencia', IC.sol, 'Aparência', 'Escolha o tema do sistema neste aparelho.',
     '<div class="seg" id="tema" role="group" aria-label="Tema"><span class="polegar"></span><button type="button" data-v="light">Claro</button><button type="button" data-v="dark">Escuro</button></div>');
   h += card('avisos', IC.sino, 'Avisos no aparelho', 'Receba avisos no celular ou no computador, mesmo com o sistema fechado. Cada aparelho se liga separadamente.', '<div id="avisos-corpo"><span class="sub">Carregando…</span></div>');
-  if (eu.papel === 'admin') h += card('textos', IC.sino, 'Textos dos avisos', 'Como cada aviso aparece no aparelho. As palavras entre chaves, como {tarefa}, são trocadas pelo valor na hora do envio.', '<div id="textos-corpo"><span class="sub">Carregando…</span></div>');
   h += card('coruja', IC.lua, 'Modo Corujão', 'Das 00h às 06h as atualizações automáticas rodam de hora em hora. Ligue para manter o ritmo normal; ele desliga sozinho às 6h.',
     '<div id="coruja-st" class="corujao-st"><span class="sub">Carregando…</span></div>');
   if (eu.papel === 'admin') h += card('acessos', IC.usuarios, 'Quem acessa o quê', 'Marque as ferramentas que cada pessoa pode abrir. Administradores acessam tudo.', '<div id="tab" class="tbl"><p class="sub">Carregando…</p></div>');
@@ -216,7 +196,6 @@ async function montarAvisos() {
   $('sair').onclick = async () => { await sb.auth.signOut(); location.href = '../'; };
   carregarCoruja();
   montarAvisos();
-  if (eu.papel === 'admin') textosAvisos();
   if (eu.papel === 'admin') tabelaAcessos();
   await montarShell({ ativo: 'configuracoes', raiz: '../' });
   window.dispatchEvent(new Event('resize'));

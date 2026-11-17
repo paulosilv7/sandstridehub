@@ -649,5 +649,3 @@ body.kb-arrastando,body.kb-arrastando *{cursor:grabbing!important;-webkit-user-s
 .av-lista input{margin-top:3px;width:18px;height:18px;accent-color:var(--texto);flex:none}
 .av-lista label>span{display:grid;gap:2px}.av-lista .sub{font-size:13px}
 
-.tx-lista{display:grid;gap:var(--e5)}.tx-item{display:grid;gap:var(--e3)}.tx-item .sub{font-size:13px}
-.tx-item textarea{resize:vertical;min-height:64px}
