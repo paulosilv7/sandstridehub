@@ -7,6 +7,8 @@
 // v10: o nome lido na etiqueta é o do REMETENTE (o cliente que devolve); nomes da equipe/loja (destinatário) são descartados.
 // v11: a leitura das fotos (estado) também recebe as regras 'Detalhe do modelo' (detalhes de outra cor que são de fábrica), para não tomar o desenho do modelo por erro de cor.
 // v12: sem 'pedir informação' (só contestar ou aceitar); ao contestar contra a recomendação, a instrução escrita pelo dono (instrucao_equipe) vira a base do relato.
+// v13: a leitura da etiqueta captura a linha 'Ref. ID' como tipo ref_id (envio da venda); a rotina devol-ml-achar usa esse número para achar o pedido e ligar o lote.
+// v14: a etiqueta é lida em alta resolução (3 primeiras fotos) e o Ref ID (11 dígitos) é conferido por uma segunda leitura dígito a dígito; se divergir, os dois ficam com confiança média.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 

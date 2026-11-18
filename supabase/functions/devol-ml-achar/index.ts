@@ -1,7 +1,8 @@
 // Devoluções (SOMENTE LEITURA no marketplace): procura um número (Ref ID da etiqueta = envio da venda, envio da devolução ou pedido) no Mercado Livre
 // e diz o que é: pedido, situação do envio e se existe reclamação.
-// Modo da tela: { numero } (usuário logado). Modo rotina: { modo: "varrer" } (token interno): dispensa sozinho os lotes sem caso cujo pacote
+// Modo da tela: { numero } (usuário logado). Modo rotina: { modo: "varrer" } (token interno): liga o lote ao caso pelo Ref ID, dispensa os lotes sem caso cujo pacote
 // foi só devolvido pela transportadora (sem reclamação) e apaga as fotos deles.
+// Segunda opção (aproximação): se nenhum número leva a um pedido, compara o Ref ID lido com o envio da venda guardado em cada caso (até 2 dígitos de diferença); só liga se houver UM caso parecido e marca o lote como 'ligado por aproximação' para a equipe conferir.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 const URL_ = Deno.env.get("SUPABASE_URL")!;
