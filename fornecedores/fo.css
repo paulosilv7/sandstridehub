@@ -159,6 +159,7 @@ main .hero button.operation-buy{background:var(--palco-bar)!important;color:var(
 .med svg{width:100%;display:block}
 .med .num{position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:28px;line-height:32px;font-weight:600;letter-spacing:-.5px;font-variant-numeric:tabular-nums;color:var(--ink)}
 .pn .sub{text-align:center}
+.pn .leg{text-wrap:balance}.pn .leg span{display:inline-block;white-space:nowrap}
 /* seletor em pílula que desliza */
 .seg{position:relative;display:inline-flex;padding:3px;border-radius:99px;background:var(--card)}
 .seg .polegar{position:absolute;left:0;top:3px;bottom:3px;width:0;border-radius:99px;background:var(--ativo);pointer-events:none}

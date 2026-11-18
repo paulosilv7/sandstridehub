@@ -110,7 +110,7 @@ function medidor() {
   const arco = el(raiz, '.arco'), nNum = el(raiz, '.num'), leg = el(raiz, '.leg');
   const p = mola('med:p', 0, 140, 20), n = mola('med:n', 0, 160, 22);
   viva(raiz, [p, n], () => { arco.style.strokeDashoffset = (1 - Math.max(0, Math.min(1, p.x))).toFixed(4); nNum.textContent = Math.round(n.x) + '%'; });
-  return { raiz, set(pago, comprado, rot) { const r = comprado > 0 ? Math.min(1, pago / comprado) : 0; alvo(p, r); alvo(n, r * 100); leg.textContent = comprado > 0 ? rot : 'Sem compras no período.'; } };
+  return { raiz, set(pago, comprado, rot) { const r = comprado > 0 ? Math.min(1, pago / comprado) : 0; alvo(p, r); alvo(n, r * 100); leg.innerHTML = comprado > 0 ? rot : 'Sem compras no período.'; } };
 }
 
 function grafico() {
@@ -194,7 +194,7 @@ function montar(db) {
     mp.set(b.total, b0.total, b.pts, `pago em ${c.rot}`);
     // medidor acompanha o período: pagamentos + abatimentos da janela contra as compras da mesma janela
     const ab = janela(db, 'credit', hoje, c.dias, 0), pagoJ = b.total + ab.total;
-    md.set(pagoJ, a.total, `${brlTxt(pagoJ)} pagos no período, para ${brlTxt(a.total)} comprados em ${c.rot}.`);
+    md.set(pagoJ, a.total, `<span>${brlTxt(pagoJ)} pagos no período,</span> <span>para ${brlTxt(a.total)} comprados em ${c.rot}.</span>`);
     const novo = ranking(db, hoje, c.dias); if (rk) rk.replaceWith(novo.raiz); else g1.append(novo.raiz); rk = novo.raiz;
   }
   gf.set(porMes(db, hoje));
