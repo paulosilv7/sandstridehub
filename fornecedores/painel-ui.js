@@ -184,8 +184,6 @@ function montar(db) {
   const mc = metrica('mc', 'Compras', I.compra, 'var(--rec)', 'Compras'), mp = metrica('mp', 'Pagamentos', I.pago, 'var(--pago)', 'Histórico de pagamentos'), md = medidor(), gf = grafico(), ex = extrato(db);
   g3.append(mc.raiz, mp.raiz, md.raiz); g21.append(gf.raiz, ex.raiz);
   const pil = pilula(el(sec, '.polegar')), botoes = [...sec.querySelectorAll('.seg button')];
-  const tot = { compra: 0, pago: 0 };
-  for (const e of movimentos(db)) { if (e.type === 'purchase') tot.compra += e.value; else if (e.type === 'payment' || e.type === 'credit') tot.pago += e.value; }
   let rk = null;
   function atualizar(animarPilula) {
     const c = cfg();
@@ -194,7 +192,9 @@ function montar(db) {
     const b = janela(db, 'payment', hoje, c.dias, 0), b0 = janela(db, 'payment', hoje, c.dias, 1);
     mc.set(a.total, a0.total, a.pts, `comprado em ${c.rot}`);
     mp.set(b.total, b0.total, b.pts, `pago em ${c.rot}`);
-    md.set(tot.pago, tot.compra, `dos ${brlTxt(tot.compra)} comprados até hoje já foram pagos.`);
+    // medidor acompanha o período: pagamentos + abatimentos da janela contra as compras da mesma janela
+    const ab = janela(db, 'credit', hoje, c.dias, 0), pagoJ = b.total + ab.total;
+    md.set(pagoJ, a.total, `${brlTxt(pagoJ)} pagos no período, para ${brlTxt(a.total)} comprados em ${c.rot}.`);
     const novo = ranking(db, hoje, c.dias); if (rk) rk.replaceWith(novo.raiz); else g1.append(novo.raiz); rk = novo.raiz;
   }
   gf.set(porMes(db, hoje));
