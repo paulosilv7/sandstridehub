@@ -3,9 +3,8 @@
 // TikTok Shop não tem observação do vendedor na API: a equipe anota à mão (o aviso na conversa já diz isso).
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { tokenML as tokenMLCompartilhado } from "../_shared/ml.ts";
 
-const ML_CLIENT_ID = Deno.env.get("ML_CLIENT_ID") ?? "7039466443806040";
-const ML_CLIENT_SECRET = Deno.env.get("ML_CLIENT_SECRET") ?? "";
 const ML_API = "https://api.mercadolibre.com";
 const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID") ?? "2050970";
 const KEY = Deno.env.get("SHOPEE_PARTNER_KEY") ?? "";
@@ -23,27 +22,7 @@ async function hmac(chave: string, msg: string) {
 }
 
 // ---------------- Mercado Livre ----------------
-async function tokenML(lojaId: string): Promise<string | null> {
-  const ler = () => supabase.from("credenciais_lojas").select("token_acesso, token_renovacao, expira_em").eq("loja_id", lojaId).maybeSingle();
-  const { data: cred } = await ler();
-  const valido = (c: any) => c?.expira_em && new Date(c.expira_em).getTime() - Date.now() > 60_000;
-  if (cred && valido(cred)) return cred.token_acesso;
-  if (!cred?.token_renovacao) return null;
-  const r = await fetch(`${ML_API}/oauth/token`, {
-    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-    body: new URLSearchParams({ grant_type: "refresh_token", client_id: ML_CLIENT_ID, client_secret: ML_CLIENT_SECRET, refresh_token: cred.token_renovacao }),
-  });
-  const t: any = await r.json().catch(() => ({}));
-  if (r.ok) {
-    await supabase.from("credenciais_lojas").update({
-      token_acesso: t.access_token, token_renovacao: t.refresh_token ?? cred.token_renovacao,
-      expira_em: new Date(Date.now() + (t.expires_in ?? 21600) * 1000).toISOString(), atualizado_em: new Date().toISOString(),
-    }).eq("loja_id", lojaId);
-    return t.access_token;
-  }
-  const { data: outra } = await ler();
-  return valido(outra) ? outra!.token_acesso : null;
-}
+const tokenML = (lojaId: string) => tokenMLCompartilhado(supabase, lojaId);
 async function notaML(conv: any, nota: string) {
   const token = await tokenML(conv.loja_id);
   if (!token) throw new Error("conexão com o Mercado Livre precisa ser refeita");
