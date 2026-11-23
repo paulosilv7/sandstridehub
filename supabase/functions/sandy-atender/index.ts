@@ -6,13 +6,12 @@
 //        {ping: true}                   testa a chave da OpenAI
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { tokenML as tokenMLCompartilhado } from "../_shared/ml.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
 const URL_BASE = Deno.env.get("SUPABASE_URL")!;
 const CHAVE_SERVICO = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ML_CLIENT_ID = Deno.env.get("ML_CLIENT_ID") ?? "7039466443806040";
-const ML_CLIENT_SECRET = Deno.env.get("ML_CLIENT_SECRET") ?? "";
 const ML_API = "https://api.mercadolibre.com";
 const OPENAI = Deno.env.get("OPENAI_API_KEY") ?? "";
 const MODELO = Deno.env.get("SANDY_MODELO") ?? "gpt-4.1-mini";
@@ -70,28 +69,7 @@ async function jwtSandy(): Promise<string> {
 // ---------------------------------------------------------------------
 // Ficha do anúncio (dados reais da API do Mercado Livre: descrição, atributos, tamanhos e cores)
 // ---------------------------------------------------------------------
-async function tokenML(lojaId: string): Promise<string | null> {
-  const ler = () => supabase.from("credenciais_lojas").select("token_acesso, token_renovacao, expira_em").eq("loja_id", lojaId).maybeSingle();
-  const { data: cred } = await ler();
-  const valido = (c: any) => c?.expira_em && new Date(c.expira_em).getTime() - Date.now() > 60_000;
-  if (cred && valido(cred)) return cred.token_acesso;
-  if (!cred?.token_renovacao) return null;
-  const resp = await fetch(`${ML_API}/oauth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-    body: new URLSearchParams({ grant_type: "refresh_token", client_id: ML_CLIENT_ID, client_secret: ML_CLIENT_SECRET, refresh_token: cred.token_renovacao }),
-  });
-  const t: any = await resp.json().catch(() => ({}));
-  if (resp.ok) {
-    await supabase.from("credenciais_lojas").update({
-      token_acesso: t.access_token, token_renovacao: t.refresh_token ?? cred.token_renovacao,
-      expira_em: new Date(Date.now() + (t.expires_in ?? 21600) * 1000).toISOString(), atualizado_em: new Date().toISOString(),
-    }).eq("loja_id", lojaId);
-    return t.access_token;
-  }
-  const { data: outra } = await ler();
-  return valido(outra) ? outra!.token_acesso : null;
-}
+const tokenML = (lojaId: string) => tokenMLCompartilhado(supabase, lojaId);
 async function chamarML(caminho: string, token: string | null): Promise<any> {
   const r = await fetch(`${ML_API}${caminho}`, {
     headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, signal: AbortSignal.timeout(15_000),

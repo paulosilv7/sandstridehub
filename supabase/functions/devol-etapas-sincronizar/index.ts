@@ -4,6 +4,7 @@
 // Não envia nada aos marketplaces. Respeita a chave kill_switch.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { tokenML as tokenMLCompartilhado } from "../_shared/ml.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 const ORIGEM = "devol-etapas-sincronizar";
@@ -40,29 +41,13 @@ async function gravar(c: any, etapa: string | null, quando: string | null) {
 
 // ---------------- Mercado Livre ----------------
 const API = "https://api.mercadolibre.com";
-const CLIENT_ID = Deno.env.get("ML_CLIENT_ID") ?? "7039466443806040";
-const CLIENT_SECRET = Deno.env.get("ML_CLIENT_SECRET") ?? "";
 class ErroHttp extends Error { status: number; constructor(m: string, s: number) { super(m); this.status = s; } }
 async function ml(caminho: string, token: string): Promise<any> {
   const r = await fetch(`${API}${caminho}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
   if (!r.ok) throw new ErroHttp(`ML ${r.status} ${caminho}`, r.status);
   return await r.json();
 }
-async function tokenML(lojaId: string): Promise<string | null> {
-  const ler = () => supabase.from("credenciais_lojas").select("token_acesso, token_renovacao, expira_em").eq("loja_id", lojaId).maybeSingle();
-  const { data: cred } = await ler();
-  const valido = (c: any) => c?.expira_em && new Date(c.expira_em).getTime() - Date.now() > 60_000;
-  if (cred && valido(cred)) return cred.token_acesso;
-  if (!cred?.token_renovacao) return null;
-  const resp = await fetch(`${API}/oauth/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" }, body: new URLSearchParams({ grant_type: "refresh_token", client_id: CLIENT_ID, client_secret: CLIENT_SECRET, refresh_token: cred.token_renovacao }) });
-  const t: any = await resp.json().catch(() => ({}));
-  if (resp.ok) {
-    await supabase.from("credenciais_lojas").update({ token_acesso: t.access_token, token_renovacao: t.refresh_token ?? cred.token_renovacao, expira_em: new Date(Date.now() + (t.expires_in ?? 21600) * 1000).toISOString(), atualizado_em: new Date().toISOString() }).eq("loja_id", lojaId);
-    return t.access_token;
-  }
-  const { data: outra } = await ler();
-  return valido(outra) ? outra!.token_acesso : null;
-}
+const tokenML = (lojaId: string) => tokenMLCompartilhado(supabase, lojaId);
 function etapaML(r: any): { etapa: string | null; quando: string | null } {
   const st = String(r?.status ?? "").toLowerCase();
   const quando = r?.last_updated ? new Date(r.last_updated).toISOString() : null;
