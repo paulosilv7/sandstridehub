@@ -62,7 +62,6 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     ativo() { return !parada(anel, 0.002) || [...medidores.values()].some((m) => !parada(m, 0.002)); },
   });
 
-  // ---- quadros
   function resumo() {
     const r = rotinaDe(user.id), rf = r.filter((x) => E.feitos.has(x.id)).length, ab = abertas(user.id);
     const ini = new Date(`${hoje}T00:00:00-03:00`).getTime();
@@ -99,7 +98,6 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   }
   const fSem = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
   const ABR = ['seg', 'ter', 'qua', 'qui', 'sex'];
-  // Rotina da semana: painel só para consultar. Marcar como feita só no dia, pela lista de Tarefas.
   // "Minha semana": quadro estilo Trello. Uma coluna por dia (segunda a sexta); os cartões são os itens da rotina daquele dia
   // e as tarefas minhas com data naquele dia. Dá para marcar em qualquer dia (adiantar); a lista de Tarefas mostra o mesmo.
   function qRotina() {
@@ -224,7 +222,6 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   }
   const falhou = (msg) => { E.erro = msg; desenhar(); };
 
-  // ---- ações
   el.addEventListener('click', async (ev) => {
     // tarefa: clicar em qualquer ponto do cartão/linha abre os detalhes; só o círculo marca como concluída
     const cartao = ev.target.closest('.kb-card.tar[data-tid], .md-lista li:has([data-tar])');
@@ -328,7 +325,6 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     const d = ev.target.closest('input[type=date]'); if (!d || d.value) return;
     d.value = hoje; d.dispatchEvent(new Event('input', { bubbles: true })); d.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  // ---- nova tarefa (janela): nome, responsáveis (vários ou Todos), data e importância
   function janelaNova() {
     const R = { titulo: '', prazo: '', imp: 'normal' }, est = novoEstado(user.id);
     const imp = (v, r) => `<button type="button" data-nimp="${v}" class="${R.imp === v ? 'on' : ''}" aria-pressed="${R.imp === v}">${r}</button>`;
@@ -364,13 +360,11 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     });
   }
 
-  // ---- detalhes da tarefa: título, responsável, data, importância, descrição e subtarefas
   function janelaTarefa(id) {
     const t = E.tarefas.find((x) => x.id === id); if (!t) return;
     abrirDetalheTarefa({ sb, user, admin, equipe: E.equipe, tarefa: t, itens: E.itens, aoFechar: desenhar, aoFalhar: falhou, aoApagar: (x) => { E.tarefas = E.tarefas.filter((y) => y.id !== x.id); } });
   }
 
-  // ---- janelas (rotina de uma pessoa, meta)
   function janela(html) {
     document.getElementById('md-dlg')?.remove();
     const d = document.createElement('dialog'); d.id = 'md-dlg'; d.className = 'md-dlg'; d.innerHTML = html; document.body.appendChild(d);

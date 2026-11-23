@@ -136,7 +136,7 @@ async function dadosPrioridades(sb, tri) {
   const it = (ta.data || []).length ? await sb.from('central_tarefa_itens').select('*').in('tarefa_id', ta.data.map((t) => t.id)).order('ordem') : { data: [] };
   return { prioridades: pr.data || [], tarefas: ta.data || [], itens: it.data || [], erro: !!(pr.error || ta.error) };
 }
-// linha de tarefa no modelo novo: círculo conclui; o resto abre o card de detalhes
+// linha de tarefa: o círculo conclui; o resto da linha abre o card de detalhes
 function linhaTarefa(t, eq, B, itens, extra = {}) {
   const on = !!t.feita_em, r = eq.find((x) => x.usuario_id === t.responsavel_id), atr = !on && t.prazo && t.prazo < hojeISO();
   const prazo = t.prazo ? `<span class="tag${atr ? ' ate' : ''}">${svg(atr ? IC.alerta : IC.relogio)}${t.prazo === hojeISO() ? 'Hoje' : fCurto.format(dataDe(t.prazo))}</span>` : '';

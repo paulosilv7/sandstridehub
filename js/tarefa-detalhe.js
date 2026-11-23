@@ -3,7 +3,6 @@
 import { esc, svg, IC, hojeISO, prim } from './util.js';
 import { botaoAcao } from './molas.js';
 
-// tag de importância e selo de subtarefas/descrição, iguais em todas as listas
 export const tagImp = (v) => { const k = v === 'alta' ? ['alta', 'Alta'] : v === 'baixa' ? ['baixa', 'Baixa'] : ['normal', 'Normal']; return `<span class="tag imp ${k[0]}">${k[1]}</span>`; };
 export const seloTarefa = (t, itens) => { const l = itens.filter((i) => i.tarefa_id === t.id), f = l.filter((i) => i.feito).length;
   return (l.length ? `<span class="tag ck${f === l.length ? ' ok' : ''}" title="Subtarefas">${svg(IC.check, 12)}${f}/${l.length}</span>` : '') + (t.descricao ? `<span class="tag ck" title="Tem descrição">${svg(IC.texto, 12)}</span>` : ''); };
