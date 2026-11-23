@@ -241,7 +241,8 @@ async function registrarClaim(loja: any, claim: any, resumo: any, explorar: bool
   // Reclamação igual à da última leitura e gravada há menos de 6 horas: não regrava o caso nem o evento; só confere mensagens novas.
   // A cada 6 horas o caso é regravado por segurança, caso o ML mude algo sem alterar last_updated.
   const ultima = claim?.last_updated ? String(claim.last_updated) : null;
-  if (atual && ultima && atual.mkt_atualizado === ultima && !precisaFrete && idadeHoras(atual.atualizado_em) < 6) {
+  const faltaFechar = fechado && (!atual?.reembolso_lido || atual?.desfecho !== desfecho);
+  if (atual && ultima && atual.mkt_atualizado === ultima && !precisaFrete && !faltaFechar && idadeHoras(atual.atualizado_em) < 6) {
     if (aberto && (acoesDaLoja(claim).length || (await jaHouveConversa(atual.id)))) await guardarMensagens(atual.id, claim, token, resumo);
     return;
   }
@@ -398,7 +399,29 @@ async function sincronizarLoja(loja: any, explorar: boolean, inicio: number): Pr
     }
     if (lista.length < 50) break;
   }
+  await completarDaLoja(loja, resumo, token, inicio);
   return resumo;
+}
+
+// Casos já decididos ou encerrados cujo dinheiro nunca foi lido (desfecho "em andamento", reembolso e frete sem leitura): relê a reclamação e completa.
+// Fora da janela de 45 dias das encerradas, e depois que a revisão do vendedor termina, ninguém mais passava por eles. Poucos por rodada, para não estourar o limite do ML.
+async function completarDaLoja(loja: any, resumo: any, token: string, inicio: number) {
+  resumo.completados = 0;
+  const { data: faltam } = await supabase.from("devol_casos").select("solicitacao_id").eq("loja_id", loja.id)
+    .in("status", ["DECIDIDO", "ENCERRADO", "CONCILIADO"]).or("desfecho.eq.em_andamento,reembolso_lido.is.false,reembolso_lido.is.null")
+    .not("acoes_loja", "ov", "{return_review_ok,return_review_unified_ok}")
+    .order("atualizado_em", { ascending: true }).limit(20);
+  const alvo = (faltam ?? []).map((x: any) => String(x.solicitacao_id));
+  if (!alvo.length) return;
+  const cache = await carregarCache(loja.id, alvo);
+  for (const sid of alvo) {
+    if (Date.now() - inicio > 105_000) break;
+    try { const c = await ml(`/post-purchase/v1/claims/${sid}`, token); await registrarClaim(loja, c, resumo, false, token, cache); resumo.completados++; }
+    catch (e) {
+      resumo.erro_completar = `${e instanceof Error ? e.message : e}`.slice(0, 250);
+      await supabase.from("devol_casos").update({ mkt_conferido_em: new Date().toISOString() }).eq("loja_id", loja.id).eq("solicitacao_id", sid); // vai para o fim da fila
+    }
+  }
 }
 
 async function executar(explorar: boolean, foco: boolean, revisoes: boolean) {
@@ -416,7 +439,7 @@ async function executar(explorar: boolean, foco: boolean, revisoes: boolean) {
     await diag(`erro: ${e instanceof Error ? e.message : String(e)}`);
   }
   if (revisoes) await supabase.from("devol_config").upsert({ chave: "ultima_varredura_revisoes_ml", valor: JSON.stringify({ em: new Date().toISOString(), resultados }).slice(0, 1500), descricao: "Resultado da última varredura de revisões pendentes do ML", atualizado_em: new Date().toISOString() });
-  if (explorar || resultados.some((r) => r.erro_mensagens || r.erro_foco || r.erro_encerradas || r.erro_busca)) await diag(`resultado${foco ? " foco" : ""}${revisoes ? " revisoes" : ""}: ${JSON.stringify(resultados).slice(0, 1200)}`);
+  if (explorar || resultados.some((r) => r.erro_mensagens || r.erro_foco || r.erro_encerradas || r.erro_completar || r.erro_busca)) await diag(`resultado${foco ? " foco" : ""}${revisoes ? " revisoes" : ""}: ${JSON.stringify(resultados).slice(0, 1200)}`);
 }
 
 Deno.serve(async (req) => {

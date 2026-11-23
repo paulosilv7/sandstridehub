@@ -1,4 +1,5 @@
 // Conferência diária (somente leitura nos marketplaces): relê no ML os casos encerrados/enviados E os abertos, relê os abertos da Shopee, marca pendências e avisa no Telegram.
+// Modo consulta ({"dry":true,"status":[...]}): não grava nada, devolve o estado real de cada caso no ML (para vistoria).
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { tokenML as tokenMLCompartilhado } from "../_shared/ml.ts";
@@ -8,6 +9,7 @@ const J = (o: any, s = 200) => new Response(JSON.stringify(o), { status: s, head
 const esc = (t: string) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const tokenML = (lojaId: string) => tokenMLCompartilhado(admin, lojaId);
 const acoes = (c: any): string[] => { const l: string[] = []; for (const p of c?.players ?? []) if (p?.role === "respondent" || p?.type === "seller") for (const a of p?.available_actions ?? []) l.push(String(a?.action)); return l; };
+const acoesComPrazo = (c: any): string[] => { const l: string[] = []; for (const p of c?.players ?? []) if (p?.role === "respondent" || p?.type === "seller") for (const a of p?.available_actions ?? []) l.push(`${a?.action}@${String(a?.due_date ?? "").slice(0, 10)}`); return l; };
 const n = async (q: any) => (await q).count ?? 0;
 
 // ---- Shopee (somente leitura) ----
@@ -44,6 +46,27 @@ async function statusSp(c: any, returnSn: string): Promise<string | null> {
   return j.error ? null : String(j.response?.status ?? "") || null;
 }
 const ABERTOS = ["NOVO", "AGUARDANDO_ANALISE", "AGUARDANDO_PROVAS", "PREPARADO", "RECURSO_DISPONIVEL", "COMPLEMENTACAO", "EM_ANALISE"];
+
+// Consulta sem gravar: estado real de cada caso no ML.
+async function consulta(corpo: any) {
+  const sts: string[] = Array.isArray(corpo.status) && corpo.status.length ? corpo.status : ["DECIDIDO"];
+  let q = admin.from("devol_casos").select("id, loja_id, solicitacao_id, status, situacao_mkt, etapa_fisica, prazo_em, arquivado_em, lojas!inner(marketplace)").eq("lojas.marketplace", "mercado_livre").in("status", sts).order("criado_em", { ascending: false }).limit(Number(corpo.limite ?? 40));
+  if (corpo.arquivados !== true) q = q.is("arquivado_em", null);
+  const { data: casos } = await q;
+  const tokens: Record<string, string | null> = {};
+  const linhas: any[] = [];
+  for (const c of casos ?? []) {
+    if (!(c.loja_id in tokens)) tokens[c.loja_id] = await tokenML(c.loja_id);
+    const tk = tokens[c.loja_id]; if (!tk) continue;
+    const r = await fetch(`${ML}/post-purchase/v1/claims/${c.solicitacao_id}`, { headers: { Authorization: `Bearer ${tk}`, Accept: "application/json" }, signal: AbortSignal.timeout(20_000) }).catch(() => null);
+    if (!r || !r.ok) { linhas.push({ id: c.id, sol: c.solicitacao_id, erro: r?.status ?? "rede" }); continue; }
+    const j: any = await r.json().catch(() => ({}));
+    let ret: any = null;
+    if (corpo.retorno) { const rr = await fetch(`${ML}/post-purchase/v2/claims/${c.solicitacao_id}/returns`, { headers: { Authorization: `Bearer ${tk}`, Accept: "application/json" }, signal: AbortSignal.timeout(20_000) }).catch(() => null); if (rr?.ok) { const x: any = await rr.json().catch(() => ({})); ret = { status: x?.status, ships: (x?.shipments ?? []).map((s: any) => `${s?.type}:${s?.status}`) }; } else ret = { http: rr?.status ?? "rede" }; }
+    linhas.push({ id: c.id, sol: c.solicitacao_id, local: c.status, fis: c.etapa_fisica, st: j?.status, stage: j?.stage, tipo: j?.type, por: j?.resolution?.closed_by, motivo: j?.resolution?.reason, acoes: acoesComPrazo(j), ret });
+  }
+  return { total: linhas.length, linhas };
+}
 
 async function rodar() {
   const { data: casos } = await admin.from("devol_casos").select("id, loja_id, solicitacao_id, pedido, status, prazo_em, enviado_mkt_em, lojas!inner(marketplace, apelido)").eq("lojas.marketplace", "mercado_livre").is("arquivado_em", null).in("status", ["ENCERRADO", "CONCILIADO", "ENVIADO", ...ABERTOS]).limit(400);
@@ -100,5 +123,6 @@ async function rodar() {
 Deno.serve(async (req) => {
   const { data: seg } = await admin.from("lucro_segredo").select("valor").limit(1).maybeSingle();
   if (!seg?.valor || req.headers.get("x-lucro-token") !== seg.valor) return J({ ok: false }, 401);
-  try { return J({ ok: true, ...(await rodar()) }); } catch (e) { return J({ ok: false, erro: String(e).slice(0, 200) }, 500); }
+  const corpo: any = await req.json().catch(() => ({}));
+  try { return J({ ok: true, ...(corpo.dry ? await consulta(corpo) : await rodar()) }); } catch (e) { return J({ ok: false, erro: String(e).slice(0, 200) }, 500); }
 });
