@@ -21,6 +21,7 @@ const ESPERA_MIN_SEG = 30; // nunca responde na hora: espera entre 30 s e 60 s (
 const ESPERA_MAX_SEG = 60;
 const MAX_RESPOSTAS_24H = 8; // trava contra conversa sem fim; depois disso, passa para uma pessoa
 const JANELA_MIN = 30; // só atende mensagens recentes (nunca histórico importado)
+const ATRASO_MAX_H = 24; // mensagem que o marketplace entregou atrasada à Sandy (ex.: a leitura ficou parada) ainda é atendida se chegou há pouco, numa conversa que já existia
 const SEM_ENVIO = ["cancelado", "devolucao", "devolvido", "analise_ml"];
 const RESPONDER: Record<string, string> = { mercado_livre: "ml-responder", shopee: "shopee-responder", tiktok_shop: "tiktok-responder" };
 
@@ -254,7 +255,7 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
   const { data: cfg } = await supabase.from("configuracoes").select("chave, valor").in("chave", ["sandy_ativa", "sandy_escalar_palavras", "sandy_graves_palavras", "sandy_acolher_palavras", "sandy_usuario_id"]);
   const c = Object.fromEntries((cfg ?? []).map((x: any) => [x.chave, x.valor]));
   const { data: conv } = await supabase.from("conversas")
-    .select("id, loja_id, tipo, cliente_nome, produto_titulo, dados_extras, situacao, bloqueada, atendente_id, ultima_mensagem_em, ultima_mensagem_de, sandy_trava_em, lojas(nome, marketplace, sandy_ativa)")
+    .select("id, loja_id, tipo, cliente_nome, produto_titulo, dados_extras, situacao, bloqueada, atendente_id, ultima_mensagem_em, ultima_mensagem_de, sandy_trava_em, criado_em, lojas(nome, marketplace, sandy_ativa)")
     .eq("id", conversaId).maybeSingle();
   if (!conv) return { ...saida, resultado: "conversa não encontrada" };
   const loja: any = Array.isArray(conv.lojas) ? conv.lojas[0] : conv.lojas;
@@ -266,7 +267,14 @@ async function atender(conversaId: string, simular: boolean, textoTeste?: string
     if (conv.bloqueada) return { ...saida, resultado: "conversa bloqueada" };
     if (conv.situacao && SEM_ENVIO.includes(conv.situacao)) return { ...saida, resultado: "marketplace não aceita mensagens" };
     if (conv.ultima_mensagem_de !== "cliente") return { ...saida, resultado: "a última mensagem não é do cliente" };
-    if (!conv.ultima_mensagem_em || Date.now() - new Date(conv.ultima_mensagem_em).getTime() > JANELA_MIN * 60_000) return { ...saida, resultado: "mensagem antiga demais" };
+    if (!conv.ultima_mensagem_em) return { ...saida, resultado: "mensagem antiga demais" };
+    if (Date.now() - new Date(conv.ultima_mensagem_em).getTime() > JANELA_MIN * 60_000) {
+      const { data: ult } = await supabase.from("mensagens").select("criado_em").eq("conversa_id", conversaId).eq("de", "cliente").order("enviada_em", { ascending: false }).limit(1).maybeSingle();
+      const gravada = ult?.criado_em ? new Date(ult.criado_em).getTime() : 0;
+      const chegouAgora = Date.now() - gravada <= JANELA_MIN * 60_000;
+      const naoEhHistorico = Date.now() - new Date(conv.ultima_mensagem_em).getTime() <= ATRASO_MAX_H * 3_600_000 && gravada - new Date(conv.criado_em).getTime() > 120_000;
+      if (!(chegouAgora && naoEhHistorico)) return { ...saida, resultado: "mensagem antiga demais" };
+    }
     if (!RESPONDER[loja.marketplace]) return { ...saida, resultado: "marketplace sem envio" };
     // Trava para duas execuções não responderem a mesma conversa ao mesmo tempo.
     const limite = new Date(Date.now() - 2 * 60_000).toISOString();
