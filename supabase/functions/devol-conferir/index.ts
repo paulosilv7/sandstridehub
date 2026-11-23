@@ -83,9 +83,7 @@ async function rodar() {
     const fechadoMed = String(j?.status ?? "") === "closed" && String(j?.resolution?.closed_by ?? "") === "mediator";
     const pendente = !aberto && ac.includes("return_review_ok") && !c.enviado_mkt_em && c.status !== "ENVIADO";
     const upd: any = { acoes_loja: ac, pendente_mkt: pendente, mkt_conferido_em: new Date().toISOString() };
-    const falta_revisao = ac.includes("return_review_ok") || ac.includes("return_review_unified_ok");
-    if (aberto && fechadoMed && falta_revisao) { upd.situacao_mkt = "Encerrada · falta a revisão da devolução"; }
-    else if (aberto && fechadoMed) { upd.situacao_mkt = "Fechada pelo Mercado Livre (mediador)"; resolvidos.push({ ...c, nota: "fechado pelo mediador" }); }
+    if (aberto && fechadoMed) { upd.situacao_mkt = "Fechada pelo Mercado Livre (mediador)"; resolvidos.push({ ...c, nota: "fechado pelo mediador" }); }
     await admin.from("devol_casos").update(upd).eq("id", c.id);
     if (pendente) pend.push(c);
   }
