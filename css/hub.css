@@ -90,8 +90,6 @@ input[type=checkbox]:checked::after{content:"";width:10px;height:5px;border-left
 .md{display:flex;flex-direction:column;gap:var(--e4)}
 .md .pg-cab{margin-bottom:var(--e2)}
 .md-data::first-letter{text-transform:uppercase}
-.md-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--e4);align-items:start}
-@media (max-width:899px){.md-g2{grid-template-columns:minmax(0,1fr)}}
 .md-palco{background:var(--palco);color:#fff;flex-direction:row;align-items:center;gap:var(--e8);padding:var(--e8)}
 .md-anelbox{position:relative;width:132px;height:132px;flex:none}
 .md-anel{width:100%;height:100%;display:block}
@@ -259,18 +257,11 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .md-tarefas{position:relative}
 .md-mais{width:40px;padding:0;flex:none;transition:transform var(--t-medio) var(--ease)}
 .md-mais.on{transform:rotate(45deg)}
-.md-pop{position:absolute;z-index:30;top:60px;right:var(--e4);width:min(380px,calc(100% - 32px));background:var(--elevado);border:1px solid var(--borda);border-radius:var(--r-painel);padding:var(--e5);box-shadow:0 16px 40px rgba(0,0,0,.28);animation:sobe 160ms var(--ease)}
-.md-pop form{display:flex;flex-direction:column;gap:var(--e4)}
-.md-pop .campo>span{font-size:12px;font-weight:500;color:var(--suave)}
-.md-pop .md-in{height:44px;width:100%}
-.md-pop .md-duo{grid-template-columns:repeat(2,minmax(0,1fr))}
-@media (max-width:420px){.md-pop .md-duo{grid-template-columns:minmax(0,1fr)}}
-.md-pop .md-acoes{justify-content:flex-end}
 .md-imp{display:flex;gap:4px;background:var(--cartao);border-radius:var(--r-pilula);padding:4px}
 .md-imp button{flex:1;height:32px;border:0;border-radius:var(--r-pilula);background:none;color:var(--suave);font-size:13px;font-weight:500;cursor:pointer;transition:background var(--t-medio),color var(--t-medio)}
 .md-imp button.on{background:var(--texto);color:var(--cartao)}
 .tag.alta{background:var(--texto);color:var(--cartao);font-weight:600}
-@media (prefers-reduced-motion:reduce){.md-pop{animation:none}.md-mais{transition:none}}
+@media (prefers-reduced-motion:reduce){.md-mais{transition:none}}
 
 /* equipe hoje: tarefas pendentes de cada pessoa */
 .md-pendentes{display:flex;flex-direction:column;gap:var(--e2);padding-left:36px;min-width:0}
@@ -308,8 +299,6 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .id-ia .tr::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:var(--cartao);transition:transform 260ms var(--ease)}
 .id-ia input:checked+.tr{background:var(--texto)}.id-ia input:checked+.tr::after{transform:translateX(14px)}
 .id-ia input:focus-visible+.tr{outline:2px solid var(--foco);outline-offset:2px}
-.id-acoes{display:flex;gap:var(--e2);flex-wrap:wrap;margin-left:auto}
-.id-acoes .btn{height:34px;padding:0 var(--e4);background:var(--elevado);color:var(--texto)}.id-acoes .btn.pri{background:var(--texto);color:var(--cartao)}
 .id-chat{display:flex;flex-direction:column;gap:10px;font-size:15px;line-height:22px}
 .id-msg{border-radius:20px;will-change:transform,opacity}
 .id-me{align-self:flex-end;max-width:85%;padding:9px 16px;background:var(--texto);color:var(--cartao);font-weight:500;overflow-wrap:anywhere;opacity:0}
@@ -351,13 +340,9 @@ select.md-in{appearance:none;padding-right:28px;background-image:linear-gradient
 .id-ap-bt .ok{background:var(--texto);color:var(--cartao);font-weight:500}.id-ap-bt .ok:hover{opacity:.85}
 .id-ap-bt button:focus-visible{outline:2px solid var(--foco);outline-offset:2px}
 .id-ap-bt .nota{font-size:12px;color:var(--suave);margin-right:auto}
-.id-item{flex:1;min-width:0;display:block;padding:var(--e3) 0;border:0;background:none;text-align:left;cursor:pointer;font-size:14px;font-weight:500}
-.id-item .tx{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
-.id-item.on .tx{text-decoration:underline;text-underline-offset:4px}
 .id-qd{font-size:12px;color:var(--suave);white-space:nowrap}
 @media (max-width:520px){.id-qd{display:none}}
 @media (prefers-reduced-motion:reduce){.id-status.think .mark,.id-status.think .label,.id-tr-lin .girando{animation:none}.id-ia .tr::after,.id-tr-lin .dir{transition:none}}
-@media (max-width:640px){.id-fio .qcab{flex-wrap:wrap}.id-fio .qcab h2{flex:1}.id-acoes{order:3;flex-basis:100%;margin-left:0}}
 
 /* ideias dentro do Meu dia: chat */
 #md-a,#md-b{display:contents}

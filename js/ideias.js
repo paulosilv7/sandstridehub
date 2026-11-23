@@ -4,7 +4,7 @@
 // e Tool approval (Kokonut UI, MIT) refeitos em JavaScript puro com as cores do sistema.
 import { novoEstado, chipsResp, alternaResp, donosDe } from './responsaveis.js';
 import { S, ajustar, passo, parada, limitar, registrar, acordar, depois, cancelar } from './molas.js';
-import { esc, svg, IC, dataDe, fCurto, valor } from './meudia.js';
+import { esc, svg, IC, dataDe, fCurto, fMes, valor, prim } from './util.js';
 import { base } from './gestao.js';
 
 const ID = {
@@ -20,9 +20,7 @@ const ID = {
 const reduz = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const M = (x, k, c) => { const s = S(x, k, c); ajustar(s, k, c); return s; };
 const anima = (el, kf, ms = 220) => { try { return el.animate(kf, { duration: reduz() ? 0 : ms, easing: 'cubic-bezier(.23,1,.32,1)' }).finished.catch(() => {}); } catch { return Promise.resolve(); } };
-const fMes = new Intl.DateTimeFormat('pt-BR', { month: 'long', timeZone: 'UTC' });
 const fData = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' });
-const prim = (n) => String(n || '').split(' ')[0];
 const IMP = { baixa: 'Baixa', normal: 'Normal', alta: 'Alta' };
 const ROT_TIPO = { tarefa: 'Criar uma tarefa', meta: 'Criar uma meta do mês', prioridade: 'Criar uma prioridade do trimestre' };
 const ICO_TIPO = { tarefa: IC.tarefa, meta: IC.meta, prioridade: ID.bandeira };
@@ -31,7 +29,7 @@ const SUGESTOES = ['Ideia de produto', 'Melhorar um processo', 'Conteúdo para v
 const PREFIXO = { 'Ideia de produto': 'Produto: ', 'Melhorar um processo': 'Processo: ', 'Conteúdo para vídeo': 'Vídeo: ', 'Algo para cobrar alguém': 'Cobrar: ' };
 
 export async function montarCaixaIdeias(ctx) {
-  const { el } = ctx, B = base(ctx), { sb, user } = B, admin = B.admin;
+  const { el } = ctx, B = base(ctx), { sb, user } = B;
   const [eq, lista] = await Promise.all([B.equipe(), sb.from('central_ideias').select('*').order('criado_em', { ascending: true })]);
   const E = { equipe: eq, ideias: lista.data || [], aberta: null, ia: (() => { try { return localStorage.getItem('sandstride-ideias-ia') !== '0'; } catch { return true; } })(), busy: false, ficha: 'abertas', fio: null, erro: lista.error ? 'Não consegui carregar as ideias.' : '' };
   const pessoa = (id) => E.equipe.find((p) => p.usuario_id === id);

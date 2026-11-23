@@ -1,8 +1,7 @@
 // Card de detalhes da tarefa (título, responsável, data, importância, descrição, subtarefas).
 // Usado no Meu dia, nas Prioridades e na Revisão semanal: o mesmo card em todo lugar.
-import { esc, svg, IC, hojeISO } from './meudia.js';
+import { esc, svg, IC, hojeISO, prim } from './util.js';
 import { botaoAcao } from './molas.js';
-const prim = (n) => String(n || '').split(' ')[0];
 
 // tag de importância e selo de subtarefas/descrição, iguais em todas as listas
 export const tagImp = (v) => { const k = v === 'alta' ? ['alta', 'Alta'] : v === 'baixa' ? ['baixa', 'Baixa'] : ['normal', 'Normal']; return `<span class="tag imp ${k[0]}">${k[1]}</span>`; };

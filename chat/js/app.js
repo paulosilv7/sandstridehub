@@ -1,6 +1,6 @@
 // Chats Sandstride: site que junta as conversas das lojas e deixa a equipe responder.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+import { SUPABASE_URL, SUPABASE_KEY } from '../../js/config.js';
 import { montarShell } from '../../js/shell.js';
 import { S as MolaS, passo as molaPasso, registrar as molaReg, acordar as molaAcordar, pilula as molaPilula, parada as molaParada, onda as molaOnda } from '../../js/molas.js';
 
@@ -950,11 +950,6 @@ function ligarTempoReal() {
     .on('postgres_changes', tabela('conversa_etiquetas'), agendarRecarga)
     .subscribe((st) => marcarConexao(st === 'SUBSCRIBED'));
 }
-async function recarregarBaseEVisao() {
-  await carregarBase(); await carregarConversas();
-  if (S.view === 'inbox') renderInbox(); else renderView();
-}
-
 /* ------------------------------------------------------------------ */
 /* Ações                                                                */
 /* ------------------------------------------------------------------ */

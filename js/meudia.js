@@ -3,35 +3,8 @@ import { SUPABASE_URL } from './config.js';
 import { S, passo, parada, registrar, acordar, botaoAcao } from './molas.js';
 import { novoEstado, chipsResp, alternaResp, donosDe } from './responsaveis.js';
 import { abrirDetalheTarefa, tagImp, seloTarefa } from './tarefa-detalhe.js';
+import { esc, svg, IC, DIAS, DIAS_N, TZ, hojeISO, dataDe, soma, fCurto, fDia, fMes, valor, prim } from './util.js';
 
-export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-export const svg = (d, t = 18) => `<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-export const IC = {
-  repetir: '<path d="M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"/>',
-  rotina: '<path d="M4 6.5 5.5 8 8 5M4 12.5 5.5 14 8 11M4 18.5 5.5 20 8 17M11 6.5h9M11 12.5h9M11 18.5h9"/>',
-  tarefa: '<path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1ZM8 5H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2M9 13l2 2 4-4"/>',
-  meta: '<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01"/>',
-  equipe: '<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM21 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
-  mais: '<path d="M12 5v14M5 12h14"/>',
-  lapis: '<path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"/>',
-  x: '<path d="M6 6l12 12M18 6 6 18"/>',
-  texto: '<path d="M4 7h16M4 12h16M4 17h10"/>',
-  relogio: '<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/>',
-  alerta: '<path d="M12 4 2.5 20h19zM12 10v4M12 17h.01"/>',
-  check: '<path d="M5 12.5 10 17 19 7"/>',
-  caixa: '<path d="M3 8 12 3l9 5v8l-9 5-9-5V8Zm0 0 9 5 9-5M12 13v8"/>',
-  copiar: '<path d="M9 9h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1ZM5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
-};
-export const DIAS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'], DIAS_N = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-export const TZ = 'America/Sao_Paulo';
-export const hojeISO = () => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
-export const dataDe = (iso) => new Date(iso + 'T12:00:00Z');
-export const soma = (iso, n) => { const d = dataDe(iso); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-const fDia = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-export const fCurto = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
-const fMes = new Intl.DateTimeFormat('pt-BR', { month: 'long', timeZone: 'UTC' });
-export const nBR = (n, c = 0) => Number(n).toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c });
-export const valor = (n, un) => (un === 'reais' ? `R$ ${nBR(n, 2)}` : un === 'pct' ? `${nBR(n, Number.isInteger(+n) ? 0 : 1)}%` : nBR(n));
 function saudacao() {
   const h = +new Intl.DateTimeFormat('pt-BR', { hour: 'numeric', hour12: false, timeZone: TZ }).format(new Date());
   return h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
@@ -46,7 +19,6 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
   const fotoUrl = (p) => (p ? `${SUPABASE_URL}/storage/v1/object/public/avatares/${p}` : '');
   const av = (p, cls = '') => { const u = fotoUrl(p?.foto_path); return u ? `<img class="av ${cls}" src="${esc(u)}" alt="">` : `<span class="av ${cls}" aria-hidden="true">${esc(String(p?.nome || '?').charAt(0).toUpperCase())}</span>`; };
   const pessoa = (id) => E.equipe.find((p) => p.usuario_id === id);
-  const prim = (nome) => String(nome || '').split(' ')[0];
 
   async function carregar() {
     const [eq, ro, fe, ta, me, lj, cd] = await Promise.all([
@@ -68,10 +40,6 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     const it = ids.length ? await sb.from('central_tarefa_itens').select('id, tarefa_id, texto, feito, ordem').in('tarefa_id', ids).order('ordem').order('criado_em') : { data: [] };
     E.itens = it.error ? [] : (it.data || []);
   }
-  const itensDe = (id) => E.itens.filter((i) => i.tarefa_id === id);
-  // selo com subtarefas feitas/total e ícone de descrição
-  const seloCk = (t) => { const l = itensDe(t.id), f = l.filter((i) => i.feito).length;
-    return (l.length ? `<span class="tag ck${f === l.length ? ' ok' : ''}" title="Subtarefas">${svg(IC.check, 12)}${f}/${l.length}</span>` : '') + (t.descricao ? `<span class="tag ck" title="Tem descrição">${svg(IC.texto, 12)}</span>` : ''); };
   const rotinaDe = (uid) => E.rotinas.filter((r) => r.usuario_id === uid && (r.dias || []).includes(dsem));
   const PESO = { baixa: 0, normal: 1, alta: 2 };
   const abertas = (uid) => E.tarefas.filter((t) => t.responsavel_id === uid && !t.feita_em);
@@ -142,7 +110,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       const dia = soma(segunda, i), eHoje = dia === hoje, passou = dia < hoje;
       const cards = [
         ...mine.filter((r) => (r.dias || []).includes(i + 1)).map((r) => ({ tipo: 'Rotina', on: feito(r.id, dia), attr: `data-rot="${r.id}" data-dia="${dia}"`, titulo: r.titulo })),
-        ...minhas.filter((t) => t.prazo === dia).sort((a, b) => (PESO[b.importancia] ?? 1) - (PESO[a.importancia] ?? 1)).map((t) => ({ tipo: 'Tarefa', on: !!t.feita_em, attr: `data-tar="${t.id}"`, tid: t.id, titulo: t.titulo, imp: t.importancia || 'normal', selo: seloCk(t) })),
+        ...minhas.filter((t) => t.prazo === dia).sort((a, b) => (PESO[b.importancia] ?? 1) - (PESO[a.importancia] ?? 1)).map((t) => ({ tipo: 'Tarefa', on: !!t.feita_em, attr: `data-tar="${t.id}"`, tid: t.id, titulo: t.titulo, imp: t.importancia || 'normal', selo: seloTarefa(t, E.itens) })),
       ].sort((a, b) => a.on - b.on);
       const feitas = cards.filter((c) => c.on).length;
       const lis = cards.map((c) => {
@@ -172,8 +140,6 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
     }).join('');
     return `<section class="card md-cod" aria-label="Código do dia do Mercado Livre"><div class="qcab"><span class="ico">${svg(IC.caixa)}</span><h2>Código do dia</h2><span class="cd-faixa">Coletas e devoluções · Mercado Livre</span></div><ul class="cd-lista">${itens}</ul></section>`;
   }
-  // etiqueta de importância: Alta (cheia), Normal (suave), Baixa (contorno)
-  const tagImp = (v) => { const k = v === 'alta' ? ['alta', 'Alta'] : v === 'baixa' ? ['baixa', 'Baixa'] : ['normal', 'Normal']; return `<span class="tag imp ${k[0]}">${k[1]}</span>`; };
   const fimMesISO = () => new Date(Date.UTC(+hoje.slice(0, 4), +hoje.slice(5, 7), 0)).toISOString().slice(0, 10);
   const filtroDe = (t) => (!t.prazo || t.prazo === hoje ? 'hoje' : t.prazo < hoje ? 'atrasadas' : t.prazo <= fimMesISO() ? 'mes' : 'depois');
   // o que aparece nas listas: tarefas minhas e as que eu criei para outras pessoas (não somem depois de criadas)
@@ -192,7 +158,7 @@ export async function montarMeuDia({ sb, user, eu, el, caixa }) {
       const prazo = t.prazo ? `<span class="tag${atrasada(t) ? ' ate' : ''}">${svg(atrasada(t) ? IC.alerta : IC.relogio)}${t.prazo === hoje ? 'Hoje' : fCurto.format(dataDe(t.prazo))}</span>` : '';
       const imp = on ? '' : tagImp(t.importancia);
       return `<li><button type="button" class="md-chk${on ? ' on' : ''}" data-tar="${t.id}" aria-pressed="${on}"${pode ? '' : ' disabled'}><span class="cx">${svg(IC.check, 14)}</span><span class="tx">${esc(t.titulo)}</span></button>` +
-        `${imp}${seloCk(t)}${prazo}${!meu && p ? `<span class="md-quem" title="${esc(p.nome)}">${av(p, 'p')}</span>` : ''}${pode ? `<button class="md-x md-ed" type="button" data-edit="${t.id}" aria-label="Editar tarefa" title="Editar">${svg(IC.lapis, 14)}</button>` : ''}${t.criado_por === user.id || admin ? `<button class="md-x" type="button" data-apaga="${t.id}" aria-label="Apagar tarefa">${svg(IC.x, 14)}</button>` : ''}</li>`;
+        `${imp}${seloTarefa(t, E.itens)}${prazo}${!meu && p ? `<span class="md-quem" title="${esc(p.nome)}">${av(p, 'p')}</span>` : ''}${pode ? `<button class="md-x md-ed" type="button" data-edit="${t.id}" aria-label="Editar tarefa" title="Editar">${svg(IC.lapis, 14)}</button>` : ''}${t.criado_por === user.id || admin ? `<button class="md-x" type="button" data-apaga="${t.id}" aria-label="Apagar tarefa">${svg(IC.x, 14)}</button>` : ''}</li>`;
     };
     const feitasR = lr.filter((x) => x.includes(' on"')), abertasR = lr.filter((x) => !x.includes(' on"'));
     return `<ul class="md-lista">${abertasT.map(item).join('')}${abertasR.join('')}${feitasT.map(item).join('')}${feitasR.join('')}</ul>`;

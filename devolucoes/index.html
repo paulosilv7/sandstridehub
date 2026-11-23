@@ -719,7 +719,6 @@ function mk(k,big){var IC={ml:'/img/marketplaces/mercadolivre-icone.png',sp:'/im
 var TI={file:'<path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zM14 3v4h4M9 13h6M9 17h4"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',truck:'<path d="M2 6h11v10H2zM13 9h5l3 3v4h-8M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>',shield:'<path d="M12 3 4 6v5c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-3z"/>',check:'<path d="M5 12.5 10 17.5 19 7"/>',alert:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
 function tico(n){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(TI[n]||TI.file)+'</svg>';}
 var ST_ICO={2:'file',3:'user',4:'truck',5:'shield',6:'check'};
-function classe(c){return (c.st===3||c.pergunta)?'voce':(c.st===6?'concluido':'andamento');}
 function prazoInfo(c){
   if(c.st>=6)return {t:'Encerrado',cls:'mute'};
   if(c.semPrazo)return {t:'Sem prazo informado',cls:'mute'};
@@ -729,7 +728,6 @@ function prazoInfo(c){
   return {t:'faltam '+Math.floor(c.prazo/24)+' dias',cls:''};
 }
 function stCls(st){return st===3?'warn':(st===4||st===5?'info':(st===6?'good':''));}
-function stLabel(st){return st===3?'Preparado · aguarda você':ST[st];}
 function segs(c){return '<span class="segs" aria-hidden="true">'+ST.map(function(_,i){return '<i class="'+(i<c.st?'d':(i===c.st?'n':''))+'"></i>';}).join('')+'</span>';}
 function caso(id){return S.casos.filter(function(c){return c.id===id;})[0]||S.casos[0];}
 function lojasDe(m){var l=[];(m==='todos'?['ml','sp','tt']:[m]).forEach(function(k){LOJAS[k].forEach(function(n){if(l.indexOf(n)===-1)l.push(n);});});return l;}
@@ -858,7 +856,6 @@ function atzHtml(){
 function head(){
   return '<header class="ph"><h1>'+TITULOS[S.tela]+'</h1>'+atzHtml()+'</header>';
 }
-function avatarHtml(){var ini=esc(String(S.nome||'?').trim().charAt(0).toUpperCase());return '<a class="meuav" href="../" title="Voltar ao hub" aria-label="Voltar ao hub">'+(S.fotoUrl?'<img src="'+esc(S.fotoUrl)+'" alt="">':ini)+'</a>';}
 
 function ico(k,s){return '<svg width="'+(s||19)+'" height="'+(s||19)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+ICONES[k]+'"/></svg>';}
 function toolbar(key,ph){
@@ -998,10 +995,6 @@ function ritaHtml(){
     '</section>';
   S.pula=false;
   return h;
-}
-function pillsRes(){
-  var m=metricas();
-  return (m.aguard?'<span class="pill info">'+pl(m.aguard,'aguarda você','aguardam você')+'</span>':'')+(m.urg?'<span class="pill bad">'+m.urg+' com prazo em até 24 h</span>':'');
 }
 function acompStrip(){
   var t=S.casos.filter(function(c){return !c.arq&&(c.st===4||c.st===5||(c.st===6&&c.credito>0));}),cred=t.filter(function(c){return c.st===6;}).reduce(function(s,c){return s+(c.credito||0);},0);

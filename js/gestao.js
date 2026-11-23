@@ -1,7 +1,7 @@
 // Central: placar da semana, prioridades do trimestre e revisão semanal.
 import { abrirDetalheTarefa, tagImp, seloTarefa } from './tarefa-detalhe.js';
 import { SUPABASE_URL } from './config.js';
-import { esc, svg, IC, hojeISO, dataDe, soma, fCurto, nBR, valor } from './meudia.js';
+import { esc, svg, IC, hojeISO, dataDe, soma, fCurto, valor, prim } from './util.js';
 
 const IG = {
   esq: '<path d="M15 6l-6 6 6 6"/>', dir: '<path d="M9 6l6 6-6 6"/>',
@@ -18,7 +18,6 @@ const somaTri = (iso, n) => { const d = dataDe(iso); d.setUTCMonth(d.getUTCMonth
 const nomeTri = (iso) => `${Math.floor((+iso.slice(5, 7) - 1) / 3) + 1}º trimestre de ${iso.slice(0, 4)}`;
 const semanaTxt = (s) => `${fCurto.format(dataDe(s))} a ${fCurto.format(dataDe(soma(s, 6)))}`;
 const num = (s) => { const v = String(s).trim().replace(/\./g, '').replace(',', '.'); return v === '' ? NaN : Number(v); };
-const prim = (n) => String(n || '').split(' ')[0];
 
 export function base({ sb, user, eu }) {
   const admin = eu.papel === 'admin';
@@ -258,7 +257,7 @@ export async function montarRevisao(ctx) {
       return `<h2>Como foi a semana de ${semanaTxt(passada)}</h2>` + (l ? `<ul class="gs-lista">${l}</ul>` : '<div class="md-vazio listrado"><p>O placar ainda não tem números.</p></div>');
     }
     if (passo === 1) {
-      const fim = soma(passada, 6), noDia = (t) => (t.feita_em ? t.feita_em : t.prazo + 'T12:00:00-03:00');
+      const noDia = (t) => (t.feita_em ? t.feita_em : t.prazo + 'T12:00:00-03:00');
       const pessoas = eq.map((p) => {
         const ts = tarSem.filter((t) => t.responsavel_id === p.usuario_id), fe = ts.filter((t) => t.feita_em), ab = ts.filter((t) => !t.feita_em);
         // rotina prevista: dias úteis da semana em que cada item da pessoa estava marcado

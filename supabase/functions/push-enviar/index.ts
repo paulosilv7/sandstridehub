@@ -1,5 +1,5 @@
 // Envia avisos no aparelho (Web Push) para a equipe. Código-fonte completo em supabase/functions/push-enviar/index.ts
-// Os textos vêm da tabela push_textos (editável em Configurações); aqui ficam só os valores que entram neles.
+// Os textos de cada aviso vêm da tabela push_textos (a edição pela tela foi retirada em 23/11/2026); aqui ficam só os valores que entram neles.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
