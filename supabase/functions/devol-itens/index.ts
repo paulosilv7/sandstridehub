@@ -4,6 +4,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { tokenML as tokenMLCompartilhado } from "../_shared/ml.ts";
+import { tts } from "../_shared/tiktok.ts";
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 const ORIGEM = "devol-itens";
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -99,15 +100,6 @@ async function credTT(lojaId: string) {
   if (!c || !c.expira_em || new Date(c.expira_em).getTime() - Date.now() < 120_000) return null;
   const k = (c.dados_extras as any)?.app_key ?? TT_PADRAO;
   return { token: c.token_acesso, cipher: (c.dados_extras as any)?.shop_cipher, k, s: Deno.env.get(`TIKTOK_SECRET_${k}`) ?? (k === TT_PADRAO ? (Deno.env.get("TIKTOK_APP_SECRET") ?? "") : "") };
-}
-async function tts(metodo: "GET" | "POST", caminho: string, c: any, extra: Record<string, string>, corpo?: unknown) {
-  const body = corpo ? JSON.stringify(corpo) : "";
-  const q: Record<string, string> = { app_key: c.k, timestamp: String(Math.floor(Date.now() / 1000)), shop_cipher: c.cipher, ...extra };
-  q.sign = await hmac(c.s, c.s + caminho + Object.keys(q).sort().map((k) => k + q[k]).join("") + body + c.s);
-  const r = await fetch(`${TT_API}${caminho}?${new URLSearchParams(q)}`, { method: metodo, headers: { "x-tts-access-token": c.token, "Content-Type": "application/json" }, ...(body ? { body } : {}) });
-  const j: any = await r.json().catch(() => ({}));
-  if (!r.ok || (j.code ?? 0) !== 0) throw new Error(`TikTok ${caminho}: ${j.code} ${String(j.message).slice(0, 120)}`);
-  return j.data;
 }
 async function itensTT(caso: any, c: any) {
   const o = await tts("GET", "/order/202309/orders", c, { ids: String(caso.pedido) });

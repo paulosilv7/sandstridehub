@@ -6,6 +6,7 @@
 // Chamada pelo agendador do banco e por um gatilho quando chega uma foto. Cabeçalho x-lucro-token.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { tts } from "../_shared/tiktok.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
@@ -251,18 +252,6 @@ async function ttCred(lojaId: string): Promise<CredTT | null> {
   credTT.set(lojaId, saida);
   return saida;
 }
-async function tts(metodo: "GET" | "POST", caminho: string, c: CredTT, extra: Record<string, string>, corpo?: unknown) {
-  const body = corpo ? JSON.stringify(corpo) : "";
-  const q: Record<string, string> = { app_key: c.app.k, timestamp: String(Math.floor(Date.now() / 1000)), shop_cipher: c.cipher, ...extra };
-  const base = caminho + Object.keys(q).sort().map((k) => k + q[k]).join("") + body;
-  q.sign = await hmac(c.app.s, c.app.s + base + c.app.s);
-  const r = await fetch(`${TT_API}${caminho}?${new URLSearchParams(q)}`, {
-    method: metodo, headers: { "x-tts-access-token": c.token, "Content-Type": "application/json" }, ...(body ? { body } : {}),
-  });
-  const j: any = await r.json().catch(() => ({}));
-  if (!r.ok || (j.code ?? 0) !== 0) throw new Error(`TikTok ${r.status} ${caminho}: ${j.code} ${String(j.message ?? "").slice(0, 160)}`);
-  return j.data;
-}
 
 function converterTikTok(m: any): { texto: string | null; anexos: any[]; pedido?: string } | null {
   const tipo = String(m.type ?? "").toUpperCase();
@@ -325,6 +314,19 @@ async function puxarTikTok(conv: any, loja: any, bruto: any): Promise<{ sn: stri
   return { sn, novas };
 }
 
+// As devoluções do TikTok já são lidas de 15 em 15 minutos pelo devol-tiktok-sincronizar. Se a última leitura foi completa e recente,
+// a situação sai daqui e a API do TikTok não é consultada de novo. Retorna undefined quando é preciso perguntar ao TikTok (leitura velha,
+// ou devolução ainda em andamento, que pode estar em análise da plataforma).
+async function devolucaoTikTokLocal(pedido: string): Promise<{ situacao: string; detalhe: string } | null | undefined> {
+  const { data: l } = await supabase.from("devol_config").select("valor").eq("chave", "ultima_leitura_tiktok").maybeSingle();
+  if (!l?.valor || Date.now() - new Date(l.valor).getTime() > 25 * 60_000) return undefined;
+  const { data: casos } = await supabase.from("devol_casos").select("desfecho").eq("pedido", pedido).limit(10);
+  if (!casos?.length) return null;
+  if (casos.some((c: any) => c.desfecho === "em_andamento" || !c.desfecho)) return undefined;
+  if (casos.some((c: any) => c.desfecho === "devolvido_com_produto" || c.desfecho === "reembolsado_total")) return { situacao: "devolvido", detalhe: "Devolução concluída no TikTok Shop." };
+  return null;
+}
+
 async function pedidoTikTok(cred: CredTT, id: string, bruto: any) {
   const det = await tts("GET", "/order/202309/orders", cred, { ids: id });
   const o = det?.orders?.[0];
@@ -365,6 +367,9 @@ async function pedidoTikTok(cred: CredTT, id: string, bruto: any) {
   // Devoluções e cancelamentos pedidos pelo cliente.
   let situacao: { situacao: string; detalhe: string } | null = null;
   try {
+    const local = await devolucaoTikTokLocal(id);
+    if (local !== undefined) { situacao = local; bruto.devolucoes = "do hub"; }
+    else {
     const dev = await tts("POST", "/return_refund/202309/returns/search", cred, { page_size: "20" }, { order_ids: [id] });
     const lst: any[] = dev?.return_orders ?? dev?.returns ?? [];
     bruto.devolucoes = lst.map((x) => x.return_status ?? x.status ?? null);
@@ -372,6 +377,7 @@ async function pedidoTikTok(cred: CredTT, id: string, bruto: any) {
     if (ativos.some((s) => /DISPUTE|PLATFORM|JUDG|ARBITR/.test(s))) situacao = { situacao: "analise_ml", detalhe: "O TikTok Shop está analisando a devolução." };
     else if (ativos.some((s) => s && !/CANCEL|REJECT|COMPLETE|CLOSE|SUCCESS/.test(s))) situacao = { situacao: "devolucao", detalhe: "Devolução em andamento no TikTok Shop." };
     else if (ativos.some((s) => /COMPLETE|SUCCESS/.test(s))) situacao = { situacao: "devolvido", detalhe: "Devolução concluída no TikTok Shop." };
+    }
   } catch (e) { bruto.devolucoes_erro = `${e instanceof Error ? e.message : e}`.slice(0, 200); }
   if (!situacao && cod === "CANCELLED") situacao = { situacao: "cancelado", detalhe: "Pedido cancelado no TikTok Shop." };
   if (!situacao && cod !== "CANCELLED") {

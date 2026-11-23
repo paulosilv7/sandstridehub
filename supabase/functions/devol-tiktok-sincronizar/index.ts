@@ -4,6 +4,7 @@
 // Economia de registros (logs do Supabase): os casos da loja são lidos de uma vez só e o evento de leitura só é gravado quando o caso é criado ou muda.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { tts } from "../_shared/tiktok.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
@@ -18,12 +19,6 @@ const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPAB
 async function diag(mensagem: string) {
   console.error(ORIGEM, mensagem);
   try { await supabase.from("diagnosticos").insert({ origem: ORIGEM, mensagem: mensagem.slice(0, 1500) }); } catch (_) { /* ignora */ }
-}
-
-async function hmac(chave: string, msg: string) {
-  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(chave), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const s = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(msg));
-  return Array.from(new Uint8Array(s)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 async function credenciais(lojaId: string): Promise<{ token: string; cipher: string; app: App } | null> {
@@ -49,18 +44,6 @@ async function credenciais(lojaId: string): Promise<{ token: string; cipher: str
   return { token: d.access_token, cipher, app };
 }
 
-async function tts(metodo: "GET" | "POST", caminho: string, c: { token: string; cipher: string; app: App }, extra: Record<string, string>, corpo?: unknown) {
-  const body = corpo ? JSON.stringify(corpo) : "";
-  const q: Record<string, string> = { app_key: c.app.k, timestamp: String(Math.floor(Date.now() / 1000)), shop_cipher: c.cipher, ...extra };
-  const base = caminho + Object.keys(q).sort().map((k) => k + q[k]).join("") + body;
-  q.sign = await hmac(c.app.s, c.app.s + base + c.app.s);
-  const r = await fetch(`${API}${caminho}?${new URLSearchParams(q)}`, {
-    method: metodo, headers: { "x-tts-access-token": c.token, "Content-Type": "application/json" }, ...(body ? { body } : {}),
-  });
-  const j: any = await r.json().catch(() => ({}));
-  if (!r.ok || (j.code ?? 0) !== 0) throw new Error(`TikTok ${r.status} ${caminho}: ${j.code} ${String(j.message).slice(0, 160)}`);
-  return j.data;
-}
 
 const ESTADOS_INICIAIS = ["NOVO", "AGUARDANDO_ANALISE", "AGUARDANDO_PROVAS", "PREPARADO"];
 
@@ -179,7 +162,7 @@ async function executar(explorar: boolean) {
     if (await chaveLigada("kill_switch")) { await diag("kill_switch ligado: leitura não executada"); return; }
     const { data: lojas } = await supabase.from("lojas").select("id, apelido").eq("marketplace", "tiktok_shop").eq("ativa", true);
     for (const l of lojas ?? []) resultados.push(await sincronizarLoja(l, explorar, inicio));
-    await supabase.from("devol_config").upsert({ chave: "ultima_leitura_tiktok", valor: new Date().toISOString(), descricao: "Última leitura de devoluções do TikTok Shop", atualizado_em: new Date().toISOString() });
+    if (!resultados.some((r) => r.erro_busca)) await supabase.from("devol_config").upsert({ chave: "ultima_leitura_tiktok", valor: new Date().toISOString(), descricao: "Última leitura de devoluções do TikTok Shop", atualizado_em: new Date().toISOString() });
   } catch (e) { await diag(`erro: ${e instanceof Error ? e.message : String(e)}`); }
   if (explorar || resultados.some((r) => r.erro || r.erro_busca)) await diag(`resultado: ${JSON.stringify(resultados)}`);
 }

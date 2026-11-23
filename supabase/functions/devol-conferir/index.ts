@@ -1,4 +1,4 @@
-// Conferência diária (somente leitura nos marketplaces): relê no ML os casos encerrados/enviados E os abertos, relê os abertos da Shopee, marca pendências e avisa no Telegram.
+// Conferência diária (somente leitura nos marketplaces): relê no ML os casos encerrados/enviados E os abertos, relê os abertos da Shopee (e os já encerrados aqui que ainda constam "Em andamento na Shopee"), marca pendências e avisa no Telegram.
 // Modo consulta ({"dry":true,"status":[...]}): não grava nada, devolve o estado real de cada caso no ML (para vistoria).
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -88,7 +88,7 @@ async function rodar() {
     if (pendente) pend.push(c);
   }
   // Shopee: relê o estado de cada devolução aberta
-  const { data: casosSp } = await admin.from("devol_casos").select("id, loja_id, solicitacao_id, pedido, status, lojas!inner(marketplace, apelido)").eq("lojas.marketplace", "shopee").is("arquivado_em", null).in("status", ABERTOS).limit(200);
+  const { data: casosSp } = await admin.from("devol_casos").select("id, loja_id, solicitacao_id, pedido, status, lojas!inner(marketplace, apelido)").eq("lojas.marketplace", "shopee").is("arquivado_em", null).or("status.in.(" + ABERTOS.join(",") + "),and(status.in.(ENCERRADO,CONCILIADO,DECIDIDO),situacao_mkt.eq.\"Em andamento na Shopee\")").limit(200);
   const credsSp: Record<string, any> = {};
   for (const c of casosSp ?? []) {
     if (!(c.loja_id in credsSp)) credsSp[c.loja_id] = await credSp(c.loja_id);
@@ -96,8 +96,9 @@ async function rodar() {
     const st = await statusSp(cr, String(c.solicitacao_id)); if (!st) { falhas++; continue; }
     lidosSp++;
     const upd: any = { tipo_origem: st, mkt_conferido_em: new Date().toISOString() };
-    if (st === "ACCEPTED") { upd.situacao_mkt = "Aceita na Shopee"; resolvidos.push({ ...c, nota: "já aceita na Shopee" }); }
-    else if (["CLOSED", "CANCELLED"].includes(st)) { upd.situacao_mkt = "Encerrada na Shopee"; resolvidos.push({ ...c, nota: "encerrada na Shopee" }); }
+    const aberto = ABERTOS.includes(c.status);
+    if (st === "ACCEPTED") { upd.situacao_mkt = "Aceita na Shopee"; if (aberto) resolvidos.push({ ...c, nota: "já aceita na Shopee" }); }
+    else if (["CLOSED", "CANCELLED"].includes(st)) { upd.situacao_mkt = "Encerrada na Shopee"; if (aberto) resolvidos.push({ ...c, nota: "encerrada na Shopee" }); }
     await admin.from("devol_casos").update(upd).eq("id", c.id);
   }
   const h24 = new Date(Date.now() + 24 * 3600_000).toISOString();
