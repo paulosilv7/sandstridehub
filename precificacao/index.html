@@ -23,40 +23,18 @@
 <script>
 (function(){
 'use strict';
-function api(corpo){return window.SB.auth.getSession().then(function(s){var tk=s&&s.data&&s.data.session&&s.data.session.access_token;if(!tk){var e=new Error('Sua sessão expirou. Entre de novo.');e.code='sessao';throw e;}return fetch(window.FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk,'apikey':window.SB_KEY},body:JSON.stringify(corpo)});}).then(function(r){return r.json().catch(function(){return {ok:false,erro:'Resposta inválida do servidor.'};}).then(function(j){if(!j.ok){var e=new Error(j.erro||'Erro no servidor.');e.code='servidor';throw e;}return j;});});}
 function urlImagem(id){return (window.ASSETS_CONHECIDOS||{})[id]?('assets/'+id+'.png'):(window.ASSETS_URL+id);}
-var SHEETS='Google Sheets', DRIVE='Google Drive';
-var FOTOS={}, FILA=[], BAIXANDO=0;
+var FOTOS={};
 function fotoSrc(id){
   if(!id) return '';
   if(/^[0-9a-f]{32}$/i.test(id)) return urlImagem(id);
   if(id.indexOf('sb:')===0) return 'https://imlgfmaqmzfonvbmlwpd.supabase.co/storage/v1/object/public/fotos-estoque/'+encodeURI(id.slice(3));
   if(FOTOS[id]&&FOTOS[id]!=='carregando'&&FOTOS[id]!=='erro') return FOTOS[id];
-  if(!FOTOS[id]){ try{var c=localStorage.getItem('foto:'+id); if(c){FOTOS[id]=c;return c;}}catch(x){} FOTOS[id]='carregando'; FILA.push(id); setTimeout(proximaFoto,0); }
   return '';
 }
-function acharBase64(p){
-  if(typeof p==='string'){ var t=p.trim(); if(t.charAt(0)==='{'||t.charAt(0)==='['){try{return acharBase64(JSON.parse(t));}catch(x){}} return t; }
-  var best='', mime='';
-  (function walk(o){ if(!o||typeof o!=='object')return; Object.keys(o).forEach(function(k){var v=o[k]; if(typeof v==='string'){ if(/mime/i.test(k)&&/^image\//.test(v))mime=v; else if(v.length>best.length)best=v; } else walk(v);}); })(p);
-  if(best&&best.indexOf('data:')!==0) best='data:'+(mime||'image/jpeg')+';base64,'+best.replace(/\s/g,'');
-  return best;
-}
-function proximaFoto(){
-  while(BAIXANDO<3&&FILA.length){
-    var id=FILA.shift(); BAIXANDO++;
-    (function(id){
-      api({op:'foto',fileId:id})
-      .then(function(r){var src=r.dataUri; if(!/^data:image\/[a-z+]+;base64,[A-Za-z0-9+\/=_-]{200,}/.test(src)) throw new Error('sem imagem'); FOTOS[id]=src; try{localStorage.setItem('foto:'+id,src);}catch(x){} mostrarFoto(id);})
-      .catch(function(){FOTOS[id]='erro';})
-      .then(function(){BAIXANDO--; proximaFoto();});
-    })(id);
-  }
-}
-function mostrarFoto(id){ if(LOGO_ESPERA[id]){ delete LOGO_ESPERA[id]; clearTimeout(logoT); logoT=setTimeout(function(){ var ae=document.activeElement; if(S.cfg||S.busy||(ae&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName))){ var lp=document.getElementById('m-logoprev'); return; } render(); },60); } document.querySelectorAll('[data-foto="'+id+'"]').forEach(function(el){ el.innerHTML='<img class="chegou" src="'+FOTOS[id]+'" alt="">'; el.classList.add('tem'); }); }
 function fotoBox(id,cls){ var src=fotoSrc(id); return '<span class="thumb '+(cls||'')+(src?' tem':'')+'" data-foto="'+esc(id||'')+'">'+(src?'<img src="'+src+'" alt="">':ICON.shoe)+'</span>'; }
 function fotoModelo(m){ var pf=m.produtos.find(function(p){return p.foto;}); if(pf) return pf.foto; var pm=m.produtos.find(function(p){return p.mix;}); if(pm){var c=pm.mix.find(function(x){return x.p&&x.p.est;}); return c?fotoModelo({produtos:[c.p]}):'';} var e=(m.produtos.find(function(p){return p.est;})||{}).est; if(!e||!e.fotos)return ''; var f=e.fotos.filter(function(x){return x.id;}).sort(function(a,b){return b.qtd-a.qtd;})[0]; return f?f.id:''; }
-var ESTOQUE_ID='1vYGhjXrJsYvPQx0t3cFqvl_fxTKIlmxUnpEzJaTb4cA'; // [SANDSTRIDE] SISTEMA ESTOQUE (só leitura)
+var ESTOQUE_ID='estoque'; // marca para ler() buscar o estoque no banco (est_planilha_produtos)
 var CATS=['Ativo','Testando','Rascunho'], NO_AR=['Ativo','Testando'];
 var CATCOR={Ativo:'var(--c-ativo)',Testando:'var(--c-testando)',Rascunho:'var(--c-rascunho)',Arquivada:'var(--c-rascunho)'};
 var CATDESC={Ativo:'Anúncios no ar com este preço.',Testando:'Preços em teste agora.',Rascunho:'Ideias salvas, fora do ar.'};
@@ -213,8 +191,7 @@ function ativos(prod,can){return D.versoes.filter(function(v){return v.prod===pr
 function ref(prod,can){return ativos(prod,can)[0];}
 function variantes(can){var s=[];D.taxas.forEach(function(t){if(t.canal===can&&s.indexOf(t.variante)<0)s.push(t.variante);});return s;}
 function impostoMax(){var m=null;D.lojas.forEach(function(l){if(!m||l.imp>m.imp)m=l;});return m||{imp:0,nome:'—'};}
-var LOGO_ESPERA={}, logoT=null;
-function logoSrc(id){ if(!id) return ''; if(/^[0-9a-f]{32}$/i.test(id)) return urlImagem(id); var s=fotoSrc(id); if(!s) LOGO_ESPERA[id]=1; return s; }
+function logoSrc(id){ if(!id) return ''; if(/^[0-9a-f]{32}$/i.test(id)) return urlImagem(id); return fotoSrc(id); }
 function tile(c,small){var src=logoSrc(c.logo);if(src)return '<span class="mtile logo'+(small?' sm':'')+'" style="background:'+esc(c.cor)+'" aria-hidden="true"><img src="'+(TRIM[src]&&TRIM[src].length>3?TRIM[src]:src)+'" data-trim="'+src+'" alt=""></span>';return '<span class="mtile'+(small?' sm':'')+'" style="background:'+esc(c.cor)+';color:'+corTexto(c.cor)+'" aria-hidden="true">'+esc(small?c.sigla:c.nome)+'</span>';}
 var TRIM={};
 function aparar(){
@@ -1105,7 +1082,6 @@ import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
 import { montarShell } from '../js/shell.js';
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 window.SB = sb; window.SB_KEY = SUPABASE_KEY;
-window.FN_URL = SUPABASE_URL + '/functions/v1/planilha';
 window.ASSETS_URL = SUPABASE_URL + '/storage/v1/object/public/assets-precificacao/';
 window.ASSETS_CONHECIDOS = Object.fromEntries(["0199cfcad178eed9646f760e9621883a", "37f3210015c93b69fce9e4c69a1f3d4a", "3d4bf49721bc92bb266262d17d3d13a6", "40bca507ca6fee56375b0cfd9bfa8961", "533a083d3cb465b61ac7ef94d043494b", "72685056cc8bb44c6ba3b8dc2074c880", "75a9b0a0b96312b01f155537a561110d", "7c6d0bc72991b07e9b22fa91626e469e", "812ade1655bff4a26905c8125bb441d9", "8e61ebd77ec1f541f3516da1a29d61bd", "9a48b3df32bde69d1d4cc280c84c4391", "bb9e0a2622fcb24f79d180d548185e23", "c2196bb3f439a182ce7217d8d2500964", "d76e53bd47b961603ad41b6d77a6d8b5"].map((i) => [i, 1]));
 const app = document.getElementById('app');

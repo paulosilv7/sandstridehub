@@ -1393,7 +1393,7 @@ function relogio(){
   document.querySelectorAll('[data-dt]').forEach(function(e){e.textContent=DS3[dow]+', '+HOJE.d+' '+MESES3[HOJE.m]});
 }
 var FOTOS=null;
-function urlFoto(f,t){if(!f)return '';if(/^https?:|^data:/.test(f))return f;if(f.indexOf('sb:')===0)return window.SB_URL+'/storage/v1/object/public/fotos-estoque/'+encodeURI(f.slice(3));return 'https://lh3.googleusercontent.com/d/'+encodeURIComponent(f)+'=s'+(t||200)}
+function urlFoto(f,t){if(!f)return '';if(/^https?:|^data:/.test(f))return f;if(f.indexOf('sb:')===0)return window.SB_URL+'/storage/v1/object/public/fotos-estoque/'+encodeURI(f.slice(3));return ''}
 function thumbProd(p,c,ini){
   var f=FOTOS&&FOTOS[p.id];
   if(!f)return '<div class="th" style="background:'+c+'">'+ini+'</div>';

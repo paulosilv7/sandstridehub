@@ -3061,7 +3061,7 @@ window.urlDaFoto = function (f, tam) {
   if (!f) return '';
   if (/^https?:|^data:/.test(f)) return f;
   if (f.indexOf('sb:') === 0) return SUPABASE_URL + '/storage/v1/object/public/fotos-estoque/' + encodeURI(f.slice(3));
-  return 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f) + '=s' + (tam || 200);
+  return '';
 };
 if (window.BASE_ESTOQUE === 'teste') document.getElementById('avisoTeste').hidden = false;
 function aviso(titulo, texto) {
