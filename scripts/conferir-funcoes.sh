@@ -8,7 +8,6 @@ ESPERADAS=(
   devol-ml-sincronizar devol-tiktok-sincronizar devol-shopee-sincronizar devol-limpar-fotos
   devol-sandy-analisar devol-ml-agir devol-sandy-opcoes devol-avisar-telegram
   devol-etapas-sincronizar devol-contestar devol-itens devol-ml-envios devol-aceitar-lote devol-conferir
-  financeiro-anuncios
 )
 faltam=0
 for f in "${ESPERADAS[@]}"; do
