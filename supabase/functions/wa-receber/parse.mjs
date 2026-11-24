@@ -1,9 +1,11 @@
 // Leitura por regra das mensagens dos grupos de fornecedores. Sem IA: texto fixo, resultado previsível.
 // Retorna {tipo:'ok',dia,itens,total} | {tipo:'revisao',motivo} | {tipo:'ignorar'}.
 
-const dinheiro=s=>{ // "14.784,00" -> 1478400 (centavos)
+const dinheiro=s=>{ // "14.784,00" -> 1478400 (centavos); "6.048" (sem centavos) -> 604800
  const m=/^(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})$/.exec(s.trim());
- return m?Number(m[1].replace(/\./g,''))*100+Number(m[2]):null;
+ if(m)return Number(m[1].replace(/\./g,''))*100+Number(m[2]);
+ const r=/^(\d{1,3}(?:\.\d{3})*|\d+),?$/.exec(s.trim());
+ return r?Number(r[1].replace(/\./g,''))*100:null;
 };
 const iso=(d,m,a)=>{
  const dt=new Date(Date.UTC(a,m-1,d));
@@ -19,6 +21,8 @@ export function lerPechincha(texto){
   if((m=/^data\s*:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})$/i.exec(l))){dia=iso(+m[1],+m[2],+m[3]);if(!dia)return{tipo:'revisao',motivo:'data inválida'};continue}
   if((m=/^total\s*:\s*(?:r\$)?\s*([\d.,]+)$/i.exec(l))){total=dinheiro(m[1]);if(total===null)return{tipo:'revisao',motivo:'total ilegível'};continue}
   if((m=/^-?\s*(\d+)\s+par(?:es)?\s+cancelad[oa]s?$/i.exec(l))){itens.push({cancelados:Number(m[1])});continue}
+  // "84 Pares de Mizon RMax (-2 cancelados)": a quantidade inclui os cancelados; o abate vem como item à parte.
+  if((m=/^(\d+)\s+par(?:es)?\s+(?:de\s+)?(.+?)\s*\(\s*-?\s*(\d+)\s+cancelad[oa]s?\s*\)$/i.exec(l))){itens.push({modelo:m[2].trim(),qtd:Number(m[1])},{cancelados:Number(m[3])});continue}
   if((m=/^(\d+)\s+par(?:es)?\s+(?:de\s+)?(.+)$/i.exec(l))){itens.push({modelo:m[2].trim(),qtd:Number(m[1])});continue}
   if(/\bpar(?:es)?\b/i.test(l))suspeita=true;
  }

@@ -79,3 +79,19 @@ test('Palavra "para" não é confundida com "par"',()=>{
  assert.equal(lerPechincha('Data: 11/11/2026\n113 Pares de Vulcstar\nobrigado, segue para vocês').tipo,'ok');
  assert.equal(lerWbox('vou ligar para 2 pessoas','2026-11-13').tipo,'ignorar');
 });
+
+test('Pechincha 18/11: total sem centavos e cancelados entre parênteses',()=>{
+ const r=lerPechincha('Data: 18/11/2026\n\n———————\n49 Pares de Vulcstar\n84 Pares de Mizon RMax (-2 cancelados)\n13 Pares de Revelation\n———————\n\nTotal: R$6.048');
+ assert.equal(r.tipo,'ok');assert.equal(r.total,604800);
+ assert.deepEqual(r.itens,[{modelo:'Vulcstar',qtd:49},{modelo:'Mizon RMax',qtd:84},{cancelados:2},{modelo:'Revelation',qtd:13}]);
+});
+test('Pechincha 19/11: sem espaço antes do parêntese e "1 Par" no singular',()=>{
+ const r=lerPechincha('Data: 19/11/2026\n22 Pares de Vulcstar\n84 Pares de Mizon RMax(-2 Cancelados)\n13 Pares de Revelation\n1 Par GR3\nTotal: R$4.956');
+ assert.equal(r.tipo,'ok');assert.equal(r.total,495600);
+ assert.deepEqual(r.itens.map(i=>i.modelo??'ab'),['Vulcstar','Mizon RMax','ab','Revelation','GR3']);
+});
+test('Total sem centavos: 11.088 e 6.342',()=>{
+ for(const [t,c] of [['11.088',1108800],['6.342',634200]]){
+  const r=lerPechincha(`Data: 23/11/2026\n69 Pares de Vulcstar\nTotal: R$${t}`);assert.equal(r.total,c);
+ }
+});
