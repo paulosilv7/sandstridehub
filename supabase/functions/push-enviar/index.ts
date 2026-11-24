@@ -43,7 +43,7 @@ const amanhaBR = () => new Date(new Date(hojeBR() + "T12:00:00Z").getTime() + 86
 const quando = (iso: string | null) => !iso ? "" : iso === hojeBR() ? "vence hoje" : iso === amanhaBR() ? "vence amanhã" : `vence dia ${dm(iso)}`;
 
 type Aviso = { titulo: string; corpo: string; url?: string; tag?: string };
-const CAMPO: Record<string, string> = { tarefa: "tarefas", meta: "metas", meta_lucro: "metas", resumo: "resumo" };
+const CAMPO: Record<string, string> = { compra: "compras", tarefa: "tarefas", meta: "metas", meta_lucro: "metas", resumo: "resumo" };
 
 async function enviar(usuarios: string[], aviso: Aviso, tipo: string | null): Promise<number> {
   if (!usuarios.length) return 0;
@@ -78,6 +78,18 @@ async function tarefa(c: any) {
     quem: ator ? prim(ator.nome) : "Alguém", tarefa: t.titulo, prazo: q, prazo_novo: q ? "agora " + q : "",
     importancia: t.importancia === "alta" ? "⚡ alta prioridade" : "" });
   await enviar([t.responsavel_id], { ...tx, tag: "tarefa-" + t.id }, "tarefa");
+}
+
+async function compra(c: any) {
+  const ordem = String(c.ordem ?? "");
+  if (!ordem) return;
+  const { data: l } = await supabase.from("fin_entries").select("supplier, date, qty, value, cancelled").eq("type", "purchase").or(`purchase_order_id.eq.${ordem},id.eq.${ordem}`);
+  const itens = (l ?? []).filter((e: any) => !e.cancelled);
+  if (!itens.length) return;
+  if ((await supabase.from("push_enviados").insert({ chave: "compra:" + ordem })).error) return; // já avisada
+  const pares = itens.reduce((s: number, e: any) => s + Number(e.qty ?? 0), 0), total = itens.reduce((s: number, e: any) => s + Number(e.value ?? 0), 0) / 100;
+  const tx = await texto("compra_lancada", { fornecedor: itens[0].supplier, pares: plural(pares, "par", "pares"), total: dinheiro(total), data: dm(itens[0].date) });
+  await enviar((await equipe()).map((p) => p.usuario_id), { ...tx, url: SITE + "/fornecedores/", tag: "compra-" + ordem }, "compra");
 }
 
 async function meta(c: any) {
@@ -131,6 +143,7 @@ Deno.serve(async (req) => {
   const trabalho = async () => {
     try {
       if (c.tipo === "tarefa") await tarefa(c);
+      else if (c.tipo === "compra") await compra(c);
       else if (c.tipo === "meta") await meta(c);
       else if (c.tipo === "meta_lucro") await metaLucro();
       else if (c.tipo === "resumo") await resumo();
