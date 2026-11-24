@@ -1,7 +1,7 @@
 // Recupera conversas do TikTok Shop e da Shopee cujos avisos (webhooks) se perderam numa pane.
 // Lista as conversas mais recentes de cada loja e reenvia as que tiveram movimento desde "desde" para o mesmo caminho
 // dos avisos (tiktok-notificacoes assinado; shopee-notificacoes pelo modo interno), que gravam de forma idempotente.
-// Corpo: { desde: ISO, simular?: true }. Cabeçalho x-lucro-token. Só leitura nos marketplaces.
+// Corpo: { desde: ISO, simular?: true, pular?: n, limite?: n (TikTok, em lotes), shopee?: false }. Cabeçalho x-lucro-token. Só leitura nos marketplaces.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 

@@ -1,6 +1,6 @@
 // Recupera os avisos do Mercado Livre (mensagens e perguntas) que não conseguimos receber numa pane.
-// O ML guarda por cerca de 2 dias os avisos que falharam (missed_feeds). Esta função pede esses avisos de volta
-// e reenvia cada um para ml-notificacoes, que grava de forma idempotente (mesma mensagem nunca duplica).
+// O ML guarda por cerca de 2 dias os avisos que falharam (missed_feeds); só o token da loja dona do app consegue lê-los.
+// Esta função pede esses avisos de volta e reenvia cada um para ml-notificacoes, que grava de forma idempotente.
 // Corpo: { desde: ISO, ate?: ISO, topicos?: ["messages","questions"], simular?: true }. Cabeçalho x-lucro-token.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -41,19 +41,21 @@ Deno.serve(async (req) => {
   const simular = !!corpo.simular;
 
   const { data: lojas } = await supabase.from("lojas").select("id, id_externo, apelido").eq("marketplace", "mercado_livre").eq("ativa", true);
-  const resumo: any = { lojas: (lojas ?? []).length, topicos: {}, reenviados: 0, erros: [] as string[] };
+  const resumo: any = { lojas: (lojas ?? []).length, topicos: {}, encontrados: [] as any[], reenviados: 0, erros: [] as string[] };
   const vistos = new Set<string>();
   const selfUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ml-notificacoes`;
 
   for (const loja of lojas ?? []) {
     const tk = await token(loja.id);
     if (!tk) { resumo.erros.push(`sem token: ${loja.apelido}`); continue; }
+    let dono = false;
     for (const topico of topicos) {
       let offset = 0, total = Infinity, paginas = 0;
       while (offset < total && paginas < 60) {
         const url = `${API}/missed_feeds?app_id=${CLIENT_ID}&topic=${topico}&offset=${offset}&limit=50`;
         const r = await fetch(url, { headers: { Authorization: `Bearer ${tk}`, Accept: "application/json" } });
-        if (!r.ok) { resumo.erros.push(`${loja.apelido}/${topico}: ${r.status} ${(await r.text().catch(() => "")).slice(0, 160)}`); break; }
+        if (!r.ok) { if (r.status !== 401) resumo.erros.push(`${loja.apelido}/${topico}: ${r.status}`); break; }
+        dono = true;
         const d: any = await r.json();
         const lista: any[] = d?.messages ?? [];
         total = Number(d?.paging?.total ?? lista.length);
@@ -61,8 +63,8 @@ Deno.serve(async (req) => {
         resumo.topicos[chave] = { total, lidos: ((resumo.topicos[chave]?.lidos) ?? 0) + lista.length };
         for (const n of lista) {
           const quando = new Date(n.sent ?? n.received ?? 0).getTime();
+          resumo.encontrados.push({ topic: n.topic, user_id: n.user_id, sent: n.sent, tentativas: n.attempts, dentro: quando >= desde && quando <= ate });
           if (quando < desde || quando > ate) continue;
-          if (String(n.user_id) !== String(loja.id_externo)) continue;
           const k = `${n.topic}:${n.resource}`;
           if (vistos.has(k)) continue;
           vistos.add(k);
@@ -74,6 +76,7 @@ Deno.serve(async (req) => {
         offset += lista.length; paginas++;
       }
     }
+    if (dono) break; // o feed do app inteiro vem pelo token do dono; não precisa repetir nas outras lojas
   }
   return new Response(JSON.stringify(resumo), { headers: { "Content-Type": "application/json" } });
 });
