@@ -35,8 +35,13 @@ async function procurar(num: string) {
     const sh = await get(`/shipments/${num}`, tk, { "x-format-new": "true" });
     if (sh.ok && sh.j?.id) {
       envio = { status: String(sh.j.status ?? ""), substatus: String(sh.j.substatus ?? "") };
-      const it = await get(`/shipments/${num}/items`, tk);
-      pedido = String(Array.isArray(it.j) ? (it.j[0]?.order_id ?? "") : "");
+      // A resposta atual de shipments volta a informar order_id. Mantém o endpoint
+      // de itens como compatibilidade para contas/respostas que ainda não o tragam.
+      pedido = String(sh.j.order_id ?? sh.j.order?.id ?? "");
+      if (!pedido) {
+        const it = await get(`/shipments/${num}/items`, tk);
+        pedido = String(Array.isArray(it.j) ? (it.j[0]?.order_id ?? "") : "");
+      }
     } else if (num.startsWith("2000")) {
       const o = await get(`/orders/${num}`, tk);
       if (o.ok && o.j?.id) pedido = String(o.j.id);
@@ -61,6 +66,18 @@ function dist(a: string, b: string): number {
   return prev[n];
 }
 
+function norm(v: unknown): string {
+  return String(v ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function mesmaFamilia(a: string, b: string): boolean {
+  const pa = a.match(/^[A-Z]+/)?.[0] ?? "";
+  const pb = b.match(/^[A-Z]+/)?.[0] ?? "";
+  if (!pa && !pb) return true;
+  if (!pa || !pb) return false;
+  return pa.slice(0, 2) === pb.slice(0, 2);
+}
+
 // guarda em cada caso do ML o envio da venda (= Ref ID da etiqueta), para a comparação por aproximação
 async function preencherEnviosVenda() {
   const lojas = await lojasML();
@@ -79,7 +96,7 @@ async function preencherEnviosVenda() {
 }
 
 async function ligarPorAproximacao(r: any, nums: string[]) {
-  const { data: casos } = await admin.from("devol_casos").select("id, loja_id, pedido, envio_venda_id, envio_devolucao_id").is("arquivado_em", null)
+  const { data: casos } = await admin.from("devol_casos").select("id, loja_id, pedido, envio_venda_id, envio_devolucao_id, rastreios").is("arquivado_em", null)
     .gt("criado_em", new Date(Date.now() - 75 * 86_400_000).toISOString());
   const { data: usados } = await admin.from("devol_recebimentos").select("caso_id").not("caso_id", "is", null);
   const jaTem = new Set((usados ?? []).map((u: any) => u.caso_id));
@@ -87,12 +104,20 @@ async function ligarPorAproximacao(r: any, nums: string[]) {
   for (const c of casos ?? []) {
     if (jaTem.has(c.id)) continue;
     let melhor: { d: number; n: string; campo: string } | null = null;
-    for (const n of nums) {
-      if (n.length < 9 || n.length > 13) continue;
-      for (const [campo, alvo] of [["Ref ID", c.envio_venda_id], ["rastreio", c.envio_devolucao_id]] as [string, string | null][]) {
-        if (!alvo || alvo === "-" || alvo.length < 9) continue;
+    for (const bruto of nums) {
+      const n = norm(bruto);
+      if (n.length < 8 || n.length > 32) continue;
+      const alvos: [string, string | null][] = [
+        ["Ref ID", c.envio_venda_id],
+        ["envio da devolução", c.envio_devolucao_id],
+        ...((c.rastreios ?? []) as string[]).map((x) => ["rastreio", x] as [string, string]),
+      ];
+      for (const [campo, brutoAlvo] of alvos) {
+        const alvo = norm(brutoAlvo);
+        if (!alvo || alvo === "-" || alvo.length < 8 || !mesmaFamilia(n, alvo)) continue;
+        const limite = Math.max(n.length, alvo.length) <= 16 ? 2 : 3;
         const d = dist(n, alvo);
-        if (d > 0 && d <= 2 && (!melhor || d < melhor.d)) melhor = { d, n, campo };
+        if (d > 0 && d <= limite && (!melhor || d < melhor.d)) melhor = { d, n, campo };
       }
     }
     if (melhor) cand.push({ c, ...melhor });
@@ -100,7 +125,9 @@ async function ligarPorAproximacao(r: any, nums: string[]) {
   cand.sort((a, b) => a.d - b.d);
   if (cand.length !== 1 && !(cand.length > 1 && cand[1].d - cand[0].d >= 2)) return false;
   const { c, n, campo } = cand[0];
-  const esperado = campo === "Ref ID" ? c.envio_venda_id : c.envio_devolucao_id;
+  const esperado = campo === "Ref ID" ? c.envio_venda_id : campo === "envio da devolução" ? c.envio_devolucao_id : (c.rastreios ?? []).find((x: string) => {
+    const nx = norm(x), nn = norm(n); return mesmaFamilia(nn, nx) && dist(nn, nx) === cand[0].d;
+  });
   const detalhe = `Número lido na etiqueta: ${n}. Número do caso (${campo}): ${esperado}. Pedido ${c.pedido}.`;
   const { error } = await admin.from("devol_recebimentos").update({ caso_id: c.id, identificacao: "identificado", fonte_identificacao: `APROXIMAÇÃO pelo ${campo} (conferir)`, loja_id: c.loja_id, ligacao_aproximada: true, ligacao_detalhe: detalhe, analise: "pendente", analise_erro: null })
     .eq("id", r.id).is("caso_id", null).neq("analise", "processando");
@@ -113,15 +140,26 @@ async function varrer() {
   const res = { analisados: 0, dispensados: 0, fotos_apagadas: 0, com_reclamacao: 0, ligados: 0, aproximados: 0, envios_preenchidos: 0 };
   try { res.envios_preenchidos = await preencherEnviosVenda(); } catch (_) { /* não atrapalha */ }
   const { data: lotes } = await admin.from("devol_recebimentos").select("id, analise_resumo").is("caso_id", null).is("dispensado_em", null).eq("analise", "concluida")
-    .gt("criado_em", new Date(Date.now() - 45 * 86_400_000).toISOString()).order("criado_em", { ascending: false }).limit(25);
+    .gt("criado_em", new Date(Date.now() - 45 * 86_400_000).toISOString()).order("criado_em", { ascending: false }).limit(60);
   for (const r of lotes ?? []) {
-    const nums = [...new Set((r.analise_resumo?.etiqueta ?? []).filter((e: any) => e?.tipo !== "nome" && (e?.confianca === "alta" || (e?.tipo === "ref_id" && String(e.valor ?? "").replace(/\D/g, "").length === 11))).map((e: any) => String(e.valor ?? "").replace(/\D/g, "")).filter((n: string) => n.length >= 8 && n.length <= 16))] as string[];
-    const numsAprox = [...new Set((r.analise_resumo?.etiqueta ?? []).filter((e: any) => e?.tipo === "ref_id" || e?.tipo === "rastreio").map((e: any) => String(e.valor ?? "").replace(/\D/g, "")).filter((n: string) => n.length >= 9 && n.length <= 13))] as string[];
-    if (!nums.length && !numsAprox.length) continue;
+    // Mantém o valor completo para a busca no banco. Códigos reversos da Shopee/Correios
+    // (ex.: AP123456789BR) perdiam as letras e nunca coincidiam com devol_casos.rastreios.
+    const valores = [...new Set((r.analise_resumo?.etiqueta ?? [])
+      .filter((e: any) => e?.tipo !== "nome" && (e?.confianca === "alta" || (e?.tipo === "ref_id" && String(e.valor ?? "").replace(/\D/g, "").length === 11)))
+      .map((e: any) => String(e.valor ?? "").trim()).filter((n: string) => n.length >= 8 && n.length <= 32))] as string[];
+    // A API de shipments do Mercado Livre recebe somente o id numérico do envio.
+    const nums = [...new Set(valores.map((v) => v.replace(/\D/g, "")).filter((n) => n.length >= 8 && n.length <= 16))];
+    const numsAprox = [...new Set((r.analise_resumo?.etiqueta ?? [])
+      .filter((e: any) => (e?.tipo === "ref_id" || e?.tipo === "rastreio") && e?.confianca === "alta")
+      .map((e: any) => norm(e.valor)).filter((n: string) => n.length >= 8 && n.length <= 32))] as string[];
+    if (!valores.length && !numsAprox.length) continue;
     res.analisados++;
     let resolvido = false;
-    const { data: a } = await admin.rpc("devol_achar_caso", { p_numeros: nums, p_nomes: [] });
+    const { data: a } = await admin.rpc("devol_achar_caso", { p_numeros: valores, p_nomes: [] });
     if ((a?.[0]?.n ?? 0) > 0) continue; // já existe caso: a ligação automática cuida
+    // Antes de consultar APIs externas, tenta o rastreio já conhecido no banco. Liga apenas
+    // quando há um candidato único e deixa a aproximação destacada para conferência humana.
+    if (numsAprox.length && (await ligarPorAproximacao(r, numsAprox))) { res.aproximados++; continue; }
     for (const n of nums) {
       const x: any = await procurar(n);
       if (!x.achou) continue;
@@ -139,7 +177,6 @@ async function varrer() {
       res.dispensados++;
       break;
     }
-    if (!resolvido && numsAprox.length && (await ligarPorAproximacao(r, numsAprox))) res.aproximados++;
   }
   // fotos dos lotes dispensados (manual ou automático) saem do armazenamento
   const { data: desp } = await admin.from("devol_recebimentos").select("id").not("dispensado_em", "is", null).limit(40);

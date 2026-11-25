@@ -9,6 +9,7 @@
 // v12: sem 'pedir informação' (só contestar ou aceitar); ao contestar contra a recomendação, a instrução escrita pelo dono (instrucao_equipe) vira a base do relato.
 // v13: a leitura da etiqueta captura a linha 'Ref. ID' como tipo ref_id (envio da venda); a rotina devol-ml-achar usa esse número para achar o pedido e ligar o lote.
 // v14: a etiqueta é lida em alta resolução (3 primeiras fotos) e o Ref ID (11 dígitos) é conferido por uma segunda leitura dígito a dígito; se divergir, os dois ficam com confiança média.
+// v15: o rastreio reverso ganha uma segunda leitura especializada, caractere por caractere; o resultado especializado substitui a leitura genérica para a busca do caso.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -19,7 +20,7 @@ const BUCKET = "devol-provas";
 const OPENAI = Deno.env.get("OPENAI_API_KEY") ?? "";
 const MODELO = Deno.env.get("DEVOL_SANDY_MODELO") ?? "gpt-4.1";
 const MAX_FOTOS = 6;
-const ETIQUETA_V = 5;
+const ETIQUETA_V = 6;
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false, autoRefreshToken: false } });
 
 // Nomes da equipe/loja: aparecem na etiqueta como destinatário e nunca podem identificar o cliente.
@@ -81,6 +82,19 @@ const S_REFID = {
   name: "leitura_ref_id", strict: true,
   schema: { type: "object", additionalProperties: false, required: ["digitos"], properties: { digitos: { type: "array", items: { type: "string" }, description: "Cada dígito do Ref. ID como um item separado, da esquerda para a direita. Lista vazia se não houver Ref. ID legível." } } },
 };
+
+const S_RASTREIO = {
+  name: "leitura_rastreio_reverso", strict: true,
+  schema: { type: "object", additionalProperties: false, required: ["codigos"], properties: {
+    codigos: { type: "array", items: { type: "object", additionalProperties: false, required: ["caracteres"], properties: {
+      caracteres: { type: "array", items: { type: "string" }, description: "Cada letra ou dígito do mesmo código de rastreio como um item, na ordem em que aparece." },
+    } } },
+  } },
+};
+
+function codigoEtiqueta(v: unknown): string {
+  return String(v ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
 
 function esquemaEstado(ids: string[]) {
   return {
@@ -233,6 +247,24 @@ async function processar(rec: any) {
           if (lido2.length === 11 && !refs.some((i: any) => i.valor === lido2)) ident.push({ tipo: "ref_id", valor: lido2, confianca: "media" });
           if (refs.some((i: any) => i.confianca === "media")) resumo.passos.push("Ref ID lido com dúvida (duas leituras diferentes ou tamanho errado)");
         }
+        // O rastreio é o elo mais confiável com a venda, mas OCR genérico costuma trocar 0/O,
+        // 1/I ou inserir um dígito. Uma leitura dedicada devolve cada caractere separadamente.
+        try {
+          const rt = await perguntar("devolucao_rastreio", S_RASTREIO, [
+            { role: "system", content: "Leia SOMENTE códigos de rastreio reverso impressos nas etiquetas. Eles costumam ficar abaixo ou ao lado do código de barras e podem ser numéricos (ex.: 48593450561), dos Correios (ex.: AP717590328BR) ou alfanuméricos (ex.: BR2697739627176). Para cada código, devolva uma lista com uma letra ou dígito por item, da esquerda para a direita. Não leia Ref. ID, número do pedido, CEP, data, QR code, códigos de rota ou nomes. Se algum caractere não estiver legível, não invente o código." },
+            { role: "user", content: [{ type: "text", text: "Leia caractere por caractere todos os códigos de rastreio reverso visíveis nestas etiquetas." }, ...imagensEtq] },
+          ], 220);
+          const especializados = [...new Set((rt.codigos ?? []).map((x: any) => codigoEtiqueta((x.caracteres ?? []).join(""))).filter((x: string) => x.length >= 8 && x.length <= 32))];
+          if (especializados.length) {
+            ident.filter((i: any) => i.tipo === "rastreio").forEach((i: any) => { i.confianca = "media"; });
+            for (const codigo of especializados) {
+              const ja = ident.find((i: any) => i.tipo === "rastreio" && codigoEtiqueta(i.valor) === codigo);
+              if (ja) { ja.valor = codigo; ja.confianca = "alta"; }
+              else ident.push({ tipo: "rastreio", valor: codigo, confianca: "alta" });
+            }
+            resumo.passos.push("rastreio conferido caractere por caractere");
+          }
+        } catch (_) { /* segue com a leitura genérica */ }
         resumo.etiqueta_v = ETIQUETA_V;
       } else if (Array.isArray(prev.etiqueta)) ident = prev.etiqueta;
       // descarta nomes da loja/equipe, mesmo que a leitura os traga

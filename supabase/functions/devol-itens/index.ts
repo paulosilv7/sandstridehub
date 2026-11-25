@@ -1,5 +1,7 @@
 // Devoluções (SOMENTE LEITURA): grava em devol_casos o que foi comprado, o que o comprador pediu para devolver, o que ele DISSE na solicitação,
 // o nome do comprador e os rastreios da devolução (para achar o caso de um lote de fotos).
+// Casos sem rastreio continuam sendo relidos mesmo depois de os itens terem sido preenchidos:
+// em alguns marketplaces o código reverso só aparece quando a logística da devolução é criada.
 // Shopee: get_order_detail + get_return_detail. Mercado Livre: /orders/{id} + devolução do claim + mensagens. TikTok: orders + returns/search.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -118,9 +120,13 @@ async function executar(ids: string[] | null) {
   try {
     const { data: k } = await supabase.from("devol_config").select("valor").eq("chave", "kill_switch").maybeSingle();
     if (k?.valor === "true") return;
-    let q = supabase.from("devol_casos").select("id, loja_id, pedido, solicitacao_id, itens_lidos_em").limit(40);
+    const corte = new Date(Date.now() - 6 * 3_600_000).toISOString();
+    let q = supabase.from("devol_casos").select("id, loja_id, pedido, solicitacao_id, itens_lidos_em, rastreios").limit(40);
     if (ids?.length) q = q.in("id", ids);
-    else q = q.is("itens_pedido", null).is("arquivado_em", null).not("pedido", "is", null).or(`itens_lidos_em.is.null,itens_lidos_em.lt.${new Date(Date.now() - 6 * 3_600_000).toISOString()}`).order("atualizado_em", { ascending: false });
+    else q = q.is("arquivado_em", null).not("pedido", "is", null)
+      .or("itens_pedido.is.null,rastreios.eq.{}")
+      .or(`itens_lidos_em.is.null,itens_lidos_em.lt.${corte}`)
+      .order("itens_lidos_em", { ascending: true, nullsFirst: true });
     const { data: casos } = await q;
     const { data: lojas } = await supabase.from("lojas").select("id, marketplace");
     const mk = new Map((lojas ?? []).map((l: any) => [l.id, l.marketplace]));

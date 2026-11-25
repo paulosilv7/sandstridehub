@@ -2,7 +2,7 @@
 // ML (Product Ads): total do dia por loja, somado por ANÚNCIO (inclui campanhas excluídas, igual ao painel do ML).
 // Shopee (CPC): total do dia por loja, por campanha e pedidos criados por dia.
 // Quem chama: agendador do banco (x-fin-token) ou pessoa logada com acesso (Paulo e Lucas).
-// Corpo (tudo opcional): { dias: 7, de: "2026-10-26", ate: "2026-11-16", nivel: ["loja","campanha","pedidos"], mkt: "ml"|"shopee", loja: "parte do apelido" }
+// Corpo (tudo opcional): { dias: 7, de: "2026-10-26", ate: "2026-11-16", nivel: ["loja","campanha","pedidos"], mkt: "ml"|"shopee"|"tiktok", loja: "parte do apelido" }
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
   // ---------- Mercado Livre: total do dia por loja ----------
   // Fonte: resumo por ANÚNCIO (ads/search com metrics_summary), um dia por consulta. Ele inclui o gasto de campanhas
   // excluídas e fecha com o painel do ML; o total por campanha deixa essas campanhas de fora.
-  if (corpo.mkt !== "shopee" && niveis.includes("loja")) {
+  if (corpo.mkt !== "shopee" && corpo.mkt !== "tiktok" && niveis.includes("loja")) {
     const { data: lojas } = await supabase.from("lojas").select("id, apelido").eq("marketplace", "mercado_livre").eq("ativa", true);
     for (const l of (lojas ?? []).filter((x: any) => !filtroLoja || x.apelido.toLowerCase().includes(filtroLoja))) {
       try {
@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
   }
 
   // ---------- Shopee ----------
-  if (corpo.mkt !== "ml") {
+  if (corpo.mkt !== "ml" && corpo.mkt !== "tiktok") {
     const { data: lojas } = await supabase.from("lojas").select("id, apelido").eq("marketplace", "shopee").eq("ativa", true);
     for (const l of (lojas ?? []).filter((x: any) => !filtroLoja || x.apelido.toLowerCase().includes(filtroLoja))) {
       const item: any = { mkt: "shopee", loja: l.apelido };
@@ -235,6 +235,60 @@ Deno.serve(async (req) => {
         }
         saida.push(item);
       } catch (e) { saida.push({ ...item, erro: (e as Error).message.slice(0, 300) }); }
+    }
+  }
+  // ---------- TikTok Shop GMV Max: gasto por store_id e dia ----------
+  // O token da Marketing API é independente do token de pedidos do TikTok Shop.
+  if (corpo.mkt !== "ml" && corpo.mkt !== "shopee" && niveis.includes("loja")) {
+    const { data: ligacoes, error: ligacaoErro } = await supabase.from("tiktok_ads_lojas")
+      .select("loja_id,advertiser_id,store_id,lojas!inner(apelido,marketplace,ativa)")
+      .eq("ativo", true).eq("lojas.marketplace", "tiktok_shop").eq("lojas.ativa", true);
+    if (ligacaoErro) saida.push({ mkt: "tiktok", erro: `vínculos: ${ligacaoErro.message}` });
+    for (const l of (ligacoes ?? []) as any[]) {
+      const apelido = l.lojas?.apelido ?? "";
+      if (filtroLoja && !apelido.toLowerCase().includes(filtroLoja)) continue;
+      const item: any = { mkt: "tiktok", loja: apelido };
+      try {
+        const { data: autorizacao, error: authErro } = await supabase.from("tiktok_ads_autorizacoes")
+          .select("token_acesso,advertiser_ids").not("token_acesso", "is", null)
+          .contains("advertiser_ids", [l.advertiser_id])
+          .order("usado_em", { ascending: false }).limit(1).maybeSingle();
+        if (authErro || !autorizacao?.token_acesso) {
+          saida.push({ ...item, erro: "conta de anúncios ainda não autorizada" }); continue;
+        }
+        const linhas: any[] = [];
+        // Uma loja por consulta: evita misturar custo de lojas no mesmo anunciante.
+        for (let fimJ = fim; fimJ >= ini; fimJ = somaDias(fimJ, -30)) {
+          const iniJ = somaDias(fimJ, -29) < ini ? ini : somaDias(fimJ, -29);
+          for (let page = 1; page <= 100; page++) {
+            const q = new URLSearchParams({
+              advertiser_id: l.advertiser_id,
+              store_ids: JSON.stringify([l.store_id]),
+              dimensions: JSON.stringify(["advertiser_id", "stat_time_day"]),
+              metrics: JSON.stringify(["cost"]),
+              start_date: iniJ, end_date: fimJ,
+              page: String(page), page_size: "100",
+            });
+            const response = await fetch(`https://business-api.tiktok.com/open_api/v1.3/gmv_max/report/get/?${q}`, {
+              headers: { "Access-Token": autorizacao.token_acesso },
+            });
+            const json: any = await response.json().catch(() => ({}));
+            if (!response.ok || json.code !== 0) throw new Error(`TikTok Ads ${response.status}/${json.code}: ${String(json.message ?? "").slice(0, 160)}`);
+            const lista = json.data?.list;
+            if (!Array.isArray(lista)) throw new Error("Relatório TikTok sem lista de resultados.");
+            for (const x of lista) {
+              const dia = String(x.dimensions?.stat_time_day ?? "").slice(0, 10);
+              const gasto = num(x.metrics?.cost);
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || gasto === null || gasto < 0) continue;
+              linhas.push({ loja_id: l.loja_id, dia, gasto: r2(gasto), atualizado_em: agora() });
+            }
+            if (lista.length < 100) break;
+            if (page === 100) throw new Error("Relatório TikTok ultrapassou o limite de páginas.");
+          }
+        }
+        await gravar("ads_loja_dia", linhas, "loja_id,dia");
+        saida.push({ ...item, dias: linhas.length, gasto: r2(linhas.reduce((s, x) => s + x.gasto, 0)) });
+      } catch (e) { saida.push({ ...item, erro: (e as Error).message.slice(0, 250) }); }
     }
   }
   return resp({ ok: true, de: ini, ate: fim, niveis, lojas: saida });
