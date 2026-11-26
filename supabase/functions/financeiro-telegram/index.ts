@@ -136,20 +136,11 @@ async function processar(u: any) {
   const { data: contas } = await supabase.from("financeiro_contas_fixas").select("id,nome,categoria,valor,dia").eq("ativa", true);
   const { data: pagas } = await supabase.from("financeiro_contas_pagas").select("conta_id").eq("mes", mes);
   const jaPagas = new Set((pagas ?? []).map((p: any) => p.conta_id));
-  const fav = norm(String(l.favorecido ?? "") + " " + String(l.descricao ?? ""));
-  let melhor = 0;
+  // A legenda que a equipe mandou junto ("Contabilidade II") também conta para achar a conta fixa.
+  const fav = norm(String(l.favorecido ?? "") + " " + String(l.descricao ?? "") + " " + legenda);
   // Regras aprendidas na planilha / nas confirmações: o termo no favorecido ou na descrição manda na categoria (e na conta fixa, se houver).
   const { data: regras } = await supabase.from("financeiro_regras").select("termo,categoria,conta_fixa_id");
   const regra = (regras ?? []).filter((r: any) => ` ${fav} `.includes(` ${norm(r.termo)} `)).sort((a: any, b: any) => b.termo.length - a.termo.length)[0];
-  if (regra?.conta_fixa_id && !jaPagas.has(regra.conta_fixa_id)) conta = (contas ?? []).find((c: any) => c.id === regra.conta_fixa_id) ?? null;
-  for (const c of conta ? [] : contas ?? []) {
-    if (jaPagas.has(c.id)) continue;
-    const palavras = norm(c.nome).split(" ").filter((p) => p.length > 2 && !/^\d+$/.test(p) && !["fixa", "conta"].includes(p));
-    const nome = palavras.length && palavras.every((p) => fav.includes(p));
-    const val = Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01);
-    const score = (nome ? 2 : 0) + (val ? 1 : 0);
-    if (nome && score > melhor) { melhor = score; conta = c; }
-  }
   // A conta que pagou diz qual das contas fixas é: pago pela Sandstride II => a conta "... II" da categoria, pelo valor.
   const { data: origens } = await supabase.from("financeiro_contas_origem").select("termo,rotulo");
   const pag = norm(String(l.pagador_nome ?? "") + " " + String(l.pagador_documento ?? ""));
@@ -159,19 +150,45 @@ async function processar(u: any) {
   const origem = (origens ?? []).find((o: any) => dig(o.termo).length >= 6 ? pagDig.includes(dig(o.termo)) : ` ${pag} `.includes(` ${norm(o.termo)} `));
   const sufixo = l.conta_ref || (origem ? String(origem.rotulo).trim().split(/\s+/).pop()!.toUpperCase() : "");
   const catAlvo = regra?.categoria ?? l.categoria ?? "";
-  if (!conta && /^(I|II|III)$/.test(sufixo) && catAlvo) {
-    // O valor da conta fixa é uma previsão: se bate (±1%), ótimo; se não, vale a única conta do sufixo e da categoria, ou a única de valor próximo.
-    const doSufixo = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === catAlvo && String(c.nome).trim().toUpperCase().split(/\s+/).pop() === sufixo);
-    const exatas = doSufixo.filter((c: any) => Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
-    conta = exatas.length === 1 ? exatas[0] : doSufixo.length === 1 ? doSufixo[0] : perto(doSufixo, valor);
+  const casar = (ja: Set<string>): any => {
+    let achada: any = null;
+    if (regra?.conta_fixa_id && !ja.has(regra.conta_fixa_id)) achada = (contas ?? []).find((c: any) => c.id === regra.conta_fixa_id) ?? null;
+    let melhor = 0;
+    for (const c of achada ? [] : contas ?? []) {
+      if (ja.has(c.id)) continue;
+      const palavras = norm(c.nome).split(" ").filter((p) => p.length > 2 && !/^\d+$/.test(p) && !["fixa", "conta"].includes(p));
+      const nome = palavras.length && palavras.every((p) => fav.includes(p));
+      // nome com sufixo (I, II, III): "Contabilidade II" não pode casar com a I só porque a legenda tem "contabilidade".
+      const suf = String(c.nome).trim().toUpperCase().split(/\s+/).pop()!;
+      const sufOk = !/^(I|II|III)$/.test(suf) || new RegExp(`(^| )${suf.toLowerCase()}( |$)`).test(fav) || (!!sufixo && sufixo === suf);
+      const val = Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01);
+      const score = (nome ? 2 : 0) + (val ? 1 : 0);
+      if (nome && sufOk && score > melhor) { melhor = score; achada = c; }
+    }
+    if (!achada && /^(I|II|III)$/.test(sufixo) && catAlvo) {
+      // O valor da conta fixa é uma previsão: se bate (±1%), ótimo; se não, vale a única conta do sufixo e da categoria, ou a única de valor próximo.
+      const doSufixo = (contas ?? []).filter((c: any) => !ja.has(c.id) && c.categoria === catAlvo && String(c.nome).trim().toUpperCase().split(/\s+/).pop() === sufixo);
+      const exatas = doSufixo.filter((c: any) => Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
+      achada = exatas.length === 1 ? exatas[0] : doSufixo.length === 1 ? doSufixo[0] : perto(doSufixo, valor);
+    }
+    // Sem nome que case, mas com regra de categoria: se só UMA conta fixa dessa categoria tem este valor (ou valor próximo), é ela.
+    if (!achada && regra) {
+      const naCat = (contas ?? []).filter((c: any) => !ja.has(c.id) && c.categoria === regra.categoria);
+      const iguais = naCat.filter((c: any) => Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
+      achada = iguais.length === 1 ? iguais[0] : perto(naCat, valor);
+    }
+    return achada;
+  };
+  conta = casar(jaPagas);
+  // O comprovante diz "competência outubro", mas a conta de outubro já está paga: então é a conta do mês do pagamento (a conta vence dia 25 e foi paga em 25/11).
+  const mesPag = (data ?? new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)).slice(0, 7);
+  let mesRefFinal = mesRef;
+  if (!conta && mesPag !== mes.slice(0, 7)) {
+    const { data: p2 } = await supabase.from("financeiro_contas_pagas").select("conta_id").eq("mes", mesPag + "-01");
+    const c2 = casar(new Set((p2 ?? []).map((p: any) => p.conta_id)));
+    if (c2) { conta = c2; mesRefFinal = mesPag; }
   }
-  // Sem nome que case, mas com regra de categoria: se só UMA conta fixa dessa categoria tem este valor (ou valor próximo), é ela.
-  if (!conta && regra) {
-    const naCat = (contas ?? []).filter((c: any) => !jaPagas.has(c.id) && c.categoria === regra.categoria);
-    const iguais = naCat.filter((c: any) => Math.abs(+c.valor - valor) <= Math.max(0.5, +c.valor * 0.01));
-    conta = iguais.length === 1 ? iguais[0] : perto(naCat, valor);
-  }
-  if (conta) liga = `Baixa a conta fixa ${conta.nome} (vence dia ${conta.dia})${mesRef ? " de " + MESES[+mesRef.slice(5) - 1] + "/" + mesRef.slice(0, 4) : ""}`;
+  if (conta) liga = `Baixa a conta fixa ${conta.nome} (vence dia ${conta.dia})${mesRefFinal ? " de " + MESES[+mesRefFinal.slice(5) - 1] + "/" + mesRefFinal.slice(0, 4) : ""}`;
 
   const path = `telegram/${hash}.${pdf ? "pdf" : "jpg"}`;
   const up = await supabase.storage.from("financeiro-comprovantes").upload(path, bytes, { contentType: mime, upsert: true });
@@ -182,13 +199,13 @@ async function processar(u: any) {
     categoria_sugerida: (regra?.categoria ?? conta?.categoria ?? l.categoria) || null, conta_fixa_id: conta?.id ?? null,
     liga: repetido ? `Parece repetido: já existe um comprovante de ${brl(+repetido.valor)}${repetido.favorecido ? " para " + repetido.favorecido : ""}.` : liga || null,
     pagador_nome: String(l.pagador_nome ?? "").slice(0, 120) || null, pagador_documento: String(l.pagador_documento ?? "").slice(0, 40) || null, pagador_instituicao: String(l.pagador_instituicao ?? "").slice(0, 60) || null,
-    legenda: legenda || null, mes_referencia: mesRef ? mesRef + "-01" : null,
+    legenda: legenda || null, mes_referencia: mesRefFinal ? mesRefFinal + "-01" : null,
     arquivo_path: up.error ? null : path, estado: repetido ? "repetido" : "novo",
   };
   const ins = await supabase.from("financeiro_comprovantes").insert(linha);
   if (ins.error) { await diag(`inserir: ${ins.error.message}`); return responder("Li o comprovante, mas não consegui guardar. Tenta de novo?"); }
   if (repetido) return responder(`Esse parece repetido (${brl(valor)}${l.favorecido ? " · " + l.favorecido : ""}). Deixei sinalizado na Central, nada foi lançado.`);
-  await responder(`Li: ${l.tipo} de ${brl(valor)}${l.favorecido ? " para " + l.favorecido : ""}${data ? " em " + data.split("-").reverse().join("/") : ""}${linha.categoria_sugerida ? ` → ${linha.categoria_sugerida}` : ""}.${conta ? ` Combina com a conta fixa ${conta.nome}.` : ""}${mesRef ? ` Anotei: referente a ${MESES[+mesRef.slice(5) - 1]}/${mesRef.slice(0, 4)}.` : ""}\nConfirme na Central: ${SITE}/financeiro/#despesas`);
+  await responder(`Li: ${l.tipo} de ${brl(valor)}${l.favorecido ? " para " + l.favorecido : ""}${data ? " em " + data.split("-").reverse().join("/") : ""}${linha.categoria_sugerida ? ` → ${linha.categoria_sugerida}` : ""}.${conta ? ` Combina com a conta fixa ${conta.nome}.` : ""}${mesRefFinal ? ` Anotei: referente a ${MESES[+mesRefFinal.slice(5) - 1]}/${mesRefFinal.slice(0, 4)}.` : ""}\nConfirme na Central: ${SITE}/financeiro/#despesas`);
 }
 
 // Texto sem arquivo com um valor em reais ("Nota Fiscal R$2100", "pix 350 para o motoboy"): vira um lançamento "para confirmar".
