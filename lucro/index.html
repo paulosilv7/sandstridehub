@@ -1109,9 +1109,9 @@ function render(){
     var base='<div class="t">'+nome+' <span class="pill">'+esc(p.lojas)+'</span></div>';
     var resumo=p.vendas+(p.vendas===1?' venda · ':' vendas · ')+brl0(+p.valor);
     if(p.produto)return '<div class="pend">'+base+'<div class="sub">'+resumo+' · '+esc(p.produto)+' está sem custo cadastrado para a data da venda. Cadastre o custo do produto na Precificação.</div></div>';
-    if(!p.sku)return '<div class="pend">'+base+'<div class="sub">'+resumo+' · Este anúncio está sem SKU no marketplace. Corrija o SKU lá e as próximas vendas entram sozinhas.</div><div class="sub">'+tit+'</div></div>';
+    if(!p.sku)base+='<div class="sub">'+tit+'</div>';
     var cs=p.cands.map(function(c){return '<button type="button" class="cand" data-i="'+i+'" data-c="'+esc(c)+'"><span class="th" style="background:'+corDe(c)+'">'+iniciais(c)+'</span>'+esc(c)+'</button>'}).join('');
-    return '<div class="pend">'+base+'<div class="sub">'+resumo+' · '+(p.cands.length?'Sugestões pelo nome do SKU. Confirme pela foto.':'Sem sugestão. Escolha o produto na lista.')+'</div><div class="cands">'+cs+'</div><div class="other"><input id="o-'+i+'" list="catalogo" placeholder="Escolha o produto" autocomplete="off" aria-label="Escolher produto para '+nome+'"><button type="button" class="btn vinc" data-i="'+i+'">Vincular</button></div><div class="err" id="e-'+i+'" role="alert" hidden></div></div>';
+    return '<div class="pend">'+base+'<div class="sub">'+resumo+' · '+(!p.sku?'Anúncio sem SKU no marketplace: escolha o produto pelo título. Vale só para este anúncio.':(p.cands.length?'Sugestões pelo nome do SKU. Confirme pela foto.':'Sem sugestão. Escolha o produto na lista.'))+'</div><div class="cands">'+cs+'</div><div class="other"><input id="o-'+i+'" list="catalogo" placeholder="Escolha o produto" autocomplete="off" aria-label="Escolher produto para '+nome+'"><button type="button" class="btn vinc" data-i="'+i+'">Vincular</button></div><div class="err" id="e-'+i+'" role="alert" hidden></div></div>';
   }).join('');
 
   var pt=[[0,0]],po=[[0,0]],a=0,b=0;
