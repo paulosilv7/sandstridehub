@@ -84,14 +84,20 @@ async function pendente(c: any) {
   const id = String(c.id ?? "");
   const { data: p } = await supabase.from("wa_pendentes").select("id, fornecedor, data, status, total_declarado").eq("id", id).maybeSingle();
   if (!p || p.status !== "aberto") return;
-  const { data: it } = await supabase.from("wa_pendentes_itens").select("tipo, modelo_texto, qtd, ordem").eq("pendente_id", id).order("ordem");
+  const { data: it } = await supabase.from("wa_pendentes_itens").select("tipo, produto_id, qtd").eq("pendente_id", id);
   const linhas = (it ?? []).filter((i: any) => i.tipo === "linha"), abate = (it ?? []).filter((i: any) => i.tipo === "abate");
   if (!linhas.length) return;
   if ((await supabase.from("push_enviados").insert({ chave: "pendente:" + id })).error) return; // já avisado
   const bruto = linhas.reduce((s: number, i: any) => s + Number(i.qtd ?? 0), 0), canc = abate.reduce((s: number, i: any) => s + Number(i.qtd ?? 0), 0);
-  const itens = linhas.map((i: any) => `${i.qtd} ${i.modelo_texto}`).join(", ") + (canc ? ` (-${canc} cancelados)` : "");
-  const tx = await texto("pendente_novo", { fornecedor: p.fornecedor, data: dm(p.data), pares: plural(bruto - canc, "par", "pares"),
-    total: p.total_declarado ? "total " + dinheiro(Number(p.total_declarado) / 100) : "", itens: itens.length > 160 ? itens.slice(0, 157) + "…" : itens });
+  // valor: o total que o fornecedor declarou; sem ele, quantidade x preço vigente na data (só se todos os modelos têm preço)
+  let centavos = p.total_declarado ? Number(p.total_declarado) : 0;
+  if (!centavos) {
+    const ids = linhas.map((i: any) => i.produto_id).filter(Boolean);
+    const { data: pr } = ids.length === linhas.length ? await supabase.from("fin_prices").select("product_id, valid_from, cents").in("product_id", ids).lte("valid_from", p.data).order("valid_from", { ascending: false }) : { data: [] };
+    const preco = (pid: string) => (pr ?? []).find((x: any) => x.product_id === pid)?.cents;
+    if (ids.length === linhas.length && linhas.every((i: any) => preco(i.produto_id) != null)) centavos = linhas.reduce((s: number, i: any) => s + Number(i.qtd) * Number(preco(i.produto_id)), 0);
+  }
+  const tx = await texto("pendente_novo", { fornecedor: p.fornecedor, data: dm(p.data), pares: plural(bruto - canc, "par", "pares"), total: centavos ? dinheiro(centavos / 100) : "" });
   await enviar((await equipe()).map((u) => u.usuario_id), { ...tx, url: SITE + "/fornecedores/", tag: "pendente-" + id }, "pendente");
 }
 
