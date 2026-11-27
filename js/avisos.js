@@ -1,7 +1,7 @@
 // Avisos no aparelho (Web Push): ligar/desligar neste aparelho e escolher quais avisos receber.
 export const TIPOS = [
   ['tarefas', 'Tarefas', 'Quando uma tarefa for passada para você ou alguém alterar a sua.'],
-  ['compras', 'Pedido ao fornecedor', 'Quando um pedido de compra for lançado no sistema.'],
+  ['compras', 'Pedido para aprovação', 'Quando um pedido ao fornecedor chegar do WhatsApp para você conferir e aprovar.'],
   ['resumo', 'Resumo da manhã', 'Às 8h: as tarefas que vencem hoje e as atrasadas.'],
   ['metas', 'Meta batida', 'Quando a meta do mês ou a meta de lucro do dia é alcançada.'],
 ];

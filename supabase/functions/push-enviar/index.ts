@@ -43,7 +43,7 @@ const amanhaBR = () => new Date(new Date(hojeBR() + "T12:00:00Z").getTime() + 86
 const quando = (iso: string | null) => !iso ? "" : iso === hojeBR() ? "vence hoje" : iso === amanhaBR() ? "vence amanhã" : `vence dia ${dm(iso)}`;
 
 type Aviso = { titulo: string; corpo: string; url?: string; tag?: string };
-const CAMPO: Record<string, string> = { compra: "compras", tarefa: "tarefas", meta: "metas", meta_lucro: "metas", resumo: "resumo" };
+const CAMPO: Record<string, string> = { pendente: "compras", tarefa: "tarefas", meta: "metas", meta_lucro: "metas", resumo: "resumo" };
 
 async function enviar(usuarios: string[], aviso: Aviso, tipo: string | null): Promise<number> {
   if (!usuarios.length) return 0;
@@ -80,16 +80,19 @@ async function tarefa(c: any) {
   await enviar([t.responsavel_id], { ...tx, tag: "tarefa-" + t.id }, "tarefa");
 }
 
-async function compra(c: any) {
-  const ordem = String(c.ordem ?? "");
-  if (!ordem) return;
-  const { data: l } = await supabase.from("fin_entries").select("supplier, date, qty, value, cancelled").eq("type", "purchase").or(`purchase_order_id.eq.${ordem},id.eq.${ordem}`);
-  const itens = (l ?? []).filter((e: any) => !e.cancelled);
-  if (!itens.length) return;
-  if ((await supabase.from("push_enviados").insert({ chave: "compra:" + ordem })).error) return; // já avisada
-  const pares = itens.reduce((s: number, e: any) => s + Number(e.qty ?? 0), 0), total = itens.reduce((s: number, e: any) => s + Number(e.value ?? 0), 0) / 100;
-  const tx = await texto("compra_lancada", { fornecedor: itens[0].supplier, pares: plural(pares, "par", "pares"), total: dinheiro(total), data: dm(itens[0].date) });
-  await enviar((await equipe()).map((p) => p.usuario_id), { ...tx, url: SITE + "/fornecedores/", tag: "compra-" + ordem }, "compra");
+async function pendente(c: any) {
+  const id = String(c.id ?? "");
+  const { data: p } = await supabase.from("wa_pendentes").select("id, fornecedor, data, status, total_declarado").eq("id", id).maybeSingle();
+  if (!p || p.status !== "aberto") return;
+  const { data: it } = await supabase.from("wa_pendentes_itens").select("tipo, modelo_texto, qtd, ordem").eq("pendente_id", id).order("ordem");
+  const linhas = (it ?? []).filter((i: any) => i.tipo === "linha"), abate = (it ?? []).filter((i: any) => i.tipo === "abate");
+  if (!linhas.length) return;
+  if ((await supabase.from("push_enviados").insert({ chave: "pendente:" + id })).error) return; // já avisado
+  const bruto = linhas.reduce((s: number, i: any) => s + Number(i.qtd ?? 0), 0), canc = abate.reduce((s: number, i: any) => s + Number(i.qtd ?? 0), 0);
+  const itens = linhas.map((i: any) => `${i.qtd} ${i.modelo_texto}`).join(", ") + (canc ? ` (-${canc} cancelados)` : "");
+  const tx = await texto("pendente_novo", { fornecedor: p.fornecedor, data: dm(p.data), pares: plural(bruto - canc, "par", "pares"),
+    total: p.total_declarado ? "total " + dinheiro(Number(p.total_declarado) / 100) : "", itens: itens.length > 160 ? itens.slice(0, 157) + "…" : itens });
+  await enviar((await equipe()).map((u) => u.usuario_id), { ...tx, url: SITE + "/fornecedores/", tag: "pendente-" + id }, "pendente");
 }
 
 async function meta(c: any) {
@@ -143,7 +146,7 @@ Deno.serve(async (req) => {
   const trabalho = async () => {
     try {
       if (c.tipo === "tarefa") await tarefa(c);
-      else if (c.tipo === "compra") await compra(c);
+      else if (c.tipo === "pendente") await pendente(c);
       else if (c.tipo === "meta") await meta(c);
       else if (c.tipo === "meta_lucro") await metaLucro();
       else if (c.tipo === "resumo") await resumo();
